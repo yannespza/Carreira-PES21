@@ -119,7 +119,7 @@ class Career:
         for _ in range(3):
             try:
                 with open(tmp, 'wb') as f:
-                    f.write(new); f.flush(); os.fsync(f.fileno())
+                    f.write(new)
                 os.replace(tmp, self.path)
                 gravou = True
                 break
@@ -136,14 +136,14 @@ class Career:
             for _ in range(3):
                 try:
                     with open(self.path, 'r+b') as f:
-                        f.seek(0); f.write(new); f.truncate(); f.flush(); os.fsync(f.fileno())
+                        f.seek(0); f.write(new); f.truncate()
                     gravou = True
                     break
                 except OSError as e:
                     erros.append(f'por cima: {e}')
                     time.sleep(0.7)
         if not gravou:
-            log('falha ao gravar o save:', ' | '.join(erros[-2:]))
+            log('falha ao gravar o save:', ' | '.join(erros))
             raise RuntimeError('O Windows não deixou gravar o save agora (' + erros[-1] + '). Vou tentar de novo em instantes.')
         # relê do disco e confere; se algo deu errado, volta o backup
         try:
