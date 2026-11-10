@@ -14,7 +14,16 @@ Como funciona:
 - Quando um pagamento cai, o app coloca o dinheiro no save. No jogo, volte ao menu principal e
   carregue a carreira de novo para o dinheiro aparecer. Não salve antes de recarregar.
 
+Carreira com outro clube (versão 2.0):
+- O app descobre o clube pelo save (ex.: MIRASSOL) e acha os uniformes dele no kitserver.
+- Na primeira vez ele guarda os originais em data\times\<id do clube>\originais, tira os patrocínios
+  de todas as variações e aprende onde cada patrocínio ficava (os novos já entram nesses lugares).
+- Em Uniformes > "Limpeza dos uniformes originais" dá para desmarcar o que não é patrocínio e
+  arrastar na imagem para marcar o que sobrou; depois "Refazer a limpeza" e "Aplicar no jogo".
+- Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
+  2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
+
 Segurança:
 - Antes de mexer no save, o app guarda uma cópia em data\backups_save (as 30 mais recentes).
-- Os uniformes limpos (sem patrocínio) ficam em data\kits_base.
+- Os uniformes limpos (sem patrocínio) ficam em data\kits_base (Palmeiras) e data\times\<id>\kits_base (outros clubes).
 - Os uniformes originais do patch estão em ..\eFootball PES 2021\BACKUP_APP_CARREIRA\kits_originais

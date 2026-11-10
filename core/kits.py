@@ -43,12 +43,33 @@ FAMILIAS = {'verde': 'Verde', 'branco': 'Branco', 'azul': 'Azul',
             'listrado': 'Listrado'}
 
 _base_cache = {}
+BASE = {'dir': None}     # pasta das bases limpas do clube da carreira atual
+VIEWS_PADRAO = {k: list(v) for k, v in VIEWS.items()}
+
+
+def usar_time(t):
+    """Troca posições, uniformes e famílias pelos do clube da carreira (muda os objetos no lugar)."""
+    SLOTS.clear(); SLOTS.update({k: dict(v) for k, v in t['slots'].items()})
+    SLOT_ORDER[:] = [s for s in t['ordem'] if s in SLOTS]
+    VARIANTS[:] = [tuple(v) for v in t['variantes']]
+    FAMILIAS.clear(); FAMILIAS.update(t['familias'])
+    BASE['dir'] = t['base_dir']
+    VIEWS.clear(); VIEWS.update({k: list(v) for k, v in VIEWS_PADRAO.items()})
+    if any(s in SLOTS for s in ('costas_baixo', 'costas_laterais')):
+        VIEWS['costas'] = [(725, 640, 1315, 960), (725, 90, 1315, 640)]
+    if 'gola' in SLOTS or 'acima_peito' in SLOTS:
+        VIEWS['frente'] = [(690, 990, 1360, 1860)]
+    _base_cache.clear()
+
+
+def base_path(app_dir, variant, fname):
+    return os.path.join(BASE['dir'] or os.path.join(app_dir, 'data', 'kits_base'), variant, fname + '.ftex')
 
 
 def base_image(app_dir, variant, fname):
-    key = (variant, fname)
+    key = (BASE['dir'], variant, fname)
     if key not in _base_cache:
-        _base_cache[key] = ftex.read(os.path.join(app_dir, 'data', 'kits_base', variant, fname + '.ftex'))
+        _base_cache[key] = ftex.read(base_path(app_dir, variant, fname))
     return _base_cache[key].copy()
 
 
@@ -144,6 +165,12 @@ ROTULOS = {'frente': ['FRENTE'], 'costas': ['COSTAS'], 'mangas': ['MANGA DIREITA
            'calcao': ['CALCAO - ESQ.', 'CALCAO - DIR. / TRAS']}
 
 
+def _rotulos(v):
+    if v == 'costas' and len(VIEWS['costas']) > 1:
+        return ['COSTAS - ALTO', 'COSTAS - BAIXO']
+    return ROTULOS[v]
+
+
 def _rotular(p, rotulos, n_partes):
     from PIL import ImageDraw
     d = ImageDraw.Draw(p)
@@ -162,7 +189,7 @@ def preview(img: Image.Image, width=520):
     for v in ('frente', 'costas', 'mangas', 'calcao'):
         p = _view(img, VIEWS[v])
         p = p.resize((width, int(p.height * width / p.width)), Image.LANCZOS)
-        parts.append(_rotular(p, ROTULOS[v], len(VIEWS[v])))
+        parts.append(_rotular(p, _rotulos(v), len(VIEWS[v])))
     H = sum(p.height for p in parts) + 6 * (len(parts) - 1)
     out = Image.new('RGB', (width, H), (14, 16, 20))
     y = 0
@@ -179,7 +206,7 @@ def install(app_dir, kit_dir, contratos, logo_loader, log=print, progresso=None)
             progresso(i, len(VARIANTS), variant)
         img = compose(app_dir, variant, fname, fam, contratos, logo_loader)
         dst = os.path.join(kit_dir, variant, fname + '.ftex')
-        tpl = os.path.join(app_dir, 'data', 'kits_base', variant, fname + '.ftex')
+        tpl = base_path(app_dir, variant, fname)
         ftex.write(img, tpl, dst)
         done.append(variant)
         log(f'uniforme {variant} atualizado')

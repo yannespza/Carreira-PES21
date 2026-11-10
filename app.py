@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import savedata, kits, sim, mundo
+from core import savedata, kits, sim, mundo, times
 from core.logos import LogoBank
 
 PORT = 8765
@@ -67,6 +67,75 @@ class App:
         self.status = {'kits': 'ok', 'kits_msg': '', 'kits_prog': None, 'aviso': None, 'erro': None, 'lendo': False}
         self.kit_thread = None
         self.kits_aplicados = None
+        self.times = times.Times(DATA, CFG, log)
+        self.time = None          # configuração do clube da carreira atual
+        self.elenco = []
+
+    # ----- clube da carreira -----
+    def tid(self):
+        return self.time['id'] if self.time else CFG.get('time_id', 137)
+
+    def clube(self):
+        return self.time['nome'] if self.time else CFG.get('clube', 'Palmeiras')
+
+    def resolver_time(self, clube, data):
+        """Descobre o id do clube pelo nome que aparece no save (confere com os dados da carreira)."""
+        cands = times.candidatos(clube, self.times.mapa)
+        if not cands:
+            return CFG.get('time_id') if times.norm(clube) == times.norm(CFG.get('clube', '')) else None
+        if len(cands) == 1:
+            return cands[0]
+        for t in cands:
+            if savedata.find_results(data, t):
+                return t
+        for t in cands:
+            if savedata.team_index(data, t):
+                return t
+        return cands[0]
+
+    def usar_time(self, tid):
+        if self.time and self.time['id'] == tid:
+            return
+        t = self.times.obter(tid)
+        self.time = t
+        kits.usar_time(t)
+        log('clube da carreira:', t['nome'], tid, '| uniformes:', len(t['variantes']),
+            '| preparado' if t.get('preparado') else '| precisa preparar')
+        if not t.get('preparado'):
+            self.preparar_time()
+
+    def preparar_time(self, so_detectar=False):
+        t = self.time
+        if not t['variantes']:
+            self.status['erro'] = f"Não achei os uniformes do {t['nome']} na pasta do kitserver ({t['pasta']})."
+            return
+
+        def depois(tt):
+            with LOCK:
+                if self.time and self.time['id'] == tt['id']:
+                    kits.usar_time(tt)
+                    if self.state is not None and not so_detectar:
+                        self.state['kits_aplicados'] = None
+                        # posições novas aprendidas no uniforme também ganham as propostas de início
+                        if self.state.get('ofertas_iniciais') and self.engine and self.engine.hoje():
+                            usados = {o['slot'] for o in self.state['ofertas']} | {
+                                c['slot'] for c in self.state['contratos']}
+                            faltam = [x for x in kits.SLOT_ORDER if x not in usados]
+                            if faltam:
+                                self.engine.ofertas_iniciais(self.engine.hoje(), slots=faltam)
+                        self.persist()
+        self.times.preparar(t, so_detectar, depois)
+
+    def ler_elenco(self, car):
+        try:
+            idx = savedata.team_index(bytes(car.sf.data), car.team_id)
+            ids = savedata.elenco(bytes(car.sf.data), idx)
+            edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
+            nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
+            self.elenco = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}'})} for i in ids]
+        except Exception:
+            log(traceback.format_exc())
+            self.elenco = []
 
     # ----- arquivos -----
     def listar_saves(self):
@@ -140,13 +209,14 @@ class App:
             return
         self.status['lendo'] = True
         try:
-            car = savedata.Career(path, CFG['time_id'])
+            car = savedata.Career(path, CFG.get('time_id'), self.resolver_time)
         except Exception as e:
             self.status['erro'] = f'Não consegui ler o save agora ({e}). Vou tentar de novo.'
             self.status['lendo'] = False
             return
         self.status['erro'] = None
         with LOCK:
+            self.usar_time(car.team_id or CFG.get('time_id'))
             self.save_path, self.save_mtime, self.career = path, m, car
             sp = self.career_state_path(car.slot_name)
             novo = False
@@ -162,7 +232,12 @@ class App:
                 self.state = st = {}
                 novo = True
                 log('carreira nova detectada; estado anterior arquivado em', arq)
-            self.engine = sim.Engine(st, CFG.get('clube', 'Palmeiras'), CFG.get('atratividade_base', 68))
+            if novo:
+                st['time_id'] = self.tid()
+                # carreira começando agora (nenhum jogo no save): a receita de patrocínio do jogo volta a zero
+                if not car.results:
+                    st['zerar_pat'] = {'status': 'pendente'}
+            self.engine = sim.Engine(st, self.clube(), self.time.get('atratividade_base', 60))
             nomes = [(n, '') for n in sorted(set(self.logos.map.values()))]
             self.engine.sync_empresas(nomes)
             st['save_info'] = {'arquivo': path, 'slot': car.slot_name, 'clube': car.club_line,
@@ -178,8 +253,11 @@ class App:
             st['fin_hist'] = fh[-200:]
             if car.fin_off is None:
                 self.status['erro'] = 'Não achei o bloco de finanças nesse save.'
-            self.engine.registrar_partidas(car.results, CFG['time_id'], sim.d2s(car.date))
+            self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
             self.engine.avancar(car.date, primeira_leitura=novo)
+            if novo:
+                self.engine.ofertas_iniciais(car.date)
+            self.ler_elenco(car)
             self.verificar_creditos(car)
             self.aplicar_creditos()
             self.mundo_processar()
@@ -191,7 +269,7 @@ class App:
     # ----- imprensa, torcida, diretoria -----
     def mundo_processar(self):
         try:
-            mundo.Mundo(self.state, CFG.get('clube', 'Palmeiras'), CFG['time_id']).processar(
+            mundo.Mundo(self.state, self.clube(), self.tid()).processar(
                 self.engine, lambda i: self.names.get(i, f'Time {i}'))
         except Exception:
             log(traceback.format_exc())
@@ -201,6 +279,14 @@ class App:
         money = car.money()
         if not money:
             return
+        z = self.state.get('zerar_pat')
+        if z and z.get('status') == 'aplicado':
+            creditou = any(pg['status'] in ('creditado', 'confirmado') for c in self.state.get('contratos', [])
+                           for pg in c['pagamentos'])
+            if money['rec_patrocinio'] <= 0 or creditou:
+                z['status'] = 'confirmado'
+            elif money['rec_patrocinio'] >= z.get('valor', 0) > 0:
+                z['status'] = 'pendente'     # o jogo gravou por cima antes de recarregar
         for c in self.state.get('contratos', []):
             for pg in c['pagamentos']:
                 if pg['status'] != 'creditado':
@@ -219,10 +305,17 @@ class App:
     def aplicar_creditos(self):
         pend = self.engine.pagamentos_pendentes()
         multas = [m for m in self.state.get('multas', []) if m['status'] == 'pendente']
-        if (not pend and not multas) or self.career is None or self.career.fin_off is None:
+        z = self.state.get('zerar_pat')
+        zerar = bool(z and z.get('status') == 'pendente')
+        if (not pend and not multas and not zerar) or self.career is None or self.career.fin_off is None:
             return
         car = self.career
         total = 0; total_multa = 0
+        orc_antes = car.money().get('orc_transf', 0)
+        zerado = car.zerar_patrocinio() if zerar else 0
+        if zerar and not zerado and not pend and not multas:
+            z.update(status='confirmado', valor=0)       # já estava zerado: nada a gravar
+            return
         for c, pg in pend:
             car.credit_sponsor(pg['valor'])
             total += pg['valor']
@@ -243,6 +336,8 @@ class App:
                 car.credit_sponsor(-pg['valor'])
             for m in multas:
                 car.credit_sponsor(m['valor'])
+            if zerado:
+                car.desfazer_zerar(zerado, orc_antes)
             return
         self.save_mtime = car.mtime
         self.status['erro'] = None
@@ -259,12 +354,20 @@ class App:
                             valor=sim.fmt_eur(pg['valor']))
         for m in multas:
             m['status'] = 'aplicada'; m['aplicada_em'] = hoje
+        if zerar:
+            z.update(status='aplicado' if zerado else 'confirmado', valor=zerado, em=hoje)
         self.state['dinheiro'] = money
         partes = []
+        if zerado:
+            partes.append(f'a receita de patrocínio que veio com a carreira ({sim.fmt_eur(zerado)}) foi zerada '
+                          'para os novos patrocinadores começarem do zero')
         if total:
             partes.append(f'{sim.fmt_eur(total)} de patrocínio foram colocados no save')
         if total_multa:
             partes.append(f'{sim.fmt_eur(total_multa)} de multa de rescisão foram descontados')
+        if not partes:
+            return
+        partes[0] = partes[0][0].upper() + partes[0][1:]
         self.status['aviso'] = (' e '.join(partes) + '. No jogo, volte ao menu principal e carregue a carreira de novo '
                                 'para o valor aparecer. Não salve antes de recarregar.')
         self.state['aviso_recarregar'] = True
@@ -281,12 +384,13 @@ class App:
                                    sorted((c.get('cores') or {}).items())] for c in cs]), ensure_ascii=False)
 
     def kits_pendentes(self):
-        if self.state is None:
+        if self.state is None or not self.time or not self.time.get('preparado'):
             return []
         atual = self.contratos_visiveis()
         aplicado = self.state.get('kits_aplicados')
         if aplicado is None:
-            return ['primeira aplicação: deixar os 10 uniformes no padrão do app (inclui o 4º, listrado, sem patrocínios)']
+            return [f"primeira aplicação: deixar os {len(kits.VARIANTS)} uniformes do {self.clube()} sem os patrocínios "
+                    "originais (confira a limpeza na aba Uniformes antes de aplicar)"]
         if aplicado == 'teste':
             return ['voltar ao normal depois do teste (contratos que ainda não começaram saem do uniforme)']
         if self.assinatura(atual) == aplicado:
@@ -307,6 +411,8 @@ class App:
     def aplicar_kits(self):
         if self.kit_thread and self.kit_thread.is_alive():
             raise ValueError('Os uniformes já estão sendo gravados. Aguarde terminar.')
+        if not self.time or not self.time.get('preparado'):
+            raise ValueError('Os uniformes do clube ainda estão sendo preparados. Aguarde terminar.')
         cs = json.loads(json.dumps(self.contratos_visiveis()))
         sig = self.assinatura(cs)
 
@@ -317,7 +423,7 @@ class App:
         def run():
             self.status['kits'] = 'trabalhando'
             try:
-                kits.install(APP_DIR, CFG['pasta_kits'], cs, self.logos.load, log, prog)
+                kits.install(APP_DIR, self.time['pasta'], cs, self.logos.load, log, prog)
                 with LOCK:
                     self.state['kits_aplicados'] = sig
                     self.persist()
@@ -331,6 +437,14 @@ class App:
 
         self.kit_thread = threading.Thread(target=run, daemon=True)
         self.kit_thread.start()
+
+    def time_view(self):
+        t = self.time
+        if not t:
+            return None
+        return {'id': t['id'], 'nome': t['nome'], 'preparado': bool(t.get('preparado')),
+                'prep': self.times.prep.get(t['id']), 'n_uniformes': len(t['variantes']),
+                'aprendidos': [k for k, v in t['slots'].items() if v.get('aprendido')]}
 
     # ----- visão para a interface -----
     def view(self):
@@ -346,7 +460,7 @@ class App:
             empresas.append({'nome': n, **e})
         return {
             'pronto': self.state is not None, 'versao': VERSAO,
-            'clube': CFG.get('clube'), 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+            'clube': self.clube(), 'time': self.time_view(), 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1],
             'ofertas': [o for o in st.get('ofertas', []) if o['status'] in ('aberta', 'aguardando')],
@@ -361,7 +475,8 @@ class App:
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
             'fin_hist': st.get('fin_hist', [])[-60:],
-            'mundo': mundo.Mundo(st, CFG.get('clube', 'Palmeiras'), CFG['time_id']).view() if st else None,
+            'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None,
+            'zerar_pat': st.get('zerar_pat'),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
         }
@@ -443,7 +558,7 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, open(p, 'rb').read(), 'image/png')
                 return self.send(404, {'erro': 'logo'})
             if u.path == '/api/preview':
-                fam = q.get('familia', 'verde')
+                fam = q.get('familia') or next(iter(kits.FAMILIAS))
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 with LOCK:
                     cs = json.loads(json.dumps([c for c in (A.state or {}).get('contratos', [])
@@ -454,6 +569,33 @@ class H(BaseHTTPRequestHandler):
                 img = kits.compose(APP_DIR, variant, fname, fam, cs, A.logos.load)
                 out = io.BytesIO()
                 kits.preview(img, int(q.get('w', 520))).save(out, 'JPEG', quality=88)
+                return self.send(200, out.getvalue(), 'image/jpeg')
+            if u.path == '/api/time/revisao':
+                t = A.time
+                if not t:
+                    return self.send(200, {'familias': {}})
+                return self.send(200, {'familias': t['familias'], 'prep': A.times.prep.get(t['id']),
+                                       'itens': {f: A.times.itens_revisao(t, f) for f in t['familias']},
+                                       'preparado': bool(t.get('preparado')), 'nome': t['nome'],
+                                       'legado': bool(t.get('legado'))})
+            if u.path == '/api/time/imagem':
+                # textura inteira (1024px): 'original' com as caixas ou 'limpa' (base do app)
+                t = A.time
+                fam = q.get('familia') or next(iter(t['familias']))
+                variant, fname, _ = A.times.principal(t, fam)
+                if q.get('tipo') == 'limpa':
+                    from core import ftex
+                    p = kits.base_path(APP_DIR, variant, fname)
+                    if not os.path.exists(p):
+                        return self.send(404, {'erro': 'ainda não limpo'})
+                    img = ftex.read(p).convert('RGB').resize((1024, 1024))
+                else:
+                    p = os.path.join(A.times.dir(t['id']), f'revisao_{fam}.jpg')
+                    if not os.path.exists(p):
+                        return self.send(404, {'erro': 'ainda não detectado'})
+                    img = __import__('PIL.Image', fromlist=['Image']).open(p)
+                out = io.BytesIO()
+                img.save(out, 'JPEG', quality=86)
                 return self.send(200, out.getvalue(), 'image/jpeg')
             if u.path == '/api/valor_justo':
                 with LOCK:
@@ -487,6 +629,48 @@ class H(BaseHTTPRequestHandler):
                 A.engine = None; A.career = None
             log('save escolhido:', caminho)
             return self.send(200, {'ok': True})
+        if u.path.startswith('/api/time/'):
+            try:
+                with LOCK:
+                    t = A.time
+                    if not t:
+                        raise ValueError('O app ainda está lendo o save.')
+                    if A.times.prep.get(t['id'], {}).get('rodando'):
+                        raise ValueError('A preparação dos uniformes ainda está rodando. Aguarde.')
+                    if t.get('legado'):
+                        raise ValueError('Os uniformes deste clube foram preparados à mão numa versão anterior do app.')
+                    fam = body.get('familia')
+                    d = (t.get('deteccao') or {}).get(fam) if fam else None
+                    if u.path == '/api/time/marcar':
+                        fora = set(d.get('desmarcados', []))
+                        if body.get('chave', '').startswith('extra:'):
+                            i = int(body['chave'].split(':')[1])
+                            if not body.get('marcado') and 0 <= i < len(d['extras']):
+                                d['extras'].pop(i)
+                        elif body.get('marcado'):
+                            fora.discard(body['chave'])
+                        else:
+                            fora.add(body['chave'])
+                        d['desmarcados'] = sorted(fora)
+                    elif u.path == '/api/time/extra':
+                        c = [int(max(0, min(2048, v))) for v in body['caixa']]
+                        x0, x1 = sorted((c[0], c[2])); y0, y1 = sorted((c[1], c[3]))
+                        if x1 - x0 < 6 or y1 - y0 < 6:
+                            raise ValueError('Área muito pequena.')
+                        d.setdefault('extras', []).append([x0, y0, x1, y1])
+                    elif u.path == '/api/time/limpar':
+                        A.preparar_time()
+                    elif u.path == '/api/time/detectar':
+                        A.preparar_time(so_detectar=True)
+                    else:
+                        return self.send(404, {'erro': 'não encontrado'})
+                    A.times.salvar(t)
+                return self.send(200, {'ok': True})
+            except ValueError as e:
+                return self.send(400, {'erro': str(e)})
+            except Exception as e:
+                log(traceback.format_exc())
+                return self.send(500, {'erro': str(e)})
         if u.path == '/api/sair':
             self.send(200, {'ok': True})
             log('App encerrado pelo usuário')
@@ -524,7 +708,7 @@ class H(BaseHTTPRequestHandler):
                     fams = list(kits.FAMILIAS) if body.get('todos') else [body.get('familia')]
                     for c in A.state['contratos']:
                         if c['id'] == int(body['id']):
-                            base = kits.ajuste(c, body.get('familia') or 'verde')
+                            base = kits.ajuste(c, body.get('familia') or next(iter(kits.FAMILIAS)))
                             for k in ('escala', 'inclinacao', 'dx', 'dy'):
                                 if k in body:
                                     base[k] = float(body[k])
@@ -542,7 +726,7 @@ class H(BaseHTTPRequestHandler):
                     A.status['aviso'] = None; return self.send(200, {'ok': True})
                 if u.path == '/api/kits/testar':
                     # grava só o uniforme escolhido com os contratos ativos + assinados, para conferir no jogo
-                    fam = body.get('familia', 'verde')
+                    fam = body.get('familia') or next(iter(kits.FAMILIAS))
                     variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                     cs = json.loads(json.dumps([c for c in A.state.get('contratos', []) if c['status'] in ('ativo', 'assinado')]))
                     if body.get('cand'):
@@ -550,8 +734,8 @@ class H(BaseHTTPRequestHandler):
                         cs = [c for c in cs if c['slot'] != cand['slot']] + [cand]
                     img = kits.compose(APP_DIR, variant, fname, fam, cs, A.logos.load)
                     from core import ftex
-                    ftex.write(img, os.path.join(APP_DIR, 'data', 'kits_base', variant, fname + '.ftex'),
-                               os.path.join(CFG['pasta_kits'], variant, fname + '.ftex'))
+                    ftex.write(img, kits.base_path(APP_DIR, variant, fname),
+                               os.path.join(A.time['pasta'], variant, fname + '.ftex'))
                     A.state['kits_aplicados'] = 'teste'
                     A.persist()
                     return self.send(200, {'ok': True, 'uniforme': variant})

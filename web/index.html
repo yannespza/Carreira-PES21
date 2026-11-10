@@ -158,6 +158,23 @@ dialog select,dialog input{width:100%}
 .post b{font-size:13px}.post p{margin:3px 0;font-size:14px}.post small{color:var(--mut);font-size:11px}
 .foot{color:var(--dim);font-size:11px;margin-top:30px}
 .hidden{display:none}
+.limpgrid{display:grid;grid-template-columns:1fr 1fr 300px;gap:14px}
+.limpcap{font-size:11px;color:var(--mut);margin-bottom:5px;letter-spacing:.04em}
+.limpwrap{position:relative;user-select:none;line-height:0}
+.limpwrap img{width:100%;border-radius:6px;display:block}
+#limpWrap{cursor:crosshair}
+.lb{position:absolute;border:2px solid #c8f031;box-sizing:border-box;pointer-events:none}
+.lb.off{border-color:#888;border-style:dashed}
+.lb.man{border-color:#ff9f2e}
+.lb.nova{border-color:#ff9f2e;border-style:dashed}
+.lb i{position:absolute;left:-2px;top:-15px;background:#c8f031;color:#000;font:600 10px/13px sans-serif;padding:0 3px;font-style:normal}
+.lb.off i{background:#888}.lb.man i{background:#ff9f2e}
+.litem{display:flex;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line,#2a2e36);font-size:13px}
+.litem b{display:inline-block;min-width:20px;color:var(--lime)}
+.elgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.elp{padding:9px 11px;border:1px solid var(--line,#2a2e36);border-radius:8px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.elp small{color:var(--mut)}
+@media (max-width:1100px){.limpgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -168,6 +185,7 @@ dialog select,dialog input{width:100%}
     <a data-t="clube" class="on">◆ Clube</a>
     <a data-t="patro">◆ Patrocínios <span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits">◆ Uniformes</a>
+    <a data-t="elenco">◆ Elenco</a>
     <a data-t="fin">◆ Finanças</a>
     <a data-t="news">◆ Notícias</a>
     <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
@@ -235,6 +253,22 @@ dialog select,dialog input{width:100%}
         <div class="box"><h3>Posições <small id="candInfo"></small></h3><div id="slots"></div></div>
       </div>
     </div>
+    <div class="box" style="margin-top:20px" id="limpBox">
+      <h3>Limpeza dos uniformes originais <small id="limpInfo"></small></h3>
+      <div style="color:var(--mut);font-size:12px;margin-bottom:10px">O app achou os patrocínios que vieram no uniforme do clube, apagou de todas as variações e guardou essas posições para os novos patrocinadores. <b>Desmarque</b> o que não é patrocínio (escudo, marca do fornecedor) e <b>arraste na imagem da esquerda</b> para marcar um patrocínio que sobrou. Depois clique em "Refazer a limpeza".</div>
+      <div class="limpgrid">
+        <div><div class="limpcap">ORIGINAL · áreas que o app apaga</div><div class="limpwrap" id="limpWrap"><img id="limpOrig" draggable="false"><div id="limpBoxes"></div><div id="limpNova" class="lb nova hidden"></div></div></div>
+        <div><div class="limpcap">COMO FICOU (base do app, sem patrocínio)</div><div class="limpwrap"><img id="limpLimpa" draggable="false"></div></div>
+        <div><div class="limpcap">MARCAÇÕES</div><div id="limpItens" style="max-height:520px;overflow:auto"></div>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="lime" onclick="refazerLimpeza()">Refazer a limpeza</button><button class="ghost" onclick="procurarDeNovo()">Procurar de novo</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ELENCO -->
+  <section id="t-elenco" class="hidden">
+    <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
+    <div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="elgrid" id="elList"></div></div>
   </section>
 
   <!-- FINANÇAS -->
@@ -354,12 +388,16 @@ function render(){
     bn+=`<div class="banner"><p><b>Gravando os uniformes no jogo…</b> ${esc(ks.kits_msg||'')}</p><div class="prog"><i style="width:${Math.round(100*p[0]/p[1])}%"></i></div></div>`}
   else if(S.kits_pendentes&&S.kits_pendentes.length) bn+=`<div class="banner"><p><b>Mudanças nos uniformes aguardando sua aprovação:</b> ${S.kits_pendentes.map(esc).join(' · ')}</p>
     <button class="ghost" onclick="go('kits')">Ver prévia</button><button class="lime" onclick="aplicarKits()">Aplicar no jogo</button></div>`;
+  const tp=S.time&&S.time.prep;
+  if(tp&&tp.rodando) bn+=`<div class="banner"><p><b>Preparando os uniformes do ${esc(S.time.nome)}:</b> o app está tirando os patrocínios originais das ${S.time.n_uniformes} variações e guardando onde eles ficavam. ${esc(tp.msg||'')}</p><div class="prog"><i style="width:${Math.round(100*(tp.i||0)/(tp.n||1))}%"></i></div></div>`;
+  else if(tp&&tp.erro) bn+=`<div class="banner err"><p>Preparação dos uniformes: ${esc(tp.msg)}</p></div>`;
   if(!ok) bn+=`<div class="banner"><p>Lendo o save da carreira… Se demorar, confira se o jogo já gravou um save do Master League.</p></div>`;
   (S.avisos||[]).forEach(a=>toast(a));
   $('banners').innerHTML=bn;
   if(!ok)return;
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
-  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin})[tab]();
+  if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
+  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
 function rClube(){rHumor();
@@ -485,8 +523,38 @@ async function aceitarCand(){const o=S.ofertas.find(x=>x.id==cand._oferta);if(!o
   await api('/api/oferta/aceitar',{id:o.id,visual:{escala:cand.escala,inclinacao:cand.inclinacao,dx:cand.dx,dy:cand.dy,cores:cand.cores,ajustes:cand.ajustes||{}}});
   toast('Contrato assinado com esse ajuste do logo!');cand=null;kitStamp=Date.now();load()}
 
-let visT=null;
+let visT=null, REV=null, revT=0, revStamp=Date.now();
+async function carregarRev(){try{REV=await (await fetch('/api/time/revisao')).json();revT=Date.now();rLimp()}catch(e){}}
+function rLimp(){if(!REV||!REV.itens){return}
+  $('limpBox').classList.toggle('hidden',!!REV.legado);if(REV.legado)return;
+  const its=REV.itens[fam]||[];const tp=REV.prep||{};
+  $('limpInfo').textContent=tp.rodando?('trabalhando… '+(tp.msg||'')):(REV.preparado?REV.nome+' · '+Object.keys(REV.familias).length+' uniformes':'ainda não preparado');
+  const so='/api/time/imagem?familia='+fam+'&tipo=original&t='+revStamp, sl='/api/time/imagem?familia='+fam+'&tipo=limpa&t='+revStamp;
+  if($('limpOrig').dataset.src!=so){$('limpOrig').dataset.src=so;$('limpOrig').src=so}
+  if($('limpLimpa').dataset.src!=sl){$('limpLimpa').dataset.src=sl;$('limpLimpa').src=sl}
+  const pc=v=>(v/2048*100)+'%';
+  $('limpBoxes').innerHTML=its.map((it,i)=>{const c=it.caixa;return `<div class="lb ${it.manual?'man':''} ${it.marcado?'':'off'}" style="left:${pc(c[0])};top:${pc(c[1])};width:${pc(c[2]-c[0])};height:${pc(c[3]-c[1])}"><i>${i+1}</i></div>`}).join('');
+  $('limpItens').innerHTML=its.length?its.map((it,i)=>`<label class="litem"><input type="checkbox" ${it.marcado?'checked':''} onchange="marcarLimp('${it.chave}',this.checked)"><b>${i+1}</b>${esc(it.nome)}${it.manual?' <small style="color:var(--mut)">(desmarque para tirar)</small>':''}</label>`).join(''):'<div class="empty">Nenhum patrocínio achado neste uniforme.</div>';
+}
+async function marcarLimp(chave,m){await api('/api/time/marcar',{familia:fam,chave,marcado:m});carregarRev()}
+async function refazerLimpeza(){await api('/api/time/limpar',{});toast('Refazendo a limpeza das variações. Quando terminar, confira e clique em "Aplicar no jogo".');setTimeout(carregarRev,800)}
+async function procurarDeNovo(){if(!confirm('Procurar os patrocínios de novo nos uniformes originais? Suas marcações à mão continuam.'))return;await api('/api/time/detectar',{});setTimeout(carregarRev,800)}
+(function(){let ini=null;const w=()=>$('limpWrap');
+  const pos=e=>{const r=w().getBoundingClientRect();return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*2048,Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))*2048]};
+  const desenha=(a,b)=>{const n=$('limpNova');const pc=v=>(v/2048*100)+'%';n.classList.remove('hidden');
+    n.style.left=pc(Math.min(a[0],b[0]));n.style.top=pc(Math.min(a[1],b[1]));n.style.width=pc(Math.abs(b[0]-a[0]));n.style.height=pc(Math.abs(b[1]-a[1]))};
+  document.addEventListener('mousedown',e=>{if(!w()||!w().contains(e.target))return;e.preventDefault();ini=pos(e);desenha(ini,ini)});
+  document.addEventListener('mousemove',e=>{if(ini)desenha(ini,pos(e))});
+  document.addEventListener('mouseup',async e=>{if(!ini)return;const a=ini,b=pos(e);ini=null;$('limpNova').classList.add('hidden');
+    if(Math.abs(b[0]-a[0])<8||Math.abs(b[1]-a[1])<8)return;
+    try{await api('/api/time/extra',{familia:fam,caixa:[a[0],a[1],b[0],b[1]]});toast('Área marcada. Clique em "Refazer a limpeza" quando terminar de marcar.');carregarRev()}catch(x){}});
+})();
+function rElenco(){const el=S.elenco||[];$('elInfo').textContent=el.length?el.length+' jogadores no save':'';
+  $('elList').innerHTML=el.length?el.map(p=>`<div class="elp"><span>${esc(p.nome)}</span><small>${p.altura?p.altura+' cm':''}</small></div>`).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
 function rKits(forcar){
+  const prep=S.time&&S.time.prep&&S.time.prep.rodando;
+  if(!REV||Date.now()-revT>(prep?3000:30000)||(REV._fam!=fam)){if(REV)REV._fam=fam;carregarRev()}
+  if(REV&&!prep&&REV.prep&&REV.prep.rodando){revStamp=Date.now()}
   $('famSeg').innerHTML=Object.entries(S.familias).map(([k,v])=>`<button class="${k==fam?'on':''}" onclick="fam='${k}';kitStamp=Date.now();rKits()">${v}</button>`).join('');
   const src='/api/preview?familia='+fam+(cand?'&cand='+encodeURIComponent(JSON.stringify(cand)):'')+'&t='+kitStamp;
   if($('kitImg').dataset.src!=src){$('kitImg').dataset.src=src;$('kitImg').src=src}

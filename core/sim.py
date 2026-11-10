@@ -2,7 +2,7 @@
 O tempo corre na data da carreira (lida do save), não na data real."""
 import random, hashlib, datetime as dt
 from . import mensagens
-from .kits import SLOTS, SLOT_ORDER
+from .kits import SLOTS, SLOT_ORDER, FAMILIAS
 
 PORTE_FATOR = {'grande': (1.0, 1.35), 'media': (0.55, 0.9), 'pequena': (0.25, 0.5)}
 PORTE_MIN_ATR = {'grande': 58, 'media': 35, 'pequena': 0}
@@ -41,7 +41,7 @@ def fmt_data(d):
 
 
 def pos_txt(slot):
-    return 'espaço “' + SLOTS[slot]['nome'] + '”'
+    return 'espaço “' + SLOTS.get(slot, {'nome': slot})['nome'] + '”'
 
 
 def anos_txt(n): return f'{n} temporada' + ('s' if n > 1 else '')
@@ -118,9 +118,16 @@ class Engine:
         ocupados = {c['slot'] for c in self.s['contratos'] if c['status'] in ('assinado', 'ativo')}
         return [k for k in SLOT_ORDER if k not in ocupados]
 
-    def setores_ocupados(self):
+    @staticmethod
+    def _grande(slot):
+        return SLOTS.get(slot, {}).get('valor_base', 0) >= 2_500_000
+
+    def setores_ocupados(self, slot=None):
+        """Exclusividade de setor: vale entre as posições grandes (peito, mangas, costas, barra, calção).
+        Nas posições pequenas pode haver duas empresas do mesmo ramo."""
         return {self.s['empresas'].get(c['empresa'], {}).get('setor') for c in self.s['contratos']
-                if c['status'] in ('assinado', 'ativo')} - {'outros', None}
+                if c['status'] in ('assinado', 'ativo') and (slot is None or (self._grande(slot) and self._grande(c['slot'])))
+                } - {'outros', None}
 
     def valor_justo(self, empresa, slot, atr=None, r=None):
         atr = self.atratividade() if atr is None else atr
@@ -174,7 +181,8 @@ class Engine:
         self.s['data'] = d2s(nova_data)
         if primeira_leitura or antiga is None:
             self.s['ultima_semana'] = d2s(nova_data)
-            self._gerar_ofertas(nova_data, forcar=2)
+            if not primeira_leitura:
+                self._gerar_ofertas(nova_data, forcar=2)
             return
         if nova_data <= antiga:
             return
@@ -215,6 +223,37 @@ class Engine:
             self._humor_patrocinadores(dia)
             self._corte_de_verba(dia)
 
+    def ofertas_iniciais(self, dia, por_posicao=2, slots=None):
+        """Começo de carreira: pelo menos duas propostas para cada posição do uniforme."""
+        ds = d2s(dia)
+        atr = self.atratividade()
+        r = random.Random(_seed('inicio', ds, self.clube, slots))
+        usadas = {}
+        for o in self.s['ofertas']:
+            if o['status'] in ('aberta', 'aguardando'):
+                usadas[o['empresa']] = usadas.get(o['empresa'], 0) + 1
+        for slot in (slots or SLOT_ORDER):
+            pool = [(n, e) for n, e in self.s['empresas'].items() if atr >= PORTE_MIN_ATR[e['porte']] - 10]
+            pool = pool or list(self.s['empresas'].items())
+            r.shuffle(pool)
+            # empresas que ainda não fizeram proposta vêm primeiro
+            pool.sort(key=lambda x: usadas.get(x[0], 0))
+            for nome, e in pool[:por_posicao]:
+                usadas[nome] = usadas.get(nome, 0) + 1
+                valor = self.valor_justo(nome, slot, atr, r)
+                anos = r.choice([1, 1, 2, 2, 3])
+                validade = dia + dt.timedelta(days=r.randint(21, 35))
+                pd, pm = PREF_CLAUSULAS[e['personalidade']]
+                cl = {'desempenho': pd if r.random() < 0.85 else not pd, 'multa_pct': pm}
+                o = {'id': self._id(), 'empresa': nome, 'slot': slot, 'valor': valor, 'anos': anos,
+                     'inicio': ds, 'validade': d2s(validade), 'status': 'aberta', 'origem': 'inicio',
+                     'criada': ds, 'rodadas': 0, 'clausulas': cl}
+                self.s['ofertas'].append(o)
+                self.msg('oferta', nome, ds, o['id'], posicao=pos_txt(slot), valor=fmt_eur(valor),
+                         anos=anos_txt(anos), validade=fmt_data(validade))
+                self._anexar_clausulas(cl)
+        self.s['ofertas_iniciais'] = ds
+
     def _gerar_ofertas(self, dia, forcar=0):
         ds = d2s(dia)
         atr = self.atratividade()
@@ -236,7 +275,7 @@ class Engine:
                     continue
                 if e.get('bloqueio_ate') and s2d(e['bloqueio_ate']) > dia:
                     continue
-                if e['setor'] in self.setores_ocupados():
+                if e['setor'] in self.setores_ocupados(slot):
                     continue
                 if atr < PORTE_MIN_ATR[e['porte']]:
                     continue
@@ -343,8 +382,8 @@ class Engine:
             raise ValueError('Essa proposta não está mais aberta.')
         if o['slot'] not in self.slots_livres(self.hoje()):
             raise ValueError('Essa posição já está ocupada por outro contrato.')
-        if self.s['empresas'][o['empresa']]['setor'] in self.setores_ocupados():
-            raise ValueError('Já existe um patrocinador do mesmo setor (exclusividade).')
+        if self.s['empresas'][o['empresa']]['setor'] in self.setores_ocupados(o['slot']):
+            raise ValueError('Já existe um patrocinador do mesmo setor numa posição grande do uniforme (exclusividade).')
         o['status'] = 'aceita'
         hoje = self.hoje()
         inicio = max(s2d(o['inicio']), hoje)
@@ -354,7 +393,7 @@ class Engine:
         c = {'id': self._id(), 'empresa': o['empresa'], 'slot': o['slot'], 'valor': o['valor'], 'anos': o['anos'],
              'inicio': d2s(inicio), 'fim': d2s(fim), 'status': 'assinado', 'pagamentos': pags,
              'clausulas': dict(o.get('clausulas') or {'desempenho': False, 'multa_pct': 30}),
-             'escala': 1.0, 'inclinacao': SLOTS[o['slot']].get('inclinacao_padrao', 0), 'cores': {'verde': 'auto', 'branco': 'auto', 'azul': 'auto', 'listrado': 'auto'}}
+             'escala': 1.0, 'inclinacao': SLOTS[o['slot']].get('inclinacao_padrao', 0), 'cores': {f: 'auto' for f in FAMILIAS}}
         self.s['contratos'].append(c)
         # outras ofertas para a mesma posição deixam de valer
         for x in self.s['ofertas']:
@@ -444,7 +483,7 @@ class Engine:
             razao += 0.05
         r = random.Random(_seed('decide', o['id'], o['rodadas'], ds))
         tol = {'agressiva': 1.08, 'paciente': 1.18, 'fiel': 1.15, 'oportunista': 1.05}[pers]
-        if atr < PORTE_MIN_ATR[e['porte']] or e['setor'] in self.setores_ocupados():
+        if atr < PORTE_MIN_ATR[e['porte']] or e['setor'] in self.setores_ocupados(o['slot']):
             p_aceita = 0.0
         else:
             p_aceita = max(0.0, min(0.95, 1.0 - (razao - 1.0) / (tol - 1.0 + 1e-6) * 0.6))
