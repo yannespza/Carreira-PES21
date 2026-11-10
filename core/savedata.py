@@ -7,15 +7,24 @@ UNIT = 100  # o jogo guarda valores em unidades de €100
 
 
 def find_finance_block(data: bytes):
-    """Procura o bloco de finanças do clube do usuário (orçamento duplicado + salário + receitas)."""
+    """Procura o bloco de finanças do clube do usuário: orçamento, salário e as receitas da temporada
+    (transmissão, patrocínio, sócios). Em carreira nova a segunda cópia do orçamento e o salário ainda estão zerados."""
     a = np.frombuffer(data[:len(data) // 4 * 4], '<i4')
     n = len(a) - 40
     i = np.arange(n)
-    m = ((a[i] > 0) & (a[i] == a[i + 4]) & (a[i + 1] == 0) & (a[i + 2] == 0) & (a[i + 3] == 0)
-         & (a[i + 6] == 0) & (a[i + 7] > 0) & (a[i + 7] < 10 ** 7) & (a[i] < 10 ** 8)
-         & (a[i + 5] >= 0) & (a[i + 8] == 0))
-    hits = np.where(m)[0]
-    return int(hits[0]) * 4 if len(hits) else None
+    base = ((a[i] > 0) & (a[i] < 10 ** 8) & (a[i + 1] == 0) & (a[i + 2] == 0) & (a[i + 3] == 0)
+            & ((a[i + 4] == a[i]) | (a[i + 4] == 0)) & (a[i + 5] >= 0) & (a[i + 6] == 0)
+            & (a[i + 7] >= 0) & (a[i + 7] < 10 ** 7) & (a[i + 8] == 0) & (a[i + 9] == 0) & (a[i + 10] == 0)
+            & (a[i + 11] >= 0) & (a[i + 12] >= 0) & (a[i + 13] >= 0) & (a[i + 14] == 0)
+            & (((a[i + 11] > 0).astype(int) + (a[i + 12] > 0) + (a[i + 13] > 0)) >= 2) & (a[i + 5] > 0)
+            & (a[i + 11] < 10 ** 7)
+            & (a[i + 12] < 10 ** 7) & (a[i + 13] < 10 ** 7))
+    hits = np.where(base)[0]
+    if not len(hits):
+        return None
+    # prefere o bloco com o orçamento repetido (carreira em andamento); senão o primeiro
+    rep = [h for h in hits if a[h + 4] == a[h] and a[h + 7] > 0]
+    return int((rep or hits)[0]) * 4
 
 
 # posições dentro do bloco de finanças (a partir do orçamento de transferências)
@@ -177,6 +186,16 @@ class Career:
             return {}
         return {k: struct.unpack_from('<i', self.sf.data, self.fin_off + o)[0] * UNIT for k, o in FIN.items()}
 
+    def definir_orcamento(self, euros: int):
+        """Define o dinheiro de transferências do clube (as duas cópias, se a segunda já estiver em uso)."""
+        u = int(round(euros / UNIT))
+        o1, o2 = (self.fin_off + FIN[k] for k in ('orc_transf', 'orc_transf_2'))
+        antes = struct.unpack_from('<i', self.sf.data, o1)[0]
+        struct.pack_into('<i', self.sf.data, o1, u)
+        if struct.unpack_from('<i', self.sf.data, o2)[0] == antes:
+            struct.pack_into('<i', self.sf.data, o2, u)
+        return antes * UNIT
+
     def zerar_patrocinio(self):
         """Zera só a receita de patrocínio que veio com a carreira. O orçamento de transferências não é mexido."""
         o = self.fin_off + FIN['rec_patrocinio']
@@ -192,7 +211,12 @@ class Career:
     def credit_sponsor(self, euros: int):
         """Soma 'euros' na receita de patrocínio e no orçamento de transferências."""
         u = int(round(euros / UNIT))
-        for key in ('orc_transf', 'orc_transf_2', 'rec_patrocinio'):
+        o1, o2 = (self.fin_off + FIN[k] for k in ('orc_transf', 'orc_transf_2'))
+        chaves = ['orc_transf', 'rec_patrocinio']
+        # a segunda cópia do orçamento só acompanha quando já é igual à primeira (em carreira nova ela é 0)
+        if struct.unpack_from('<i', self.sf.data, o1)[0] == struct.unpack_from('<i', self.sf.data, o2)[0]:
+            chaves.append('orc_transf_2')
+        for key in chaves:
             o = self.fin_off + FIN[key]
             v = struct.unpack_from('<i', self.sf.data, o)[0]
             struct.pack_into('<i', self.sf.data, o, v + u)

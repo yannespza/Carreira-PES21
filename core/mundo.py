@@ -10,7 +10,9 @@ def _seed(*p):
 
 
 def eur_mi(v):
-    return f"€ {v / 1e6:.1f} mi".replace('.', ',')
+    from .sim import moeda
+    simb, taxa = moeda()
+    return f"{simb} {v * taxa / 1e6:.1f} mi".replace('.', ',')
 
 
 # ---------------- textos ----------------

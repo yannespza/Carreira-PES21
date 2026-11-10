@@ -193,7 +193,7 @@ dialog select,dialog input{width:100%}
   </nav>
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
-<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span></div>
+<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span></div>
 
 <main>
   <div id="banners"></div>
@@ -329,8 +329,11 @@ function toggleSom(){somOn=!somOn;try{localStorage.setItem('som',somOn?'1':'0')}
 document.addEventListener('click',()=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}},{once:true});
 let S=null, tab='clube', ptab='of', fam='verde', cand=null, selMsg=null, lastRead='', kitStamp=Date.now();
 const $=id=>document.getElementById(id);
-const eur=v=>v==null?'—':'€ '+Math.round(v).toLocaleString('pt-BR');
-const eurM=v=>v==null?'—':(Math.abs(v)>=1e6?'€ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':eur(v));
+// o save guarda em euro; o app mostra na moeda escolhida
+const MO=()=>(S&&S.moeda)||{simbolo:'€',taxa:1};
+const eur=v=>v==null?'—':MO().simbolo+' '+Math.round(v*MO().taxa).toLocaleString('pt-BR');
+const eurM=v=>v==null?'—':(Math.abs(v*MO().taxa)>=1e6?MO().simbolo+' '+(v*MO().taxa/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':eur(v));
+async function trocarMoeda(cod){await api('/api/moeda',{cod});toast('Valores agora em '+cod+'.');load()}
 const dt=s=>{if(!s)return '—';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const logo=n=>`<div class="lg"><img src="${n=='__diretoria__'?'/icone.png':'/logo/'+encodeURIComponent(n)+'.png'}" onerror="this.style.display='none'"></div>`;
@@ -355,6 +358,7 @@ document.querySelectorAll('#ptabs a').forEach(a=>a.onclick=()=>{ptab=a.dataset.p
 async function load(){try{S=await api('/api/estado');render()}catch(e){}}
 let SAVES=null;
 async function carregarSaves(){try{const j=await (await fetch('/api/saves')).json();SAVES=j;
+  const ms=$('moSel');if(S.moeda&&document.activeElement!==ms){const o=Object.entries(S.moeda.opcoes).map(([k,v])=>`<option value="${k}" ${k==S.moeda.cod?'selected':''}>${v} ${k}</option>`).join('');if(ms.innerHTML!=o)ms.innerHTML=o}
   const sel=$('saveSel');if(document.activeElement===sel)return;
   sel.innerHTML=j.saves.map(s=>`<option value="${esc(s.caminho)}" ${s.caminho==j.atual?'selected':''}>${esc(s.nome)} · ${esc(s.clube||'?')} · ${s.data?dt(s.data):'—'} · salvo ${esc(s.salvo_em)}</option>`).join('')||'<option>nenhum save encontrado</option>'}catch(e){}}
 async function escolherSave(c){if(SAVES&&c==SAVES.atual)return;await api('/api/save/escolher',{caminho:c});toast('Carregando a carreira escolhida…');S=null;setTimeout(()=>{load();carregarSaves()},2500)}
@@ -446,11 +450,11 @@ function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O grá
   const W=560,H=220,P=36;const all=series.flatMap(s=>pts.map(p=>p[s.k]||0));const mx=Math.max(...all)*1.08||1,mn=0;
   const x=i=>P+(W-P-10)*i/(pts.length-1),y=v=>H-P+( -(H-P-14)*(v-mn)/(mx-mn));
   let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%">`;
-  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;g+=`<line x1="${P}" x2="${W-10}" y1="${y(v)}" y2="${y(v)}" stroke="#2a303b"/><text x="${P-6}" y="${y(v)+4}" fill="#8a93a3" font-size="10" text-anchor="end">${(v/1e6).toFixed(0)}</text>`}
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;g+=`<line x1="${P}" x2="${W-10}" y1="${y(v)}" y2="${y(v)}" stroke="#2a303b"/><text x="${P-6}" y="${y(v)+4}" fill="#8a93a3" font-size="10" text-anchor="end">${(v*MO().taxa/1e6).toFixed(0)}</text>`}
   series.forEach(s=>{g+=`<polyline fill="none" stroke="${s.c}" stroke-width="2.5" points="${pts.map((p,i)=>x(i)+','+y(p[s.k]||0)).join(' ')}"/>`;
     const l=pts.length-1;g+=`<circle cx="${x(l)}" cy="${y(pts[l][s.k]||0)}" r="4" fill="${s.c}"/>`});
   g+=`<text x="${P}" y="${H-10}" fill="#8a93a3" font-size="10">${dt(pts[0].data)}</text><text x="${W-10}" y="${H-10}" fill="#8a93a3" font-size="10" text-anchor="end">${dt(pts[pts.length-1].data)}</text></svg>`;
-  return g+`<div style="display:flex;gap:16px;font-size:12px;color:var(--mut)">${series.map(s=>`<span><i style="display:inline-block;width:10px;height:10px;background:${s.c};margin-right:6px"></i>${s.n}</span>`).join('')}<span>valores em € milhões</span></div>`}
+  return g+`<div style="display:flex;gap:16px;font-size:12px;color:var(--mut)">${series.map(s=>`<span><i style="display:inline-block;width:10px;height:10px;background:${s.c};margin-right:6px"></i>${s.n}</span>`).join('')}<span>valores em ${MO().simbolo} milhões</span></div>`}
 function rFin(){const d=S.dinheiro||{};const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);
   const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
@@ -607,15 +611,15 @@ async function procurar(nome){
   $('dTitle').textContent='Proposta para '+nome;
   const sl=S.livres.map(s=>`<option value="${s}">${esc(slotName(s))}</option>`).join('');
   $('dBody').innerHTML=`<label>Posição no uniforme</label><select id="fSlot">${sl}</select>
-    <label>Valor por temporada (€)</label><input id="fVal" type="number" step="50000">
+    <label>Valor por temporada (${MO().simbolo})</label><input id="fVal" type="number" step="50000">
     <small id="fHint" style="color:var(--mut)"></small>
     <label>Duração</label><select id="fAnos"><option value="1">1 temporada</option><option value="2" selected>2 temporadas</option><option value="3">3 temporadas</option></select>
     ${clFields({desempenho:false,multa_pct:30},0)}`;
   const upd=async()=>{const j=await api('/api/valor_justo?empresa='+encodeURIComponent(nome)+'&slot='+$('fSlot').value);
-    $('fVal').value=j.valor;$('fHint').textContent='Valor de mercado estimado: '+eur(j.valor)+'. Pedir mais reduz a chance de aceite.'};
+    $('fVal').value=Math.round(j.valor*MO().taxa);$('fHint').textContent='Valor de mercado estimado: '+eur(j.valor)+'. Pedir mais reduz a chance de aceite.'};
   $('fSlot').onchange=upd;await upd();
   $('dOk').textContent='Enviar proposta';
-  $('dOk').onclick=async()=>{await api('/api/procurar',{empresa:nome,slot:$('fSlot').value,valor:+$('fVal').value,anos:+$('fAnos').value,clausulas:clLidas()});dlg.close();toast('Proposta enviada. A resposta chega em alguns dias da carreira.');load()};
+  $('dOk').onclick=async()=>{await api('/api/procurar',{empresa:nome,slot:$('fSlot').value,valor:Math.round(+$('fVal').value/MO().taxa),anos:+$('fAnos').value,clausulas:clLidas()});dlg.close();toast('Proposta enviada. A resposta chega em alguns dias da carreira.');load()};
   dlg.showModal();
 }
 </script>

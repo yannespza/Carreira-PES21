@@ -32,8 +32,19 @@ def d2s(d): return d.isoformat()
 def s2d(s): return dt.date.fromisoformat(s)
 
 
+# moedas que o jogo pode mostrar. O save guarda tudo em euro; o app só converte para mostrar.
+# taxas aproximadas (ajustáveis em data/config.json -> "taxas_moeda")
+MOEDAS = {'EUR': ('€', 1.0), 'BRL': ('R$', 6.2), 'USD': ('US$', 1.08), 'GBP': ('£', 0.85), 'JPY': ('¥', 165.0)}
+MOEDA = {'cod': 'EUR'}
+
+
+def moeda():
+    return MOEDAS.get(MOEDA['cod'], MOEDAS['EUR'])
+
+
 def fmt_eur(v):
-    return '€ ' + f'{int(round(v)):,}'.replace(',', '.')
+    sim_, taxa = moeda()
+    return sim_ + ' ' + f'{int(round(v * taxa)):,}'.replace(',', '.')
 
 
 def fmt_data(d):

@@ -68,6 +68,9 @@ class App:
         self.kit_thread = None
         self.kits_aplicados = None
         self.times = times.Times(DATA, CFG, log)
+        sim.MOEDAS.update({k: (sim.MOEDAS[k][0], float(v)) for k, v in (CFG.get('taxas_moeda') or {}).items()
+                           if k in sim.MOEDAS})
+        sim.MOEDA['cod'] = CFG.get('moeda', 'EUR')
         self.time = None          # configuração do clube da carreira atual
         self.elenco = []
 
@@ -253,6 +256,11 @@ class App:
             st['fin_hist'] = fh[-200:]
             if car.fin_off is None:
                 self.status['erro'] = 'Não achei o bloco de finanças nesse save.'
+            # carreira nova (nenhum jogo no save nem no histórico do app): dinheiro inicial definido pelo app
+            ini = CFG.get('dinheiro_inicial_novo', 1_000_000)
+            if (ini and 'orc_inicial' not in st and not car.results and not st.get('partidas')
+                    and car.fin_off is not None):
+                st['orc_inicial'] = {'status': 'pendente', 'valor': int(ini)}
             self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
             self.engine.avancar(car.date, primeira_leitura=novo)
             if novo:
@@ -279,6 +287,12 @@ class App:
         money = car.money()
         if not money:
             return
+        oi = self.state.get('orc_inicial')
+        if oi and oi.get('status') == 'aplicado':
+            if money['orc_transf'] == oi.get('antes') and oi.get('antes') != oi['valor']:
+                oi['status'] = 'pendente'    # o jogo gravou por cima antes de recarregar
+            elif sim.d2s(car.date) != oi.get('em'):
+                oi['status'] = 'confirmado'
         z = self.state.get('zerar_pat')
         if z and z.get('status') == 'aplicado':
             creditou = any(pg['status'] in ('creditado', 'confirmado') for c in self.state.get('contratos', [])
@@ -307,11 +321,21 @@ class App:
         multas = [m for m in self.state.get('multas', []) if m['status'] == 'pendente']
         z = self.state.get('zerar_pat')
         zerar = bool(z and z.get('status') == 'pendente')
-        if (not pend and not multas and not zerar) or self.career is None or self.career.fin_off is None:
+        oi = self.state.get('orc_inicial')
+        definir = bool(oi and oi.get('status') == 'pendente')
+        if (not pend and not multas and not zerar and not definir) or self.career is None or self.career.fin_off is None:
             return
         car = self.career
         total = 0; total_multa = 0
         orc_antes = car.money().get('orc_transf', 0)
+        if definir and orc_antes == oi['valor']:
+            oi.update(status='confirmado', antes=orc_antes, em=self.state['data'])
+            definir = False
+            if not pend and not multas and not zerar:
+                return
+        if definir:
+            antes2 = car.money().get('orc_transf_2', 0)
+            car.definir_orcamento(oi['valor'])
         zerado = car.zerar_patrocinio() if zerar else 0
         if zerar and not zerado and not pend and not multas:
             z.update(status='confirmado', valor=0)       # já estava zerado: nada a gravar
@@ -338,6 +362,10 @@ class App:
                 car.credit_sponsor(m['valor'])
             if zerado:
                 car.desfazer_zerar(zerado, orc_antes)
+            if definir:
+                import struct as _st
+                _st.pack_into('<i', car.sf.data, car.fin_off + savedata.FIN['orc_transf'], orc_antes // savedata.UNIT)
+                _st.pack_into('<i', car.sf.data, car.fin_off + savedata.FIN['orc_transf_2'], antes2 // savedata.UNIT)
             return
         self.save_mtime = car.mtime
         self.status['erro'] = None
@@ -358,6 +386,10 @@ class App:
             z.update(status='aplicado' if zerado else 'confirmado', valor=zerado, em=hoje)
         self.state['dinheiro'] = money
         partes = []
+        if definir:
+            oi.update(status='aplicado', antes=orc_antes, em=hoje)
+            partes.append(f'o dinheiro de transferências do clube foi definido em {sim.fmt_eur(oi["valor"])} '
+                          f'(antes: {sim.fmt_eur(orc_antes)}) para o início da carreira')
         if zerado:
             partes.append(f'a receita de patrocínio que veio com a carreira ({sim.fmt_eur(zerado)}) foi zerada '
                           'para os novos patrocinadores começarem do zero (o orçamento de transferências não foi alterado)')
@@ -460,7 +492,9 @@ class App:
             empresas.append({'nome': n, **e})
         return {
             'pronto': self.state is not None, 'versao': VERSAO,
-            'clube': self.clube(), 'time': self.time_view(), 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+            'clube': self.clube(), 'time': self.time_view(),
+            'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
+                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1],
             'ofertas': [o for o in st.get('ofertas', []) if o['status'] in ('aberta', 'aguardando')],
@@ -671,6 +705,14 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 log(traceback.format_exc())
                 return self.send(500, {'erro': str(e)})
+        if u.path == '/api/moeda':
+            cod = body.get('cod')
+            if cod not in sim.MOEDAS:
+                return self.send(400, {'erro': 'moeda desconhecida'})
+            sim.MOEDA['cod'] = cod
+            CFG['moeda'] = cod
+            jsave(os.path.join(DATA, 'config.json'), CFG)
+            return self.send(200, {'ok': True})
         if u.path == '/api/sair':
             self.send(200, {'ok': True})
             log('App encerrado pelo usuário')
