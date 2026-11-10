@@ -11,7 +11,7 @@ SLOTS = {
                      'lugares': [(1024, 1330, 430, 150, 0)], 'vista': 'frente'},
     'barra':        {'nome': 'Barra da camisa (frente)', 'valor_base': 3_000_000,
                      'lugares': [(1024, 1690, 300, 90, 0)], 'vista': 'frente'},
-    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 4_000_000,
+    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 4_000_000, 'inclinacao_padrao': 0,  # aprovado no jogo
                      # manga direita: frente (3R) e trás (1R) · manga esquerda: frente (7R) e trás (6R)
                      # o último número espelha a inclinação entre os lados
                      'lugares': [(651, 1010, 150, 62, 0, 1), (651, 780, 150, 62, 0, 1),

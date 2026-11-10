@@ -331,7 +331,7 @@ class Engine:
         c = {'id': self._id(), 'empresa': o['empresa'], 'slot': o['slot'], 'valor': o['valor'], 'anos': o['anos'],
              'inicio': d2s(inicio), 'fim': d2s(fim), 'status': 'assinado', 'pagamentos': pags,
              'clausulas': dict(o.get('clausulas') or {'desempenho': False, 'multa_pct': 30}),
-             'escala': 1.0, 'inclinacao': 0, 'cores': {'verde': 'auto', 'branco': 'auto', 'azul': 'auto', 'listrado': 'auto'}}
+             'escala': 1.0, 'inclinacao': SLOTS[o['slot']].get('inclinacao_padrao', 0), 'cores': {'verde': 'auto', 'branco': 'auto', 'azul': 'auto', 'listrado': 'auto'}}
         self.s['contratos'].append(c)
         # outras ofertas para a mesma posição deixam de valer
         for x in self.s['ofertas']:
