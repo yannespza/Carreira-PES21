@@ -56,6 +56,10 @@ def _lum(rgb):
     return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
 
 
+CORES = {'branco': (255, 255, 255), 'verde': (0, 100, 55), 'vermelho': (220, 30, 40), 'azul': (15, 60, 145),
+         'preto': (25, 25, 25)}
+
+
 def colorize(logo: Image.Image, mode: str, bg_rgb):
     """mode: 'original', 'branco', 'preto', 'auto' ou cor '#rrggbb'."""
     logo = logo.convert('RGBA')
@@ -68,8 +72,8 @@ def colorize(logo: Image.Image, mode: str, bg_rgb):
             avg = tuple(sum(p[i] for p in px) / len(px) for i in range(3))
             if abs(_lum(avg) - _lum(bg_rgb)) > 70:
                 return logo
-        mode = 'branco' if _lum(bg_rgb) < 140 else 'preto'
-    col = {'branco': (255, 255, 255), 'preto': (25, 25, 25)}.get(mode)
+        mode = 'branco' if _lum(bg_rgb) < 140 else 'verde'
+    col = CORES.get(mode)
     if col is None and mode.startswith('#') and len(mode) == 7:
         col = tuple(int(mode[i:i + 2], 16) for i in (1, 3, 5))
     col = col or (255, 255, 255)

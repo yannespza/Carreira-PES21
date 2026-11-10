@@ -394,7 +394,7 @@ function candSet(ch,todos){cand.ajustes=cand.ajustes||{};const atual=ajusteDe(ca
   (todos?Object.keys(S.familias):[fam]).forEach(f=>cand.ajustes[f]=Object.assign({},novo));
   if(ch.cores)cand.cores=Object.assign({},cand.cores,ch.cores);kitStamp=Date.now();rKits(true);if(todos)toast('Ajuste copiado para os 4 uniformes.')}
 function ajusteDe(v){const a=(v.ajustes||{})[fam]||{};return {escala:a.escala??v.escala??1,inclinacao:a.inclinacao??v.inclinacao??0,dx:a.dx??v.dx??0,dy:a.dy??v.dy??0,cores:v.cores,proprio:!!(v.ajustes||{})[fam]}}
-function ctrlHTML(v0,fn,slotId,copiar){const v=ajusteDe(v0);const cor=['auto','original','branco','preto'].map(m=>`<option ${(v.cores||{})[fam]==m?'selected':''}>${m}</option>`).join('');
+function ctrlHTML(v0,fn,slotId,copiar){const v=ajusteDe(v0);const cor=[['auto','automática'],['original','original do logo'],['branco','branco'],['verde','verde'],['vermelho','vermelho'],['azul','azul']].map(([m,t])=>`<option value="${m}" ${(v.cores||{})[fam]==m?'selected':''}>${t}</option>`).join('');
   return `<div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${v.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="${fn}({escala:+this.value})"><span>${Math.round(v.escala*100)}%</span>
       <span>Posição ↔</span><input type="range" min="-200" max="200" step="5" value="${v.dx||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dx:+this.value})"><span>${v.dx||0}</span>
       <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${v.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dy:+this.value})"><span>${v.dy||0}</span>
