@@ -133,3 +133,14 @@ def encrypt(sf: SaveFile, key: bytes = MASTER_KEY_PES21) -> bytes:
            crypt_stream(_xor_long(rk, 2), bytes(sf.data)),
            crypt_stream(_xor_long(rk, 3), sf.serial)]
     return b''.join(out)
+
+
+def peek(raw: bytes, key: bytes = MASTER_KEY_PES21):
+    """Lê só a descrição do save (nome do slot, clube, data) sem decriptar os dados inteiros."""
+    eh = _crypt_header(raw[:ENC_HEADER], key)
+    rk = _rolling(eh)
+    p = ENC_HEADER
+    fh = crypt_stream(_xor_long(rk, FILE_HEADER), raw[p:p + FILE_HEADER]); p += FILE_HEADER
+    data_size, logo_size, desc_size, serial_len = struct.unpack_from('<4I', fh, 64)
+    desc = crypt_stream(_xor_long(rk, 0), raw[p:p + desc_size])
+    return [x.decode('utf-8', 'replace') for x in desc.split(b'\0') if x]

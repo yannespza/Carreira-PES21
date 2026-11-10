@@ -69,7 +69,32 @@ class App:
         self.kits_aplicados = None
 
     # ----- arquivos -----
+    def listar_saves(self):
+        from core import pescrypt
+        out = []
+        for p in glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', 'ML*')):
+            if not re.fullmatch(r'ML[0-9A-F]{8}', os.path.basename(p)):
+                continue
+            try:
+                with open(p, 'rb') as f:
+                    head = f.read(8192)
+                d = pescrypt.peek(head)
+            except Exception:
+                continue
+            txt = '\n'.join(d)
+            m = savedata.DATE_RE.search(txt)
+            linhas = txt.split('\n')
+            out.append({'caminho': p, 'arquivo': os.path.basename(p), 'nome': d[0] if d else os.path.basename(p),
+                        'clube': (linhas[1].split('/')[0].strip() if len(linhas) > 1 else ''),
+                        'data': f'{int(m.group(3)):04d}-{int(m.group(2)):02d}-{int(m.group(1)):02d}' if m else None,
+                        'salvo_em': time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(p))),
+                        'mtime': os.path.getmtime(p)})
+        return sorted(out, key=lambda x: -x['mtime'])
+
     def find_save(self):
+        esc = CFG.get('save_escolhido')
+        if esc and os.path.exists(esc):
+            return esc
         cands = glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', CFG.get('arquivo_save', 'ML00000000')))
         if not cands:
             cands = glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', 'ML*'))
@@ -393,6 +418,8 @@ class H(BaseHTTPRequestHandler):
         try:
             if u.path in ('/', '/index.html'):
                 return self.send(200, open(os.path.join(APP_DIR, 'web', 'index.html'), 'rb').read(), 'text/html; charset=utf-8')
+            if u.path == '/api/saves':
+                return self.send(200, {'saves': A.listar_saves(), 'atual': A.save_path})
             if u.path == '/api/versao':
                 return self.send(200, {'versao': VERSAO})
             if u.path == '/api/atualizacao':
@@ -448,6 +475,18 @@ class H(BaseHTTPRequestHandler):
             self.send(200, {'ok': True, 'arquivos': n})
             reiniciar()
             return
+        if u.path == '/api/save/escolher':
+            caminho = body.get('caminho', '')
+            if not os.path.exists(caminho):
+                return self.send(400, {'erro': 'Esse save não existe mais.'})
+            with LOCK:
+                A.persist()
+                CFG['save_escolhido'] = caminho
+                jsave(os.path.join(DATA, 'config.json'), CFG)
+                A.save_path = None; A.save_mtime = None; A.state = None; A.state_path = None
+                A.engine = None; A.career = None
+            log('save escolhido:', caminho)
+            return self.send(200, {'ok': True})
         if u.path == '/api/sair':
             self.send(200, {'ok': True})
             log('App encerrado pelo usuário')

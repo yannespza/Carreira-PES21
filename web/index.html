@@ -175,7 +175,7 @@ dialog select,dialog input{width:100%}
   </nav>
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
-<div class="sub" id="sub"><span>Save: <b id="sSlot">—</b></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span></div>
+<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span></div>
 
 <main>
   <div id="banners"></div>
@@ -319,6 +319,12 @@ document.querySelectorAll('#ptabs a').forEach(a=>a.onclick=()=>{ptab=a.dataset.p
   ['of','ct','hi'].forEach(k=>$('p-'+k).classList.toggle('hidden',k!=ptab))});
 
 async function load(){try{S=await api('/api/estado');render()}catch(e){}}
+let SAVES=null;
+async function carregarSaves(){try{const j=await (await fetch('/api/saves')).json();SAVES=j;
+  const sel=$('saveSel');if(document.activeElement===sel)return;
+  sel.innerHTML=j.saves.map(s=>`<option value="${esc(s.caminho)}" ${s.caminho==j.atual?'selected':''}>${esc(s.nome)} · ${esc(s.clube||'?')} · ${s.data?dt(s.data):'—'} · salvo ${esc(s.salvo_em)}</option>`).join('')||'<option>nenhum save encontrado</option>'}catch(e){}}
+async function escolherSave(c){if(SAVES&&c==SAVES.atual)return;await api('/api/save/escolher',{caminho:c});toast('Carregando a carreira escolhida…');S=null;setTimeout(()=>{load();carregarSaves()},2500)}
+setTimeout(carregarSaves,800);setInterval(carregarSaves,30000);
 let ATU=null;
 async function checarAtu(){try{ATU=await (await fetch('/api/atualizacao')).json();render()}catch(e){}}
 async function atualizarApp(){if(!confirm('Baixar a versão '+ATU.nova+' e reiniciar o app?'))return;
@@ -333,7 +339,7 @@ function render(){
   $('clubName').textContent=(S.clube||'').toUpperCase(); if(S.versao)$('ver').textContent=S.versao;
   $('dateChip').textContent=dt(S.data);
   $('gDot').classList.toggle('on',S.jogo_aberto);$('gTxt').textContent=S.jogo_aberto?'Jogo aberto':'Jogo fechado';
-  $('sSlot').textContent=S.save?S.save.slot:'—';$('sRead').textContent=S.save?S.save.lido_em:'—';
+  $('sRead').textContent=S.save?S.save.lido_em:'—';
   const ks=S.status||{};$('sKits').textContent='Uniformes: '+(ks.kits=='trabalhando'?'atualizando…':ks.kits_msg||'—');
   const ab=S.ofertas.filter(o=>o.status=='aberta').length;$('bOf').textContent=ab;$('bOf').classList.toggle('hidden',!ab);
   const nm=S.mensagens.filter(m=>!m.lida).length;$('bMsg').textContent=nm;$('bMsg').classList.toggle('hidden',!nm);
