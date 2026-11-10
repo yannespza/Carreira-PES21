@@ -235,7 +235,7 @@ class App:
             if novo:
                 st['time_id'] = self.tid()
                 # carreira começando agora (nenhum jogo no save): a receita de patrocínio do jogo volta a zero
-                if not car.results:
+                if not car.results and CFG.get('zerar_patrocinio_novo', False):
                     st['zerar_pat'] = {'status': 'pendente'}
             self.engine = sim.Engine(st, self.clube(), self.time.get('atratividade_base', 60))
             nomes = [(n, '') for n in sorted(set(self.logos.map.values()))]
