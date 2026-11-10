@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import savedata, kits, sim, mundo, times
+from core import savedata, kits, sim, mundo, times, gestao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -240,6 +240,7 @@ class App:
                 # carreira começando agora (nenhum jogo no save): a receita de patrocínio do jogo volta a zero
                 if not car.results and CFG.get('zerar_patrocinio_novo', False):
                     st['zerar_pat'] = {'status': 'pendente'}
+            st['atr_base'] = self.time.get('atratividade_base', 60)
             self.engine = sim.Engine(st, self.clube(), self.time.get('atratividade_base', 60))
             nomes = [(n, '') for n in sorted(set(self.logos.map.values()))]
             self.engine.sync_empresas(nomes)
@@ -261,7 +262,8 @@ class App:
             if (ini and 'orc_inicial' not in st and not car.results and not st.get('partidas')
                     and car.fin_off is not None):
                 st['orc_inicial'] = {'status': 'pendente', 'valor': int(ini)}
-            self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
+            antes = st.get('data')
+            novas = self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
             self.engine.avancar(car.date, primeira_leitura=novo)
             if novo:
                 self.engine.ofertas_iniciais(car.date)
@@ -269,6 +271,7 @@ class App:
             self.verificar_creditos(car)
             self.aplicar_creditos()
             self.mundo_processar()
+            self.gestao_processar(car, novas, None if novo else antes)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
@@ -281,6 +284,51 @@ class App:
                 self.engine, lambda i: self.names.get(i, f'Time {i}'))
         except Exception:
             log(traceback.format_exc())
+
+    def gestao_processar(self, car, novas, antes):
+        try:
+            st = self.state
+            mu = mundo.Mundo(st, self.clube(), self.tid())
+            g = gestao.Gestao(st, self.clube(), self.tid())
+            nomes = lambda i: self.names.get(i, f'Time {i}')
+            if novas and antes:
+                g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes)
+            # eventos da semana e revisão de janeiro, para cada semana que passou desde a última leitura
+            if antes and car.date:
+                d = sim.s2d(antes)
+                while d < car.date:
+                    d = min(car.date, d + dt.timedelta(days=7))
+                    g.semana(d, self.elenco, mu)
+                    g.revisao_anual(self.engine, mu, d)
+            g.elenco_mudou(self.elenco, car.money(), st.get('data'))
+        except Exception:
+            log(traceback.format_exc())
+
+    def cores_time(self):
+        t = self.time
+        if not t:
+            return None
+        if not t.get('cores'):
+            try:
+                v = t['variantes'][0]
+                t['cores'] = gestao.cores_do_uniforme(kits.base_image(APP_DIR, v[0], v[1]))
+                self.times.salvar(t)
+            except Exception:
+                return None
+        return t['cores']
+
+    def gestao_view(self):
+        st = self.state or {}
+        g = st.get('gestao') or {}
+        hoje = sim.s2d(st['data']) if st.get('data') else None
+        evs = []
+        for e in g.get('eventos', [])[-20:][::-1]:
+            evs.append({**e, 'ativo': bool(hoje and sim.s2d(e['data']) <= hoje < sim.s2d(e['volta']))})
+        return {'coletivas': g.get('coletivas', [])[-8:][::-1], 'eventos': evs,
+                'transferencias': g.get('transferencias', [])[-60:][::-1], 'prancheta': g.get('prancheta', {}),
+                'revisoes': g.get('revisoes', [])[-5:][::-1],
+                'rostos': sorted(f[:-4] for f in os.listdir(os.path.join(DATA, 'tecnico'))
+                                 if f.lower().endswith('.png')) if os.path.isdir(os.path.join(DATA, 'tecnico')) else []}
 
     # ----- dinheiro no jogo -----
     def verificar_creditos(self, car):
@@ -497,6 +545,10 @@ class App:
                       'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1],
+            'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
+                             'torneio_nome': TORNEIOS.get(p['torneio'], f"Torneio {p['torneio']}")}
+                            for p in st.get('partidas', [])[-30:]],
+            'gestao': self.gestao_view(), 'cores': self.cores_time(),
             'ofertas': [o for o in st.get('ofertas', []) if o['status'] in ('aberta', 'aguardando')],
             'ofertas_hist': [o for o in st.get('ofertas', []) if o['status'] not in ('aberta', 'aguardando')][-20:][::-1],
             'contratos': st.get('contratos', []),
@@ -583,6 +635,12 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/estado':
                 with LOCK:
                     return self.send(200, A.view())
+            if u.path.startswith('/tecnico/'):
+                nome = os.path.basename(unquote(u.path[9:]))
+                p = os.path.join(DATA, 'tecnico', nome)
+                if os.path.exists(p) and nome.lower().endswith('.png'):
+                    return self.send(200, open(p, 'rb').read(), 'image/png')
+                return self.send(404, {'erro': 'sem imagem'})
             if u.path.startswith('/logo/'):
                 nome = unquote(u.path[6:])
                 if nome.lower().endswith('.png'):
@@ -760,6 +818,18 @@ class H(BaseHTTPRequestHandler):
                             if body.get('cores'):
                                 c['cores'].update(body['cores'])
                     A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/coletiva/responder':
+                    mu = mundo.Mundo(A.state, A.clube(), A.tid())
+                    tom = gestao.Gestao(A.state, A.clube(), A.tid()).responder(
+                        body['id'], int(body['pergunta']), int(body['resposta']), mu)
+                    A.persist()
+                    return self.send(200, {'ok': True, 'tom': tom})
+                if u.path == '/api/prancheta':
+                    g = gestao.Gestao(A.state, A.clube(), A.tid())
+                    pos = {str(k): [round(float(v[0]), 1), round(float(v[1]), 1)] for k, v in (body.get('pos') or {}).items()}
+                    g.g['prancheta'] = pos
+                    A.persist()
+                    return self.send(200, {'ok': True})
                 if u.path == '/api/mensagens/lidas':
                     for m in A.state['mensagens']:
                         m['lida'] = True
@@ -899,6 +969,15 @@ def ja_aberto(url):
 
 def main():
     os.makedirs(DATA, exist_ok=True)
+    tec = os.path.join(DATA, 'tecnico')
+    if not os.path.isdir(tec):
+        os.makedirs(tec, exist_ok=True)
+        open(os.path.join(tec, 'LEIA-ME.txt'), 'w', encoding='utf-8').write(
+            'Coloque aqui fotos do seu rosto em PNG com estes nomes:\n'
+            '  feliz.png    - depois de vitória ou resposta animada na coletiva\n'
+            '  neutro.png   - empate ou resposta comedida\n'
+            '  irritado.png - derrota ou resposta dura\n'
+            'O app mostra a expressão certa na sala de imprensa.\n')
     url = f'http://127.0.0.1:{PORT}/'
     if '--reiniciar' in sys.argv:     # depois de atualizar: espera a versão antiga liberar a porta
         for _ in range(40):

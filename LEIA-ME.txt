@@ -23,6 +23,16 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.2:
+- Linha do tempo dos jogos no topo (clique numa bolinha para ver o placar).
+- Tema claro/escuro e cor de destaque tirada do uniforme do clube.
+- Elenco em cartões, prancheta para planejar o time, central de transferências (chegadas e saídas
+  descobertas comparando o elenco entre saves) e vestiário (afastamentos aleatórios, só no app).
+- Sala de imprensa depois de cada jogo: as respostas mexem com torcida e diretoria.
+  Para usar o seu rosto: coloque feliz.png, neutro.png e irritado.png em data\tecnico.
+- Mensagens separadas em Diretoria e Patrocinadores; gráfico de receitas em Finanças.
+- Revisão anual dos contratos em janeiro, conforme o aproveitamento da temporada.
+
 Segurança:
 - Antes de mexer no save, o app guarda uma cópia em data\backups_save (as 30 mais recentes).
 - Os uniformes limpos (sem patrocínio) ficam em data\kits_base (Palmeiras) e data\times\<id>\kits_base (outros clubes).

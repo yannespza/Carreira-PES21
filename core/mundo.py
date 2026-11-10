@@ -45,10 +45,10 @@ MANCHETES = {
 }
 
 POSTS = {
-    'euforia': ["QUE TIME! 💚💚💚 {clube} é outro patamar", "esse time tá jogando por música, não tem pra ninguém 🔥",
-                "dá pra sonhar com título sim, foda-se 💚", "{placar} e ainda foi pouco kkkkk",
+    'euforia': ["QUE TIME! 🔥🔥🔥 {clube} é outro patamar", "esse time tá jogando por música, não tem pra ninguém 🔥",
+                "dá pra sonhar com título sim, demais", "{placar} e ainda foi pouco kkkkk",
                 "o técnico merece estátua na porta do estádio 🏆"],
-    'feliz': ["vitória importante, segue o baile 💚", "três pontos é o que importa", "boa, mas dá pra melhorar no segundo tempo",
+    'feliz': ["vitória importante, segue o baile", "três pontos é o que importa", "boa, mas dá pra melhorar no segundo tempo",
               "bom resultado, bora manter a sequência", "{clube} trabalhando ✅"],
     'neutro': ["empate fora não é o fim do mundo", "jogo travado, faltou criatividade", "ponto é ponto... mas esperava mais",
                "time precisa de reforço no meio", "segue o campeonato"],
@@ -57,8 +57,16 @@ POSTS = {
     'revolta': ["FORA TODO MUNDO 😡", "vergonha, {placar} é inaceitável", "diretoria acorda!! isso aqui é o {clube}",
                 "devolve o dinheiro do ingresso", "chega de desculpa, quero resultado"],
 }
-ARROBAS = ['@verdao_raiz', '@alviverde_sp', '@palestrino10', '@torcedor_fiel', '@mancha_ofc', '@porco_doido',
-           '@verde_mais', '@academia_fc', '@sp_palestra', '@nacao_verde', '@cronista_alviverde', '@jornalistaFC']
+ARROBAS_PALMEIRAS = ['@verdao_raiz', '@alviverde_sp', '@palestrino10', '@torcedor_fiel', '@mancha_ofc', '@porco_doido',
+                     '@verde_mais', '@academia_fc', '@sp_palestra', '@nacao_verde', '@cronista_alviverde', '@jornalistaFC']
+
+
+def arrobas(clube):
+    if 'PALMEIRAS' in clube.upper():
+        return ARROBAS_PALMEIRAS
+    c = ''.join(ch for ch in __import__('unicodedata').normalize('NFKD', clube).lower() if ch.isalnum())[:12]
+    return [f'@{c}_raiz', f'@torcida{c}', f'@{c}_oficialfans', f'@sou{c}', f'@{c}10', f'@nacao_{c}',
+            f'@{c}depressao', f'@fala{c}', '@torcedor_fiel', '@jornalistaFC', '@cornetafc', '@resenha_fut']
 
 PRESIDENTE = {
     'boas_vindas': ["Bem-vindo ao comando do {clube}. A diretoria espera {meta_txt}. Conte com o nosso apoio."],
@@ -118,10 +126,24 @@ class Mundo:
 
     # ---------- metas ----------
     def metas(self):
-        return self.m.setdefault('metas', {'aproveitamento': 60, 'patrocinio': 15_000_000})
+        if 'metas' not in self.m:
+            # meta de patrocínio proporcional ao tamanho do clube (posições do uniforme e atratividade)
+            from .kits import SLOTS
+            atr = self.s.get('atr_base', 60)
+            pot = sum(v['valor_base'] for v in SLOTS.values()) * (0.45 + atr / 100 * 0.9)
+            meta = int(round(pot * 0.6 / 500_000) * 500_000) or 5_000_000
+            self.m['metas'] = {'aproveitamento': 60 if atr >= 60 else 55, 'patrocinio': meta}
+        return self.m['metas']
+
+    def liga(self):
+        """Campeonato de pontos corridos da carreira: o torneio com mais jogos."""
+        from collections import Counter
+        c = Counter(p['torneio'] for p in self.s.get('partidas', []))
+        return c.most_common(1)[0][0] if c else TORNEIO_LIGA
 
     def aproveitamento(self):
-        ps = [p for p in self.s.get('partidas', []) if p['torneio'] == TORNEIO_LIGA]
+        liga = self.liga()
+        ps = [p for p in self.s.get('partidas', []) if p['torneio'] == liga]
         if not ps:
             return None
         pts = sum({'V': 3, 'E': 1, 'D': 0}[p['res']] for p in ps)
@@ -140,7 +162,7 @@ class Mundo:
             self.m['iniciado'] = True
             mt = self.metas()
             self.presidente(engine, 'boas_vindas', data,
-                            meta_txt=f"aproveitamento de pelo menos {mt['aproveitamento']}% dos pontos no Brasileirão "
+                            meta_txt=f"aproveitamento de pelo menos {mt['aproveitamento']}% dos pontos no campeonato "
                                      f"e {eur_mi(mt['patrocinio'])} por temporada em patrocínios")
             # partidas já existentes não geram notícia retroativa
             vis['partidas'] = [p['chave'] for p in self.s.get('partidas', [])]

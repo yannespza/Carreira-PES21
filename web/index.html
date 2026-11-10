@@ -10,6 +10,7 @@
   --bg:#0c0e12; --bg2:#12151b; --panel:#191d24; --panel2:#20252e; --line:#2a303b;
   --txt:#e9ecf1; --mut:#8a93a3; --dim:#5d6676;
   --lime:#c8f031; --lime2:#a6cc16; --gold:#f2c230; --red:#ff5a5f; --green:#3ddc84; --blue:#5aa9ff;
+  --onlime:#11140a;
   --head:"Bahnschrift SemiBold Condensed","Bahnschrift","Arial Narrow","Segoe UI",sans-serif;
   --body:"Segoe UI",system-ui,sans-serif;
 }
@@ -22,7 +23,7 @@ h1,h2,h3,.head{font-family:var(--head);text-transform:uppercase;letter-spacing:.
 button{font-family:var(--head);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;border:0;border-radius:3px;
   padding:9px 14px;font-size:13px;background:var(--panel2);color:var(--txt)}
 button:hover{filter:brightness(1.15)}
-button.lime{background:var(--lime);color:#11140a}
+button.lime{background:var(--lime);color:var(--onlime)}
 button.ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}
 button.red{background:transparent;border:1px solid #5a2a2d;color:var(--red)}
 button:disabled{opacity:.4;cursor:default}
@@ -30,7 +31,7 @@ select,input{background:var(--bg2);color:var(--txt);border:1px solid var(--line)
 input[type=range]{padding:0;accent-color:var(--lime)}
 /* topo */
 .top{display:flex;align-items:stretch;background:#07080b;border-bottom:1px solid #000;height:58px;position:sticky;top:0;z-index:5}
-.brand{background:var(--lime);color:#11140a;display:flex;align-items:center;gap:10px;padding:0 18px 0 14px;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.brand{background:var(--lime);color:var(--onlime);display:flex;align-items:center;gap:10px;padding:0 18px 0 14px;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
 .brand .mk{width:30px;height:30px;border:3px solid #11140a;transform:skewX(-12deg);display:grid;place-items:center;font-family:var(--head);font-size:15px}
 .brand b{font-family:var(--head);font-size:20px;line-height:.9;letter-spacing:.02em}
 .brand small{display:block;font-family:var(--head);font-size:10px;letter-spacing:.18em}
@@ -42,7 +43,7 @@ nav a{display:flex;align-items:center;gap:7px;padding:0 10px;white-space:nowrap;
   letter-spacing:.12em;font-size:14px;border-bottom:3px solid transparent;cursor:pointer}
 nav a:hover{color:var(--txt)}
 nav a.on{color:var(--txt);border-bottom-color:var(--lime)}
-nav .badge{background:var(--lime);color:#11140a;border-radius:9px;font-size:11px;padding:1px 6px;font-family:var(--body);font-weight:700;letter-spacing:0}
+nav .badge{background:var(--lime);color:var(--onlime);border-radius:9px;font-size:11px;padding:1px 6px;font-family:var(--body);font-weight:700;letter-spacing:0}
 .right{display:flex;align-items:center;gap:10px;padding:0 14px;white-space:nowrap;color:var(--mut);font-size:12px}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:var(--dim)}
 .dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
@@ -110,7 +111,7 @@ main{max-width:1240px;margin:0 auto;padding:22px 24px 60px}
 .kitprev img{width:100%;display:block;border-radius:2px}
 .seg{display:flex;gap:4px;margin-bottom:10px}
 .seg button{flex:1;padding:9px 6px;font-size:12px;white-space:nowrap}
-.seg button.on{background:var(--lime);color:#11140a}
+.seg button.on{background:var(--lime);color:var(--onlime)}
 .slot{background:var(--panel2);border-radius:3px;padding:12px;margin-bottom:8px}
 .slot .h{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .slot .h b{font-family:var(--head);letter-spacing:.05em;text-transform:uppercase}
@@ -158,6 +159,58 @@ dialog select,dialog input{width:100%}
 .post b{font-size:13px}.post p{margin:3px 0;font-size:14px}.post small{color:var(--mut);font-size:11px}
 .foot{color:var(--dim);font-size:11px;margin-top:30px}
 .hidden{display:none}
+/* tema claro */
+:root[data-theme="light"]{--bg:#eef0f3;--bg2:#ffffff;--panel:#ffffff;--panel2:#e7eaee;--line:#d4d9e0;--txt:#161a21;--mut:#5b6575;--dim:#8a93a3}
+:root[data-theme="light"] body{background:var(--bg)}
+:root[data-theme="light"] .box,:root[data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.06)}
+/* linha do tempo */
+.tl{display:flex;gap:6px;align-items:center;padding:8px 24px;background:var(--bg2);border-bottom:1px solid var(--line);overflow-x:auto}
+.tl small{color:var(--mut);font-size:11px;margin-right:6px;white-space:nowrap;font-family:var(--head);letter-spacing:.08em}
+.tl i{width:15px;height:15px;border-radius:50%;flex:none;cursor:pointer;border:2px solid transparent}
+.tl i.V{background:var(--green)}.tl i.E{background:#9aa3b0}.tl i.D{background:var(--red)}
+.tl i:hover{border-color:var(--txt)}
+/* cartas do elenco */
+.cards-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.carta{position:relative;border-radius:10px;padding:12px 10px 10px;background:linear-gradient(160deg,var(--lime) -40%,var(--panel2) 45%);border:1px solid var(--line);cursor:grab;user-select:none;min-height:118px}
+.carta .nm{font-family:var(--head);font-size:15px;letter-spacing:.03em;margin-top:34px;line-height:1.1}
+.carta .alt{position:absolute;top:10px;right:10px;font-size:11px;color:var(--mut)}
+.carta .av2{position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;font-family:var(--head);font-size:15px;color:var(--mut)}
+.carta .tg{display:inline-block;margin-top:6px;font-size:10px;padding:2px 6px;border-radius:3px;background:var(--red);color:#fff;font-weight:700}
+.carta .tg.novo{background:var(--green);color:#0b1a10}
+.carta.fora{filter:grayscale(1);opacity:.65}
+/* prancheta */
+.campo{position:relative;aspect-ratio:68/105;max-height:640px;margin:0 auto;border-radius:8px;
+  background:repeating-linear-gradient(0deg,#1f6b3a 0 9%,#1c6235 9% 18%);border:2px solid #d9e8dc;overflow:hidden}
+.campo:before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px solid rgba(255,255,255,.7)}
+.campo:after{content:"";position:absolute;left:50%;top:50%;width:22%;aspect-ratio:1;border:2px solid rgba(255,255,255,.7);border-radius:50%;transform:translate(-50%,-50%)}
+.campo .area{position:absolute;left:22%;right:22%;height:15%;border:2px solid rgba(255,255,255,.7)}
+.campo .area.t{top:-2px}.campo .area.b{bottom:-2px}
+.ficha{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.banco{display:flex;flex-wrap:wrap;gap:6px;max-height:640px;overflow:auto;align-content:flex-start}
+.banco span{background:var(--panel2);padding:5px 9px;border-radius:12px;font-size:12px;cursor:grab;user-select:none}
+/* kanban */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kcol{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:12px;min-height:160px}
+.kcol h4{margin:0 0 10px;font-family:var(--head);letter-spacing:.08em;font-size:14px}
+.kcard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:9px 10px;margin-bottom:8px;font-size:13px;position:relative}
+.kcard small{color:var(--mut);display:block;margin-top:3px}
+.kcard .selo{position:absolute;right:8px;top:8px;font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;transform:rotate(-4deg)}
+.kcard.in .selo{background:var(--green);color:#0b1a10}
+.kcard.out{filter:grayscale(1)}.kcard.out .selo{background:#222;color:#fff;border:1px solid #888}
+/* sala de imprensa */
+.sala{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#0d1016}
+.backdrop{display:grid;grid-template-columns:repeat(6,1fr);gap:14px 18px;padding:18px;opacity:.22;position:absolute;inset:0;align-content:start}
+.backdrop img{width:100%;height:42px;object-fit:contain;filter:grayscale(.2)}
+.sala .conteudo{position:relative;display:grid;grid-template-columns:170px 1fr;gap:18px;padding:20px;color:#e9ecf1}
+.rosto{width:170px;height:200px;border-radius:8px;background:#1d222b;display:grid;place-items:center;font-size:64px;overflow:hidden}
+.rosto img{width:100%;height:100%;object-fit:cover}
+.perg{margin-bottom:14px}.perg p{margin:0 0 8px;font-weight:600}
+.perg button{display:block;width:100%;text-align:left;text-transform:none;font-family:var(--body);letter-spacing:0;margin-bottom:6px;background:rgba(255,255,255,.07);color:#e9ecf1}
+.perg button.esc{background:var(--lime);color:var(--onlime)}
+.mfold{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.mfold a{padding:4px 10px;border-radius:12px;font-size:12px;cursor:pointer;color:var(--mut);background:var(--panel2)}
+.mfold a.on{background:var(--lime);color:var(--onlime)}
+@media (max-width:900px){.kanban{grid-template-columns:1fr}.sala .conteudo{grid-template-columns:1fr}}
 .limpgrid{display:grid;grid-template-columns:1fr 1fr 300px;gap:14px}
 .limpcap{font-size:11px;color:var(--mut);margin-bottom:5px;letter-spacing:.04em}
 .limpwrap{position:relative;user-select:none;line-height:0}
@@ -193,7 +246,8 @@ dialog select,dialog input{width:100%}
   </nav>
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
-<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span></div>
+<div class="tl" id="timeline"><small>LINHA DO TEMPO</small></div>
+<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span></div>
 
 <main>
   <div id="banners"></div>
@@ -267,11 +321,21 @@ dialog select,dialog input{width:100%}
 
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
-    <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
-    <div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="elgrid" id="elList"></div></div>
+    <div class="crumb">Início / Elenco / <b>Vestiário</b></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a></div>
+    <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="cards-el" id="elList"></div>
+      <p style="font-size:12px;color:var(--mut);margin-top:14px">Posição, overall, rosto, lesão e suspensão ainda não foram localizados no save. Por enquanto os cartões mostram nome, altura e os afastamentos criados pelo app.</p></div></div>
+    <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
+      <div class="box"><h3>Prancheta <small>arraste os jogadores para o campo</small></h3><div class="campo" id="campo"><div class="area t"></div><div class="area b"></div></div>
+        <div style="display:flex;gap:6px;margin-top:10px"><button class="ghost" onclick="limparPrancheta()">Limpar campo</button></div></div>
+      <div class="box"><h3>Elenco <small>arraste para o campo · arraste de volta para tirar</small></h3><div class="banco" id="banco"></div>
+        <p style="font-size:12px;color:var(--mut);margin-top:12px">A prancheta é só para planejar: não muda a escalação do jogo.</p></div></div></div>
+    <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
+      <div class="kanban"><div class="kcol"><h4>NEGOCIANDO</h4><div id="kNeg"></div></div><div class="kcol"><h4>CHEGADAS</h4><div id="kIn"></div></div><div class="kcol"><h4>SAÍDAS</h4><div id="kOut"></div></div></div>
+      <p style="font-size:12px;color:var(--mut);margin-top:12px">O valor é estimado pela variação do orçamento de transferências entre dois saves. Se você fizer várias negociações antes de salvar, o valor fica dividido entre elas.</p></div></div>
+    <div id="e-evt" class="hidden"><div class="box"><h3>Vestiário <small>afastamentos e acontecimentos</small></h3><div id="evList"></div></div></div>
   </section>
 
-  <!-- FINANÇAS -->
   <section id="t-fin" class="hidden">
     <div class="crumb">Início / <b>Finanças</b></div>
     <div class="cards" id="finCards" style="margin-bottom:18px"></div>
@@ -279,12 +343,14 @@ dialog select,dialog input{width:100%}
       <div class="box"><h3>Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
       <div class="box"><h3>Receitas da temporada <small>como aparecem no jogo</small></h3><div id="finRec"></div></div>
     </div>
+    <div class="box" style="margin-top:20px"><h3>De onde vem o dinheiro <small>receitas da temporada</small></h3><div id="finDonut"></div></div>
     <div class="box" style="margin-top:20px"><h3>Movimentos de patrocínio <small>feitos pelo app no save</small></h3><div id="finMov"></div></div>
   </section>
 
   <!-- NOTÍCIAS -->
   <section id="t-news" class="hidden">
     <div class="crumb">Início / <b>Notícias e redes sociais</b></div>
+    <div class="box" style="margin-bottom:20px"><h3>Sala de imprensa <small id="colInfo"></small></h3><div id="sala"></div></div>
     <div class="grid2">
       <div class="box"><h3>Manchetes <small>imprensa esportiva</small></h3><div id="newsList"></div></div>
       <div class="box"><h3>Redes sociais <small>o que a torcida está dizendo</small></h3><div id="postList"></div></div>
@@ -295,7 +361,7 @@ dialog select,dialog input{width:100%}
   <section id="t-msgs" class="hidden">
     <div class="crumb">Início / <b>Mensagens</b></div>
     <div class="inbox">
-      <div class="box" style="padding:0;max-height:70vh;overflow:auto" id="msgList"></div>
+      <div class="box" style="padding:0;max-height:70vh;overflow:auto"><div class="mfold" id="mFold"></div><div id="msgList"></div></div>
       <div class="reader" id="reader"><div class="empty">Escolha uma mensagem.</div></div>
     </div>
   </section>
@@ -401,6 +467,7 @@ function render(){
   if(!ok)return;
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
   if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
+  aplicarCores();rTimeline();
   ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
@@ -443,7 +510,24 @@ function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
    <div class="meter"><h4>METAS DA TEMPORADA</h4>
     <p style="margin-top:0">Aproveitamento no Brasileirão: <b style="color:${ap==null?'var(--txt)':ap>=mt.aproveitamento?'var(--green)':'var(--red)'}">${ap==null?'—':ap+'%'}</b> (meta ${mt.aproveitamento}%)</p>
     <p>Patrocínios por temporada: <b style="color:${m.patrocinio_anual>=mt.patrocinio?'var(--green)':'var(--gold)'}">${eurM(m.patrocinio_anual)}</b> (meta ${eurM(mt.patrocinio)})</p></div>`}
-function rNews(){const m=S.mundo||{noticias:[],posts:[]};
+$('dlg').addEventListener('close',()=>$('dOk').classList.remove('hidden'));
+let TOM=null;
+function rosto(tom){const R=(S.gestao||{}).rostos||[];const t=tom||'neutro';
+  if(R.includes(t))return `<img src="/tecnico/${t}.png">`;if(R.length)return `<img src="/tecnico/${R[0]}.png">`;
+  return {feliz:'😄',neutro:'😐',irritado:'😠'}[t]||'😐'}
+function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
+  const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
+  const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[i%logos.length])}">`).join(''):'';
+  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="backdrop">${bd}</div><div class="conteudo"><div class="rosto">${rosto('neutro')}</div>
+    <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">Para usar o seu rosto, coloque feliz.png, neutro.png e irritado.png na pasta data\\tecnico do app. O fundo mostra os patrocinadores com contrato.</p></div></div></div>`;return}
+  const aberta=c.status=='aberta';$('colInfo').textContent=c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada');
+  const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
+  $('sala').innerHTML=`<div class="sala"><div class="backdrop">${bd}</div><div class="conteudo"><div class="rosto">${rosto(tom)}</div><div>
+    <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
+    ${c.perguntas.map((q,qi)=>`<div class="perg"><p>Repórter: ${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
+    ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`}
+async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
+function rNews(){rSala();const m=S.mundo||{noticias:[],posts:[]};
   $('newsList').innerHTML=m.noticias.length?m.noticias.map(n=>`<div class="news ${n.destaque?'dest':''}"><b>${esc(n.titulo)}</b><small>${esc(n.fonte)} · ${dt(n.data)}</small></div>`).join(''):'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';
   $('postList').innerHTML=m.posts.length?m.posts.map(p=>`<div class="post"><div class="av">${esc(p.autor[1].toUpperCase())}</div><div><b>${esc(p.autor)}</b><p>${esc(p.texto)}</p><small>${dt(p.data)} · ♥ ${p.curtidas.toLocaleString('pt-BR')}</small></div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>'}
 function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O gráfico aparece a partir do segundo save lido.</div>';
@@ -464,6 +548,12 @@ function rFin(){const d=S.dinheiro||{};const at=S.contratos.filter(c=>c.status==
   $('finChart').innerHTML=svgLinhas(S.fin_hist||[],[{k:'orc_transf',n:'Orç. transferências',c:'#c8f031'},{k:'rec_patrocinio',n:'Receita de patrocínio',c:'#5aa9ff'},{k:'orc_salario',n:'Orç. salários',c:'#f2c230'}]);
   const linhas=[['Direitos de transmissão',d.rec_transmissao],['Patrocínio',d.rec_patrocinio],['Sócios torcedores',d.rec_socios],['Bilheteria',d.rec_bilheteria]];
   const mx=Math.max(...linhas.map(l=>l[1]||0))||1;
+  const cor=['#5aa9ff','var(--lime)','#f2c230','#ff7a59'];const tt=linhas.reduce((a,l)=>a+(l[1]||0),0);
+  if(tt>0){let ang=0;const C=2*Math.PI*60;
+    $('finDonut').innerHTML=`<div style="display:flex;gap:30px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 160 160" style="width:180px">${linhas.map((l,i)=>{const f=(l[1]||0)/tt;const seg=`<circle r="60" cx="80" cy="80" fill="none" stroke="${cor[i]}" stroke-width="26" stroke-dasharray="${f*C} ${C}" stroke-dashoffset="${-ang*C}" transform="rotate(-90 80 80)"/>`;ang+=f;return seg}).join('')}
+      <text x="80" y="76" text-anchor="middle" fill="var(--mut)" font-size="10">TOTAL</text><text x="80" y="94" text-anchor="middle" fill="var(--txt)" font-size="15" font-weight="700">${eurM(tt)}</text></svg>
+      <div>${linhas.map((l,i)=>`<div style="margin:6px 0;font-size:13px"><i style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${cor[i]};margin-right:8px"></i>${l[0]}: <b>${eurM(l[1]||0)}</b> (${Math.round(100*(l[1]||0)/tt)}%)</div>`).join('')}</div></div>`}
+  else $('finDonut').innerHTML='<div class="empty">Sem receitas na temporada ainda.</div>';
   $('finRec').innerHTML=linhas.map(([n,v])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${n}</span><b>${eur(v)}</b></div><div class="bar" style="margin-top:5px"><i style="width:${100*(v||0)/mx}%;background:var(--lime)"></i></div></div>`).join('')+'<p style="font-size:12px;color:var(--mut)">Vendas de produtos, prêmios, taxa de transferência e salário anual ainda não foram localizados no save.</p>';
   const mov=[...S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status!='agendado'&&p.status!='cancelado').map(p=>({data:p.creditado_em||p.data,t:(p.tipo=='multa'?'Multa paga por ':'Pagamento de ')+c.empresa,v:p.valor,s:p.status}))),
     ...(S.multas||[]).map(m=>({data:m.aplicada_em||m.data,t:'Multa de rescisão paga à '+m.empresa,v:-m.valor,s:m.status}))].sort((a,b)=>b.data.localeCompare(a.data));
@@ -553,8 +643,61 @@ async function procurarDeNovo(){if(!confirm('Procurar os patrocínios de novo no
     if(Math.abs(b[0]-a[0])<8||Math.abs(b[1]-a[1])<8)return;
     try{await api('/api/time/extra',{familia:fam,caixa:[a[0],a[1],b[0],b[1]]});toast('Área marcada. Clique em "Refazer a limpeza" quando terminar de marcar.');carregarRev()}catch(x){}});
 })();
-function rElenco(){const el=S.elenco||[];$('elInfo').textContent=el.length?el.length+' jogadores no save':'';
-  $('elList').innerHTML=el.length?el.map(p=>`<div class="elp"><span>${esc(p.nome)}</span><small>${p.altura?p.altura+' cm':''}</small></div>`).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
+let etab='cartas';
+document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
+  ['cartas','pran','transf','evt'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
+function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
+function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
+  $('elInfo').textContent=el.length?el.length+' jogadores no save':'';
+  if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2">${esc(iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>
+      <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
+  if(etab=='pran')rPrancheta();
+  if(etab=='transf'){const tr=G.transferencias||[];
+    const card=(t,cls,selo)=>`<div class="kcard ${cls}"><span class="selo">${selo}</span><b>${esc(t.nome)}</b><small>${dt(t.data)}${t.valor!=null?' · '+(t.tipo=='chegada'?'custou ~ ':'rendeu ~ ')+eurM(Math.abs(t.valor)):''}</small></div>`;
+    $('kNeg').innerHTML='<div class="empty" style="font-size:12px">O app ainda não sabe ler quem está em negociação no jogo.</div>';
+    const ins=tr.filter(t=>t.tipo=='chegada'),outs=tr.filter(t=>t.tipo=='saida');
+    $('kIn').innerHTML=ins.length?ins.map(t=>card(t,'in','CONTRATADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma chegada ainda.</div>';
+    $('kOut').innerHTML=outs.length?outs.map(t=>card(t,'out','VENDIDO / DISPENSADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma saída ainda.</div>'}
+  if(etab=='evt'){const ev=G.eventos||[];
+    $('evList').innerHTML=ev.length?ev.map(e=>`<div class="news ${e.ativo?'dest':''}"><b>${esc(e.titulo)} · ${esc(e.jogador)}</b><p style="margin:4px 0;color:var(--mut)">${esc(e.texto)}</p><small>${dt(e.data)} · ${e.ativo?'em andamento':'encerrado'}</small></div>`).join('')
+      :'<div class="empty">Nada aconteceu no vestiário ainda. De vez em quando surgem atrasos, indisciplina e problemas pessoais; o jogador afastado aparece marcado no cartão.</div>'}
+}
+// prancheta: posições em % do campo, guardadas no app
+let PR=null,arr=null;
+function rPrancheta(){if(!PR)PR=JSON.parse(JSON.stringify((S.gestao||{}).prancheta||{}));const el=S.elenco||[];const nome=id=>(el.find(p=>p.id==id)||{}).nome||'?';
+  const campo=$('campo');campo.querySelectorAll('.ficha').forEach(f=>f.remove());
+  Object.entries(PR).forEach(([id,[x,y]])=>{const f=document.createElement('div');f.className='ficha';f.textContent=nome(+id).split(' ').slice(-1)[0];f.title=nome(+id);
+    f.style.left=x+'%';f.style.top=y+'%';f.dataset.id=id;campo.appendChild(f)});
+  $('banco').innerHTML=el.filter(p=>!(p.id in PR)).map(p=>`<span data-id="${p.id}">${esc(p.nome)}</span>`).join('')}
+document.addEventListener('mousedown',e=>{const t=e.target.closest('.ficha,#banco span');if(!t)return;e.preventDefault();
+  arr={id:t.dataset.id,el:t.cloneNode(true)};arr.el.className='ficha';arr.el.style.position='fixed';arr.el.style.pointerEvents='none';
+  arr.el.style.left=e.clientX+'px';arr.el.style.top=e.clientY+'px';document.body.appendChild(arr.el)});
+document.addEventListener('mousemove',e=>{if(!arr)return;arr.el.style.left=e.clientX+'px';arr.el.style.top=e.clientY+'px'});
+document.addEventListener('mouseup',e=>{if(!arr)return;const a=arr;arr=null;a.el.remove();const r=$('campo').getBoundingClientRect();
+  if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)PR[a.id]=[100*(e.clientX-r.left)/r.width,100*(e.clientY-r.top)/r.height];
+  else delete PR[a.id];
+  api('/api/prancheta',{pos:PR}).catch(()=>{});rPrancheta()});
+function limparPrancheta(){PR={};api('/api/prancheta',{pos:PR});rPrancheta()}
+// tema
+function trocarTema(){const c=document.documentElement.dataset.theme=='light'?'dark':'light';document.documentElement.dataset.theme=c;try{localStorage.setItem('tema',c)}catch(e){};$('temaBtn').textContent=c=='light'?'Tema escuro':'Tema claro'}
+try{const t=localStorage.getItem('tema');if(t){document.documentElement.dataset.theme=t;setTimeout(()=>$('temaBtn').textContent=t=='light'?'Tema escuro':'Tema claro',0)}}catch(e){}
+// cores do clube (tema camaleão): a cor mais viva do uniforme vira a cor de destaque
+function hexRgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16))}
+function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCores.k==k)return;aplicarCores.k=k;
+  const sat=c=>{const m=Math.max(...c),n=Math.min(...c);return m-n};const lum=c=>.299*c[0]+.587*c[1]+.114*c[2];
+  let c=S.cores.map(hexRgb).sort((a,b)=>sat(b)-sat(a))[0];
+  if(sat(c)<40)return;  // camisa branca/preta: mantém o verde-limão do app
+  while(lum(c)<95)c=c.map(v=>Math.min(255,Math.round(v*1.25+12)));
+  const r=document.documentElement.style;r.setProperty('--lime','rgb('+c.join(',')+')');r.setProperty('--lime2','rgb('+c.map(v=>Math.round(v*.82)).join(',')+')');
+  r.setProperty('--onlime',lum(c)>150?'#11140a':'#ffffff')}
+// linha do tempo
+function rTimeline(){const ps=S.linha_tempo||[];const k=ps.map(p=>p.chave).join();if(rTimeline.k==k)return;rTimeline.k=k;
+  $('timeline').innerHTML='<small>LINHA DO TEMPO</small>'+(ps.length?ps.map((p,i)=>`<i class="${p.res}" title="${esc(p.mandante_nome)} ${p.gm} x ${p.gv} ${esc(p.visitante_nome)}" onclick="verPartida(${i})"></i>`).join(''):'<small style="opacity:.7">os jogos aparecem aqui conforme o app lê o save</small>')}
+function verPartida(i){const p=S.linha_tempo[i];const R={V:'Vitória',E:'Empate',D:'Derrota'}[p.res];
+  $('dTitle').textContent=R;$('dBody').innerHTML=`<p style="font-size:22px;font-family:var(--head);text-align:center;margin:10px 0">${esc(p.mandante_nome)} <b style="color:var(--lime)">${p.gm} x ${p.gv}</b> ${esc(p.visitante_nome)}</p>
+  <p style="text-align:center;color:var(--mut)">${esc(p.torneio_nome)} · ${dt(p.data)}</p>`;$('dOk').classList.add('hidden');dlg.showModal()}
 function rKits(forcar){
   const prep=S.time&&S.time.prep&&S.time.prep.rodando;
   if(!REV||Date.now()-revT>(prep?3000:30000)||(REV._fam!=fam)){if(REV)REV._fam=fam;carregarRev()}
@@ -588,8 +731,13 @@ async function rescindir(id){const c=S.contratos.find(x=>x.id==id);const m=(S.mu
   $('dOk').textContent='Rescindir';$('dOk').onclick=async()=>{await api('/api/contrato/rescindir',{id});dlg.close();toast('Contrato rescindido.');load()};dlg.showModal()}
 async function vis(id,ch){await api('/api/contrato/visual',{id,familia:fam,...ch});kitStamp=Date.now();await load();toast('Ajuste salvo. Confira a prévia e clique em "Aplicar no jogo" quando quiser.')}
 
+let mfold='todas';
 function rMsgs(){
-  $('msgList').innerHTML=S.mensagens.length?S.mensagens.map(m=>`<div class="msg ${m.lida?'':'nova'} ${selMsg==m.id?'sel':''}" onclick="selMsg=${m.id};rMsgs()">${logo(m.empresa)}
+  const pasta=m=>m.empresa=='__diretoria__'?'diretoria':'patro';
+  const N=f=>S.mensagens.filter(m=>(f=='todas'||pasta(m)==f)&&!m.lida).length;
+  $('mFold').innerHTML=[['todas','Caixa de entrada'],['diretoria','Diretoria'],['patro','Patrocinadores']].map(([k,n])=>`<a class="${mfold==k?'on':''}" onclick="mfold='${k}';rMsgs()">${n}${N(k)?' ('+N(k)+')':''}</a>`).join('');
+  const lista=S.mensagens.filter(m=>mfold=='todas'||pasta(m)==mfold);
+  $('msgList').innerHTML=lista.length?lista.map(m=>`<div class="msg ${m.lida?'':'nova'} ${selMsg==m.id?'sel':''}" onclick="selMsg=${m.id};rMsgs()">${logo(m.empresa)}
     <div><b>${esc(m.assunto)}</b><small>${esc(m.de)} · ${dt(m.data)}</small></div></div>`).join(''):'<div class="empty" style="margin:12px">Caixa vazia.</div>';
   const m=S.mensagens.find(x=>x.id==selMsg);
   if(!m){$('reader').innerHTML='<div class="empty">Escolha uma mensagem.</div>';return}
