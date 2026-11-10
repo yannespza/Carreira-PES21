@@ -420,6 +420,12 @@ class H(BaseHTTPRequestHandler):
                     raise ValueError('O app ainda está lendo o save. Aguarde alguns segundos.')
                 if u.path == '/api/oferta/aceitar':
                     c = eng.aceitar(body['id'])
+                    vis = body.get('visual') or {}
+                    for k in ('escala', 'inclinacao', 'dx', 'dy'):
+                        if k in vis:
+                            c[k] = float(vis[k])
+                    if vis.get('cores'):
+                        c['cores'].update(vis['cores'])
                     A.aplicar_creditos()
                     A.persist()
                     return self.send(200, {'ok': True, 'contrato': c})
@@ -452,6 +458,9 @@ class H(BaseHTTPRequestHandler):
                     fam = body.get('familia', 'verde')
                     variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                     cs = json.loads(json.dumps([c for c in A.state.get('contratos', []) if c['status'] in ('ativo', 'assinado')]))
+                    if body.get('cand'):
+                        cand = body['cand']
+                        cs = [c for c in cs if c['slot'] != cand['slot']] + [cand]
                     img = kits.compose(APP_DIR, variant, fname, fam, cs, A.logos.load)
                     from core import ftex
                     ftex.write(img, os.path.join(APP_DIR, 'data', 'kits_base', variant, fname + '.ftex'),

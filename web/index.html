@@ -387,18 +387,33 @@ function pedir(id){
   $('dOk').onclick=async()=>{await api('/api/oferta/pedir_mais',{id,pct:+$('fPct').value,clausulas:clLidas(),anos:+$('fAnosN').value});dlg.close();toast('Contraproposta enviada. A resposta chega em alguns dias da carreira.');load()};
   dlg.showModal();
 }
-function verKit(id){const o=S.ofertas.find(x=>x.id==id);cand={slot:o.slot,empresa:o.empresa,escala:1,inclinacao:0,cores:{verde:'auto',branco:'auto',azul:'auto'},_oferta:o.id};kitStamp=Date.now();go('kits')}
+function verKit(id){const o=S.ofertas.find(x=>x.id==id);const sl=S.slots.find(s=>s.id==o.slot)||{};
+  cand={slot:o.slot,empresa:o.empresa,escala:1,inclinacao:sl.inclinacao_padrao||0,dx:0,dy:0,cores:{verde:'auto',branco:'auto',azul:'auto',listrado:'auto'},_oferta:o.id};kitStamp=Date.now();go('kits')}
+function candSet(ch){Object.assign(cand,ch);if(ch.cores)cand.cores=Object.assign({},cand.cores,ch.cores);kitStamp=Date.now();rKits(true)}
+function ctrlHTML(v,fn,slotId){const cor=['auto','original','branco','preto'].map(m=>`<option ${(v.cores||{})[fam]==m?'selected':''}>${m}</option>`).join('');
+  return `<div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${v.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="${fn}({escala:+this.value})"><span>${Math.round(v.escala*100)}%</span>
+      <span>Posição ↔</span><input type="range" min="-200" max="200" step="5" value="${v.dx||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dx:+this.value})"><span>${v.dx||0}</span>
+      <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${v.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dy:+this.value})"><span>${v.dy||0}</span>
+      <span>Inclinação${slotId=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${v.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="${fn}({inclinacao:+this.value})"><span>${v.inclinacao}°</span>
+      <span>Cor no ${fam}</span><select onchange="${fn}({cores:{${fam}:this.value}})">${cor}</select><span></span></div>`}
+async function aceitarCand(){const o=S.ofertas.find(x=>x.id==cand._oferta);if(!o){toast('Essa proposta não está mais aberta.',true);return}
+  await api('/api/oferta/aceitar',{id:o.id,visual:{escala:cand.escala,inclinacao:cand.inclinacao,dx:cand.dx,dy:cand.dy,cores:cand.cores}});
+  toast('Contrato assinado com esse ajuste do logo!');cand=null;kitStamp=Date.now();load()}
 
 let visT=null;
-function rKits(){
+function rKits(forcar){
   $('famSeg').innerHTML=Object.entries(S.familias).map(([k,v])=>`<button class="${k==fam?'on':''}" onclick="fam='${k}';kitStamp=Date.now();rKits()">${v}</button>`).join('');
   const src='/api/preview?familia='+fam+(cand?'&cand='+encodeURIComponent(JSON.stringify(cand)):'')+'&t='+kitStamp;
   if($('kitImg').dataset.src!=src){$('kitImg').dataset.src=src;$('kitImg').src=src}
   $('candInfo').innerHTML=cand?`prévia da proposta: <b style="color:var(--lime)">${esc(cand.empresa)}</b> <a style="color:var(--mut);cursor:pointer" onclick="cand=null;kitStamp=Date.now();rKits()">✕ limpar</a>`:'';
-  if(document.activeElement&&document.activeElement.type=='range')return;
+  if(!forcar&&document.activeElement&&document.activeElement.type=='range')return;
   $('slots').innerHTML=S.slots.map(s=>{
     const c=S.contratos.find(c=>c.slot==s.id&&(c.status=='ativo'||c.status=='assinado'));
-    if(!c) return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill">${cand&&cand.slot==s.id?'prévia':'livre'}</span></div></div>`;
+    if(cand&&cand.slot==s.id) return `<div class="slot" style="outline:1px solid var(--lime)"><div class="h"><b>${esc(s.nome)}</b><span class="pill wait">prévia · ${esc(cand.empresa)}</span></div>
+      ${ctrlHTML(cand,'candSet',s.id)}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="lime" onclick="aceitarCand()">Aceitar com esse ajuste</button>
+      <button class="ghost" onclick="testarKit()">Testar no jogo</button><button class="ghost" onclick="cand=null;kitStamp=Date.now();rKits()">Fechar prévia</button></div></div>`;
+    if(!c) return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill">livre</span></div></div>`;
     const cor=f=>['auto','original','branco','preto'].map(m=>`<option ${c.cores[f]==m?'selected':''}>${m}</option>`).join('');
     return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill ${c.status=='ativo'?'ok':'wait'}">${esc(c.empresa)}</span></div>
       <div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${c.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="vis(${c.id},{escala:+this.value})"><span>${Math.round(c.escala*100)}%</span>
@@ -411,7 +426,7 @@ function rKits(){
 }
 async function sair(){if(!confirm('Fechar o app? Ele para de acompanhar a carreira até você abrir de novo.'))return;
   try{await fetch('/api/sair',{method:'POST'})}catch(e){} document.body.innerHTML='<div style="padding:60px;text-align:center;font-family:var(--head);font-size:22px">APP FECHADO. PODE FECHAR ESTA JANELA.</div>'}
-async function testarKit(){const j=await api('/api/kits/testar',{familia:fam});toast('Uniforme '+j.uniforme+' gravado para teste. Confira no jogo; depois clique em "Aplicar no jogo" para voltar ao normal.');load()}
+async function testarKit(){const j=await api('/api/kits/testar',{familia:fam,cand:cand});toast('Uniforme '+j.uniforme+' gravado para teste. Confira no jogo; depois clique em "Aplicar no jogo" para voltar ao normal.');load()}
 async function aplicarKits(){await api('/api/kits/aplicar',{});toast('Gravando os uniformes. Pode acompanhar o progresso no topo.');load()}
 async function rescindir(id){const c=S.contratos.find(x=>x.id==id);const m=(S.multa_estimada||{})[id];
   $('dTitle').textContent='Rescindir contrato · '+c.empresa;
