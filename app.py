@@ -227,6 +227,8 @@ class App:
         aplicado = self.state.get('kits_aplicados')
         if aplicado is None:
             return ['primeira aplicação: deixar os 10 uniformes no padrão do app (inclui o 4º, listrado, sem patrocínios)']
+        if aplicado == 'teste':
+            return ['voltar ao normal depois do teste (contratos que ainda não começaram saem do uniforme)']
         if self.assinatura(atual) == aplicado:
             return []
         antes = {c[0]: c for c in json.loads(aplicado)}
@@ -442,6 +444,18 @@ class H(BaseHTTPRequestHandler):
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/aviso/ok':
                     A.status['aviso'] = None; return self.send(200, {'ok': True})
+                if u.path == '/api/kits/testar':
+                    # grava só o uniforme escolhido com os contratos ativos + assinados, para conferir no jogo
+                    fam = body.get('familia', 'verde')
+                    variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
+                    cs = json.loads(json.dumps([c for c in A.state.get('contratos', []) if c['status'] in ('ativo', 'assinado')]))
+                    img = kits.compose(APP_DIR, variant, fname, fam, cs, A.logos.load)
+                    from core import ftex
+                    ftex.write(img, os.path.join(APP_DIR, 'data', 'kits_base', variant, fname + '.ftex'),
+                               os.path.join(CFG['pasta_kits'], variant, fname + '.ftex'))
+                    A.state['kits_aplicados'] = 'teste'
+                    A.persist()
+                    return self.send(200, {'ok': True, 'uniforme': variant})
                 if u.path == '/api/kits/aplicar':
                     A.aplicar_kits(); return self.send(200, {'ok': True})
                 if u.path == '/api/contrato/rescindir':

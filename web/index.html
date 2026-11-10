@@ -212,6 +212,7 @@ dialog select,dialog input{width:100%}
       <div>
         <div class="seg" id="famSeg"></div>
         <div class="kitprev"><img id="kitImg" alt="prévia do uniforme"></div>
+        <button class="ghost" style="width:100%;margin-top:8px" onclick="testarKit()">Testar no jogo (só este uniforme, inclui contratos que ainda não começaram)</button>
         <div style="color:var(--mut);font-size:12px;margin-top:8px">Prévia: frente · costas · mangas (esq. e dir.) · calção. A prévia mostra os contratos ativos e os já assinados. Os 10 uniformes do jogo só mudam quando você clicar em "Aplicar no jogo".</div>
       </div>
       <div>
@@ -407,6 +408,7 @@ function rKits(){
 }
 async function sair(){if(!confirm('Fechar o app? Ele para de acompanhar a carreira até você abrir de novo.'))return;
   try{await fetch('/api/sair',{method:'POST'})}catch(e){} document.body.innerHTML='<div style="padding:60px;text-align:center;font-family:var(--head);font-size:22px">APP FECHADO. PODE FECHAR ESTA JANELA.</div>'}
+async function testarKit(){const j=await api('/api/kits/testar',{familia:fam});toast('Uniforme '+j.uniforme+' gravado para teste. Confira no jogo; depois clique em "Aplicar no jogo" para voltar ao normal.');load()}
 async function aplicarKits(){await api('/api/kits/aplicar',{});toast('Gravando os uniformes. Pode acompanhar o progresso no topo.');load()}
 async function rescindir(id){const c=S.contratos.find(x=>x.id==id);const m=(S.multa_estimada||{})[id];
   $('dTitle').textContent='Rescindir contrato · '+c.empresa;
