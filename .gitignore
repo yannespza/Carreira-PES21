@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+data/carreiras/
+data/backups_save/
+data/janela/
+data/versoes/
+data/app.log
+data/logos_cache/
+data/logos_map.json
+data/kits_base/
+wheels/

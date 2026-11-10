@@ -1,0 +1,20 @@
+APP DE CARREIRA - PATROCÍNIOS (PES 2021 / GOGOSZ)
+
+INSTALAR (uma vez só): dois cliques em "Instalar.bat".
+- Ele instala os componentes e cria o atalho "Carreira PES 21" na Área de Trabalho e no Menu Iniciar.
+- Depois disso, abra sempre pelo atalho: o app abre numa janela própria, sem a tela preta.
+- Para fechar o app de verdade, use o botão ⏻ no canto superior direito.
+- "Abrir App.bat" continua funcionando (abre com a janela preta, útil se algo der errado).
+
+Como funciona:
+- O app lê o save do Master League sempre que o jogo salva.
+- A data da carreira é a do jogo: as propostas chegam e vencem conforme você avança no calendário.
+- Quando um contrato começa ou termina, o app mostra as mudanças nos uniformes e você aprova com
+  "Aplicar no jogo" (dá para ver a prévia antes).
+- Quando um pagamento cai, o app coloca o dinheiro no save. No jogo, volte ao menu principal e
+  carregue a carreira de novo para o dinheiro aparecer. Não salve antes de recarregar.
+
+Segurança:
+- Antes de mexer no save, o app guarda uma cópia em data\backups_save (as 30 mais recentes).
+- Os uniformes limpos (sem patrocínio) ficam em data\kits_base.
+- Os uniformes originais do patch estão em ..\eFootball PES 2021\BACKUP_APP_CARREIRA\kits_originais

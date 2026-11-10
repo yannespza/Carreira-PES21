@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carreira · Patrocínios</title>
+<link rel="icon" href="/icone.png">
+<style>
+:root{
+  --bg:#0c0e12; --bg2:#12151b; --panel:#191d24; --panel2:#20252e; --line:#2a303b;
+  --txt:#e9ecf1; --mut:#8a93a3; --dim:#5d6676;
+  --lime:#c8f031; --lime2:#a6cc16; --gold:#f2c230; --red:#ff5a5f; --green:#3ddc84; --blue:#5aa9ff;
+  --head:"Bahnschrift SemiBold Condensed","Bahnschrift","Arial Narrow","Segoe UI",sans-serif;
+  --body:"Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14px}
+body{background:
+  repeating-linear-gradient(135deg,rgba(255,255,255,.018) 0 2px,transparent 2px 9px),
+  radial-gradient(1200px 500px at 85% -10%,rgba(200,240,49,.07),transparent 60%),var(--bg);min-height:100vh}
+h1,h2,h3,.head{font-family:var(--head);text-transform:uppercase;letter-spacing:.04em;margin:0}
+button{font-family:var(--head);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;border:0;border-radius:3px;
+  padding:9px 14px;font-size:13px;background:var(--panel2);color:var(--txt)}
+button:hover{filter:brightness(1.15)}
+button.lime{background:var(--lime);color:#11140a}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}
+button.red{background:transparent;border:1px solid #5a2a2d;color:var(--red)}
+button:disabled{opacity:.4;cursor:default}
+select,input{background:var(--bg2);color:var(--txt);border:1px solid var(--line);border-radius:3px;padding:8px 10px;font:inherit}
+input[type=range]{padding:0;accent-color:var(--lime)}
+/* topo */
+.top{display:flex;align-items:stretch;background:#07080b;border-bottom:1px solid #000;height:58px;position:sticky;top:0;z-index:5}
+.brand{background:var(--lime);color:#11140a;display:flex;align-items:center;gap:10px;padding:0 18px 0 14px;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.brand .mk{width:30px;height:30px;border:3px solid #11140a;transform:skewX(-12deg);display:grid;place-items:center;font-family:var(--head);font-size:15px}
+.brand b{font-family:var(--head);font-size:20px;line-height:.9;letter-spacing:.02em}
+.brand small{display:block;font-family:var(--head);font-size:10px;letter-spacing:.18em}
+.club{display:flex;flex-direction:column;justify-content:center;padding:0 22px;border-right:1px solid #1b1f27;background:#14171d}
+.club small{color:var(--mut);font-size:11px}
+.club b{font-family:var(--head);font-size:17px;letter-spacing:.06em}
+nav{display:flex;flex:1}
+nav a{display:flex;align-items:center;gap:8px;padding:0 14px;white-space:nowrap;color:var(--mut);text-decoration:none;font-family:var(--head);
+  letter-spacing:.12em;font-size:14px;border-bottom:3px solid transparent;cursor:pointer}
+nav a:hover{color:var(--txt)}
+nav a.on{color:var(--txt);border-bottom-color:var(--lime)}
+nav .badge{background:var(--lime);color:#11140a;border-radius:9px;font-size:11px;padding:1px 6px;font-family:var(--body);font-weight:700;letter-spacing:0}
+.right{display:flex;align-items:center;gap:10px;padding:0 14px;white-space:nowrap;color:var(--mut);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:var(--dim)}
+.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+.chip{font-family:var(--head);letter-spacing:.08em;color:var(--txt);background:var(--panel2);padding:6px 10px;border-radius:3px;font-size:14px}
+.sub{background:#e9ecef;color:#222;display:flex;gap:28px;padding:9px 24px;font-size:13px}
+.sub span{opacity:.75}
+main{max-width:1240px;margin:0 auto;padding:22px 24px 60px}
+.crumb{color:var(--mut);font-size:12px;margin-bottom:16px}
+.crumb b{color:var(--txt);font-weight:500}
+.crumb:before{content:"";display:inline-block;width:7px;height:9px;background:var(--lime);margin-right:8px;clip-path:polygon(0 0,100% 50%,0 100%)}
+.banner{display:flex;gap:14px;align-items:center;background:linear-gradient(90deg,rgba(200,240,49,.16),rgba(200,240,49,.04));
+  border:1px solid rgba(200,240,49,.35);padding:12px 16px;border-radius:4px;margin-bottom:16px}
+.banner.err{background:rgba(255,90,95,.1);border-color:rgba(255,90,95,.4)}
+.banner p{margin:0;flex:1;line-height:1.45}
+/* clube */
+.hero{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center;margin-bottom:24px}
+.hero h1{font-size:40px;line-height:1}
+.hero .meta{color:var(--mut);margin:6px 0 14px;display:flex;gap:16px;font-size:13px}
+.tag{display:inline-block;background:var(--gold);color:#1a1400;font-family:var(--head);font-size:12px;padding:2px 7px;margin-left:10px;vertical-align:middle;letter-spacing:.08em;border-radius:2px}
+.tag.prata{background:#c7ccd4}.tag.bronze{background:#c98b55}
+.xp{display:flex;gap:3px;margin:8px 0 6px}
+.xp i{width:20px;height:11px;background:#2b313b;transform:skewX(-20deg)}
+.xp i.f{background:var(--lime)}
+.xpl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);max-width:520px}
+.xpl b{color:var(--txt);font-family:var(--head);letter-spacing:.05em}
+.cards{display:flex;gap:10px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));min-width:150px;padding:16px 16px 12px;border-radius:3px;position:relative;overflow:hidden}
+.card:after{content:"";position:absolute;right:-20px;top:-20px;width:80px;height:80px;border:2px solid rgba(255,255,255,.04);border-radius:50%}
+.card b{font-family:var(--head);font-size:26px;display:block;letter-spacing:.02em}
+.card span{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.card span:before{content:"";width:10px;height:8px;background:var(--lime);clip-path:polygon(0 0,70% 0,100% 50%,70% 100%,0 100%)}
+.tabs2{display:flex;gap:26px;border-bottom:1px solid var(--line);margin:8px 0 16px}
+.tabs2 a{padding:10px 0;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;font-size:14px}
+.tabs2 a.on{color:var(--txt);border-bottom-color:var(--lime)}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:20px}
+.box{background:var(--panel);border-radius:4px;padding:16px}
+.box h3{font-size:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.box h3 small{font-family:var(--body);text-transform:none;letter-spacing:0;color:var(--mut);font-size:12px}
+.row{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,var(--panel2),var(--panel));border-radius:3px;padding:12px 14px;margin-bottom:8px}
+.row .lg{width:52px;height:52px;background:#fff;border-radius:3px;display:grid;place-items:center;flex:none;padding:5px}
+.row .lg img{max-width:100%;max-height:100%}
+.row .nm{flex:1;min-width:0}
+.row .nm b{font-family:var(--head);font-size:19px;letter-spacing:.04em;text-transform:uppercase}
+.row .nm small{display:block;color:var(--mut);margin-top:2px}
+.stat{text-align:left;min-width:92px}
+.stat b{font-family:var(--head);font-size:21px;display:block}
+.stat span{font-size:11px;color:var(--mut)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.res{display:inline-grid;place-items:center;width:26px;height:26px;font-family:var(--head);font-size:14px;border-radius:2px;margin-right:4px}
+.res.V{background:var(--green);color:#062}
+.res.E{background:#59606c}
+.res.D{background:var(--red);color:#300}
+.match{display:grid;grid-template-columns:90px 1fr 70px 1fr;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);font-size:13px}
+.match .sc{font-family:var(--head);font-size:18px;text-align:center}
+.match .t2{text-align:left}.match .t1{text-align:right}
+.match small{color:var(--mut)}
+.empty{color:var(--mut);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:4px}
+.pill{font-size:11px;padding:2px 7px;border-radius:9px;background:var(--panel2);color:var(--mut);font-family:var(--body)}
+.pill.ok{background:rgba(61,220,132,.15);color:var(--green)}
+.pill.wait{background:rgba(242,194,48,.15);color:var(--gold)}
+.pill.off{background:rgba(255,90,95,.12);color:var(--red)}
+/* uniformes */
+.kitwrap{display:grid;grid-template-columns:540px 1fr;gap:20px}
+.kitprev{background:#0e1014;border-radius:4px;padding:10px;position:relative;min-height:400px}
+.kitprev img{width:100%;display:block;border-radius:2px}
+.seg{display:flex;gap:4px;margin-bottom:10px}
+.seg button{flex:1;padding:9px 6px;font-size:12px;white-space:nowrap}
+.seg button.on{background:var(--lime);color:#11140a}
+.slot{background:var(--panel2);border-radius:3px;padding:12px;margin-bottom:8px}
+.slot .h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.slot .h b{font-family:var(--head);letter-spacing:.05em;text-transform:uppercase}
+.ctrl{display:grid;grid-template-columns:110px 1fr 40px;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:var(--mut)}
+/* mensagens */
+.inbox{display:grid;grid-template-columns:380px 1fr;gap:16px}
+.msg{padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px}
+.msg:hover,.msg.sel{background:var(--panel2)}
+.msg .lg{width:36px;height:36px;background:#fff;border-radius:3px;display:grid;place-items:center;padding:3px;flex:none}
+.msg .lg img{max-width:100%;max-height:100%}
+.msg b{display:block;font-size:13px}
+.msg small{color:var(--mut);font-size:12px}
+.msg.nova b:before{content:"";display:inline-block;width:7px;height:7px;background:var(--lime);border-radius:50%;margin-right:6px}
+.reader{background:var(--panel);border-radius:4px;padding:22px;min-height:300px}
+.reader h2{font-size:22px;margin-bottom:4px}
+.reader .big .lg{width:64px;height:64px;background:#fff;border-radius:3px;display:grid;place-items:center;padding:6px}
+.reader .big img{max-width:100%;max-height:100%}
+.reader p{line-height:1.6;font-size:15px}
+/* empresas */
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.emp{background:var(--panel);border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.emp .lg{background:#fff;height:80px;border-radius:3px;display:grid;place-items:center;padding:10px}
+.emp .lg img{max-width:100%;max-height:60px}
+.emp b{font-family:var(--head);font-size:17px;letter-spacing:.04em;text-transform:uppercase}
+.emp small{color:var(--mut)}
+dialog{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:22px;width:500px}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog label{display:block;font-size:12px;color:var(--mut);margin:12px 0 4px}
+dialog select,dialog input{width:100%}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--panel2);border-left:4px solid var(--lime);padding:12px 16px;border-radius:3px;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;z-index:20}
+.toast.err{border-left-color:var(--red)}
+.prog{width:220px;height:10px;background:#2b313b;border-radius:2px;overflow:hidden}.prog i{display:block;height:100%;background:var(--lime);transition:width .4s}
+.foot{color:var(--dim);font-size:11px;margin-top:30px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><div class="mk">P</div><div><b>CARREIRA</b><small>PATROCÍNIOS · PES 21</small></div></div>
+  <div class="club"><small>Clube comandado</small><b id="clubName">—</b></div>
+  <nav id="nav">
+    <a data-t="clube" class="on">◆ Clube</a>
+    <a data-t="patro">◆ Patrocínios <span class="badge hidden" id="bOf"></span></a>
+    <a data-t="kits">◆ Uniformes</a>
+    <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
+    <a data-t="emps">◆ Empresas</a>
+  </nav>
+  <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
+</div>
+<div class="sub" id="sub"><span>Save: <b id="sSlot">—</b></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span></div>
+
+<main>
+  <div id="banners"></div>
+
+  <!-- CLUBE -->
+  <section id="t-clube">
+    <div class="crumb">Início / Clube / <b>Visão geral</b></div>
+    <div class="hero">
+      <div>
+        <h1><span id="hName">—</span><span class="tag" id="hTier">—</span></h1>
+        <div class="meta"><span id="hDate">—</span><span id="hComp">—</span></div>
+        <div style="font-size:12px;color:var(--mut)">ATRATIVIDADE PARA PATROCINADORES</div>
+        <div class="xp" id="xp"></div>
+        <div class="xpl"><span><b id="atrN">—</b> / 100</span><span id="atrTxt">—</span></div>
+      </div>
+      <div class="cards">
+        <div class="card"><b id="cTransf">—</b><span>Orç. transferências</span></div>
+        <div class="card"><b id="cSal">—</b><span>Orç. salários</span></div>
+        <div class="card"><b id="cPat">—</b><span>Receita patrocínio</span></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="box">
+        <h3>Últimas partidas <small>forma: <span id="forma"></span></small></h3>
+        <div id="matches"></div>
+      </div>
+      <div class="box">
+        <h3>Patrocínio do clube <small id="contSum"></small></h3>
+        <div id="clubContracts"></div>
+        <h3 style="margin-top:18px">Propostas abertas <small><a style="color:var(--lime);cursor:pointer" onclick="go('patro')">ver todas</a></small></h3>
+        <div id="clubOffers"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PATROCÍNIOS -->
+  <section id="t-patro" class="hidden">
+    <div class="crumb">Início / Patrocínios / <b>Mercado</b></div>
+    <div class="tabs2" id="ptabs"><a data-p="of" class="on">Propostas</a><a data-p="ct">Contratos</a><a data-p="hi">Histórico</a></div>
+    <div id="p-of"></div>
+    <div id="p-ct" class="hidden"></div>
+    <div id="p-hi" class="hidden"></div>
+  </section>
+
+  <!-- UNIFORMES -->
+  <section id="t-kits" class="hidden">
+    <div class="crumb">Início / Uniformes / <b>Patrocinadores no uniforme</b></div>
+    <div class="kitwrap">
+      <div>
+        <div class="seg" id="famSeg"></div>
+        <div class="kitprev"><img id="kitImg" alt="prévia do uniforme"></div>
+        <div style="color:var(--mut);font-size:12px;margin-top:8px">Prévia: frente · costas · mangas (esq. e dir.) · calção. A prévia mostra os contratos ativos e os já assinados. Os 10 uniformes do jogo só mudam quando você clicar em "Aplicar no jogo".</div>
+      </div>
+      <div>
+        <div class="box"><h3>Posições <small id="candInfo"></small></h3><div id="slots"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENSAGENS -->
+  <section id="t-msgs" class="hidden">
+    <div class="crumb">Início / <b>Mensagens</b></div>
+    <div class="inbox">
+      <div class="box" style="padding:0;max-height:70vh;overflow:auto" id="msgList"></div>
+      <div class="reader" id="reader"><div class="empty">Escolha uma mensagem.</div></div>
+    </div>
+  </section>
+
+  <!-- EMPRESAS -->
+  <section id="t-emps" class="hidden">
+    <div class="crumb">Início / <b>Empresas</b></div>
+    <p style="color:var(--mut);margin-top:-6px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira.</p>
+    <div class="egrid" id="egrid"></div>
+  </section>
+  <div class="foot">App de Carreira · uso pessoal · versão <span id="ver">—</span>. Os dados vêm do último save gravado pelo jogo.</div>
+</main>
+
+<dialog id="dlg">
+  <h2 id="dTitle">Fazer proposta</h2>
+  <div id="dBody"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+    <button class="ghost" onclick="dlg.close()">Cancelar</button><button class="lime" id="dOk">Enviar</button>
+  </div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+let somOn=true, ultNaoLidas=null, actx=null;
+try{somOn=localStorage.getItem('som')!=='0'}catch(e){}
+function beep(){ if(!somOn)return; try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  const t=actx.currentTime;[[880,0],[1320,.13]].forEach(([f,d])=>{const o=actx.createOscillator(),g=actx.createGain();
+  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.25,t+d+.02);
+  g.gain.exponentialRampToValueAtTime(.001,t+d+.35);o.connect(g).connect(actx.destination);o.start(t+d);o.stop(t+d+.4)})}catch(e){}}
+function toggleSom(){somOn=!somOn;try{localStorage.setItem('som',somOn?'1':'0')}catch(e){};$('somBtn').textContent=somOn?'🔔':'🔕';if(somOn)beep()}
+document.addEventListener('click',()=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}},{once:true});
+let S=null, tab='clube', ptab='of', fam='verde', cand=null, selMsg=null, lastRead='', kitStamp=Date.now();
+const $=id=>document.getElementById(id);
+const eur=v=>v==null?'—':'€ '+Math.round(v).toLocaleString('pt-BR');
+const eurM=v=>v==null?'—':(Math.abs(v)>=1e6?'€ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':eur(v));
+const dt=s=>{if(!s)return '—';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const logo=n=>`<div class="lg"><img src="/logo/${encodeURIComponent(n)}.png" onerror="this.style.display='none'"></div>`;
+const slotName=id=>(S.slots.find(s=>s.id==id)||{}).nome||id;
+const porteTag=p=>p=='grande'?'<span class="tag">GRANDE</span>':p=='media'?'<span class="tag prata">MÉDIA</span>':'<span class="tag bronze">PEQUENA</span>';
+const anos=n=>n+' temporada'+(n>1?'s':'');
+
+function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast'+(err?' err':'');e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',5000)}
+async function api(path,body){
+  const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  const j=await r.json(); if(!r.ok){toast(j.erro||'Erro',true);throw j} return j;
+}
+function go(t){tab=t;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.t==t));
+  document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('hidden',s.id!='t-'+t));
+  if(t=='msgs'&&S&&S.mensagens.some(m=>!m.lida)) api('/api/mensagens/lidas',{}).then(load);
+  render();}
+document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>go(a.dataset.t));
+document.querySelectorAll('#ptabs a').forEach(a=>a.onclick=()=>{ptab=a.dataset.p;
+  document.querySelectorAll('#ptabs a').forEach(x=>x.classList.toggle('on',x==a));
+  ['of','ct','hi'].forEach(k=>$('p-'+k).classList.toggle('hidden',k!=ptab))});
+
+async function load(){try{S=await api('/api/estado');render()}catch(e){}}
+let ATU=null;
+async function checarAtu(){try{ATU=await (await fetch('/api/atualizacao')).json();render()}catch(e){}}
+async function atualizarApp(){if(!confirm('Baixar a versão '+ATU.nova+' e reiniciar o app?'))return;
+  toast('Baixando a atualização…');try{await api('/api/atualizar',{});ATU=null;toast('Atualizado! O app está reiniciando…');
+  setTimeout(()=>location.reload(),4000)}catch(e){}}
+setTimeout(checarAtu,2500);setInterval(checarAtu,30*60*1000);
+setInterval(load,3000);load();
+
+function render(){
+  if(!S)return;
+  const ok=S.pronto&&S.data;
+  $('clubName').textContent=(S.clube||'').toUpperCase(); if(S.versao)$('ver').textContent=S.versao;
+  $('dateChip').textContent=dt(S.data);
+  $('gDot').classList.toggle('on',S.jogo_aberto);$('gTxt').textContent=S.jogo_aberto?'Jogo aberto':'Jogo fechado';
+  $('sSlot').textContent=S.save?S.save.slot:'—';$('sRead').textContent=S.save?S.save.lido_em:'—';
+  const ks=S.status||{};$('sKits').textContent='Uniformes: '+(ks.kits=='trabalhando'?'atualizando…':ks.kits_msg||'—');
+  const ab=S.ofertas.filter(o=>o.status=='aberta').length;$('bOf').textContent=ab;$('bOf').classList.toggle('hidden',!ab);
+  const nm=S.mensagens.filter(m=>!m.lida).length;$('bMsg').textContent=nm;$('bMsg').classList.toggle('hidden',!nm);
+  if(ultNaoLidas!==null&&nm>ultNaoLidas){beep();toast('Nova mensagem de patrocinador.')} ultNaoLidas=nm;
+  $('somBtn').textContent=somOn?'🔔':'🔕';
+  // banners
+  let bn='';
+  if(ATU&&ATU.tem) bn+=`<div class="banner"><p><b>Nova versão disponível (${esc(ATU.nova)}).</b> Você está na ${esc(ATU.atual)}. Sua carreira, contratos e uniformes não são apagados.</p><button class="lime" onclick="atualizarApp()">Atualizar</button></div>`;
+  if(ks.erro) bn+=`<div class="banner err"><p>${esc(ks.erro)}</p></div>`;
+  if(ks.aviso) bn+=`<div class="banner"><p><b>Dinheiro no save.</b> ${esc(ks.aviso)}</p><button class="lime" onclick="api('/api/aviso/ok',{}).then(load)">Entendi</button></div>`;
+  if(ks.kits=='trabalhando'){const p=ks.kits_prog||[0,1];
+    bn+=`<div class="banner"><p><b>Gravando os uniformes no jogo…</b> ${esc(ks.kits_msg||'')}</p><div class="prog"><i style="width:${Math.round(100*p[0]/p[1])}%"></i></div></div>`}
+  else if(S.kits_pendentes&&S.kits_pendentes.length) bn+=`<div class="banner"><p><b>Mudanças nos uniformes aguardando sua aprovação:</b> ${S.kits_pendentes.map(esc).join(' · ')}</p>
+    <button class="ghost" onclick="go('kits')">Ver prévia</button><button class="lime" onclick="aplicarKits()">Aplicar no jogo</button></div>`;
+  if(!ok) bn+=`<div class="banner"><p>Lendo o save da carreira… Se demorar, confira se o jogo já gravou um save do Master League.</p></div>`;
+  (S.avisos||[]).forEach(a=>toast(a));
+  $('banners').innerHTML=bn;
+  if(!ok)return;
+  if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
+  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps})[tab]();
+}
+
+function rClube(){
+  const d=S.dinheiro||{};
+  $('hName').textContent=S.clube;const a=S.atratividade||0;
+  $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
+  $('hDate').textContent='📅 '+dt(S.data);$('hComp').textContent='⚽ '+(S.save?S.save.clube:'');
+  $('xp').innerHTML=Array.from({length:20},(_,i)=>`<i class="${i<Math.round(a/5)?'f':''}"></i>`).join('');
+  $('atrN').textContent=a;
+  $('atrTxt').textContent=a>=80?'Marcas grandes disputam o clube':a>=60?'Bom momento para negociar':a>=40?'Mercado morno':'Fase ruim: ofertas fracas';
+  $('cTransf').textContent=eurM(d.orc_transf);$('cSal').textContent=eurM(d.orc_salario);$('cPat').textContent=eurM(d.rec_patrocinio);
+  $('forma').innerHTML=(S.forma||'').split('').map(r=>`<span class="res ${r}">${r}</span>`).join('');
+  $('matches').innerHTML=S.partidas.length?S.partidas.map(p=>`<div class="match"><small>${esc(p.torneio_nome)}</small>
+    <span class="t1">${esc(p.mandante_nome)}</span><span class="sc">${p.gm} - ${p.gv}</span><span class="t2">${esc(p.visitante_nome)}</span></div>`).join('')
+    :'<div class="empty">Nenhuma partida lida ainda.</div>';
+  const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
+  const tot=at.reduce((s,c)=>s+c.valor,0);$('contSum').textContent=at.length?`${eurM(tot)} / temporada`:'';
+  $('clubContracts').innerHTML=at.length?at.map(c=>`<div class="row">${logo(c.empresa)}<div class="nm"><b>${esc(c.empresa)}</b><small>${esc(slotName(c.slot))} · até ${dt(c.fim)}</small></div>
+     <div class="stat"><b>${eurM(c.valor)}</b><span>por temporada</span></div></div>`).join(''):'<div class="empty">Nenhum patrocinador. As posições do uniforme estão livres.</div>';
+  const of=S.ofertas.filter(o=>o.status=='aberta').slice(0,3);
+  $('clubOffers').innerHTML=of.length?of.map(o=>`<div class="row" style="cursor:pointer" onclick="go('patro')">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${anos(o.anos)}</small></div><div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div></div>`).join(''):'<div class="empty">Sem propostas no momento.</div>';
+}
+
+function clChips(cl){if(!cl)return '';return `<span class="pill ${cl.desempenho?'wait':'ok'}">${cl.desempenho?'com':'sem'} cláusula de desempenho</span> <span class="pill">multa de rescisão ${cl.multa_pct}%</span>`}
+const clFields=(cl,anosAtual)=>`<label>Cláusula de desempenho</label>
+   <select id="fDes"><option value="0" ${!cl.desempenho?'selected':''}>Não — se a empresa quiser sair por fase ruim, paga a multa</option>
+     <option value="1" ${cl.desempenho?'selected':''}>Sim — a empresa pode sair sem multa se o time for mal</option></select>
+   <label>Multa de rescisão (para quem romper o contrato)</label>
+   <select id="fMulta">${[10,20,30,50].map(m=>`<option value="${m}" ${cl.multa_pct==m?'selected':''}>${m}% do valor que faltar</option>`).join('')}</select>
+   ${anosAtual?`<label>Duração</label><select id="fAnosN">${[1,2,3].map(a=>`<option value="${a}" ${a==anosAtual?'selected':''}>${anos(a)}</option>`).join('')}</select>`:''}`;
+const clLidas=()=>({desempenho:$('fDes').value=='1',multa_pct:+$('fMulta').value});
+function offerRow(o){
+  const e=S.empresas.find(x=>x.nome==o.empresa)||{};
+  const wait=o.status=='aguardando';
+  const info=wait?`<span class="pill wait">aguardando resposta até ~${dt(o.resposta_em)}</span>`:`<span class="pill">vale até ${dt(o.validade)}</span>`;
+  const ped=wait&&o.pedido?` · você pediu ${eurM(o.pedido)}`:'';
+  return `<div class="row">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b>${porteTag(e.porte)}
+     <small>${esc(slotName(o.slot))} · ${anos(o.anos)} · início ${dt(o.inicio)}${ped}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${info} ${clChips(wait?o.clausulas_pedidas:o.clausulas)}</div></div>
+     <div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div>
+     <div class="acts">${wait?'':`<button class="lime" onclick="aceitar(${o.id})">Aceitar</button>
+       <button onclick="pedir(${o.id})">Negociar</button><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button>
+       <button class="red" onclick="recusar(${o.id})">Recusar</button>`}</div></div>`;
+}
+const stTxt={assinado:['wait','assinado · começa '],ativo:['ok','ativo'],encerrado:['','encerrado'],rescindido:['off','rescindido']};
+function rPatro(){
+  const of=S.ofertas;
+  $('p-of').innerHTML=of.length?of.map(offerRow).join(''):'<div class="empty">Sem propostas abertas. Novas ofertas chegam conforme a carreira avança (a cada semana do jogo), e são melhores quando o time está bem.</div>';
+  $('p-ct').innerHTML=S.contratos.length?S.contratos.slice().reverse().map(c=>{const[k,t]=stTxt[c.status]||['',c.status];
+    const pg=c.pagamentos.map(p=>`<span class="pill ${p.status=='confirmado'?'ok':p.status=='agendado'?'':'wait'}">${dt(p.data)} · ${eurM(p.valor)} · ${p.status}</span>`).join(' ');
+    return `<div class="row">${logo(c.empresa)}<div class="nm"><b>${esc(c.empresa)}</b> <span class="pill ${k}">${t}${c.status=='assinado'?dt(c.inicio):''}</span>
+      <small>${esc(slotName(c.slot))} · ${dt(c.inicio)} até ${dt(c.fim)}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${clChips(c.clausulas)} ${pg}</div></div>
+      <div class="stat"><b>${eurM(c.valor)}</b><span>por temporada</span></div>
+      <div class="acts">${c.status=='ativo'||c.status=='assinado'?`<button class="red" onclick="rescindir(${c.id})">Rescindir</button>`:(c.rescindido_por?`<span class="pill off">rompido por: ${esc(c.rescindido_por)}</span>`:'')}</div></div>`}).join(''):'<div class="empty">Nenhum contrato ainda.</div>';
+  const st={aceita:'aceita',recusada:'recusada por você',recusada_empresa:'recusada pela empresa',expirada:'expirou',cancelada:'cancelada'};
+  $('p-hi').innerHTML=S.ofertas_hist.length?S.ofertas_hist.map(o=>`<div class="row">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${eurM(o.valor)} / temporada</small></div><span class="pill">${st[o.status]||o.status}</span></div>`).join(''):'<div class="empty">Sem histórico.</div>';
+}
+async function aceitar(id){await api('/api/oferta/aceitar',{id});toast('Contrato assinado! O uniforme e o caixa serão atualizados.');cand=null;load()}
+async function recusar(id){if(!confirm('Recusar essa proposta?'))return;await api('/api/oferta/recusar',{id});load()}
+function pedir(id){
+  const o=S.ofertas.find(x=>x.id==id);const cl=o.clausulas||{desempenho:false,multa_pct:30};
+  $('dTitle').textContent='Negociar com a '+o.empresa;
+  $('dBody').innerHTML=`<p style="color:var(--mut);line-height:1.5">Proposta atual: <b style="color:var(--txt)">${eur(o.valor)}</b> por temporada, ${anos(o.anos)}.<br>
+   A empresa prefere: ${cl.desempenho?'com':'sem'} cláusula de desempenho e multa de ${cl.multa_pct}%. Mudar o que ela prefere, ou pedir mais dinheiro, diminui a chance de ela aceitar.</p>
+   <label>Valor por temporada</label><select id="fPct"><option value="0">Manter (${eurM(o.valor)})</option><option value="10">+10% (${eurM(o.valor*1.1)})</option><option value="20" selected>+20% (${eurM(o.valor*1.2)})</option><option value="30">+30% (${eurM(o.valor*1.3)})</option><option value="50">+50% (${eurM(o.valor*1.5)})</option></select>
+   ${clFields(cl,o.anos)}`;
+  $('dOk').textContent='Enviar contraproposta';
+  $('dOk').onclick=async()=>{await api('/api/oferta/pedir_mais',{id,pct:+$('fPct').value,clausulas:clLidas(),anos:+$('fAnosN').value});dlg.close();toast('Contraproposta enviada. A resposta chega em alguns dias da carreira.');load()};
+  dlg.showModal();
+}
+function verKit(id){const o=S.ofertas.find(x=>x.id==id);cand={slot:o.slot,empresa:o.empresa,escala:1,inclinacao:0,cores:{verde:'auto',branco:'auto',azul:'auto'},_oferta:o.id};kitStamp=Date.now();go('kits')}
+
+let visT=null;
+function rKits(){
+  $('famSeg').innerHTML=Object.entries(S.familias).map(([k,v])=>`<button class="${k==fam?'on':''}" onclick="fam='${k}';kitStamp=Date.now();rKits()">${v}</button>`).join('');
+  const src='/api/preview?familia='+fam+(cand?'&cand='+encodeURIComponent(JSON.stringify(cand)):'')+'&t='+kitStamp;
+  if($('kitImg').dataset.src!=src){$('kitImg').dataset.src=src;$('kitImg').src=src}
+  $('candInfo').innerHTML=cand?`prévia da proposta: <b style="color:var(--lime)">${esc(cand.empresa)}</b> <a style="color:var(--mut);cursor:pointer" onclick="cand=null;kitStamp=Date.now();rKits()">✕ limpar</a>`:'';
+  if(document.activeElement&&document.activeElement.type=='range')return;
+  $('slots').innerHTML=S.slots.map(s=>{
+    const c=S.contratos.find(c=>c.slot==s.id&&(c.status=='ativo'||c.status=='assinado'));
+    if(!c) return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill">${cand&&cand.slot==s.id?'prévia':'livre'}</span></div></div>`;
+    const cor=f=>['auto','original','branco','preto'].map(m=>`<option ${c.cores[f]==m?'selected':''}>${m}</option>`).join('');
+    return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill ${c.status=='ativo'?'ok':'wait'}">${esc(c.empresa)}</span></div>
+      <div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1" step="0.05" value="${c.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="vis(${c.id},{escala:+this.value})"><span>${Math.round(c.escala*100)}%</span>
+      <span>Inclinação${s.id=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${c.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="vis(${c.id},{inclinacao:+this.value})"><span>${c.inclinacao}°</span>
+      <span>Cor no ${fam}</span><select onchange="vis(${c.id},{cores:{${fam}:this.value}})">${cor(fam)}</select><span></span></div>
+      ${c.status=='assinado'?`<div style="font-size:12px;color:var(--mut);margin-top:8px">Aparece no jogo a partir de ${dt(c.inicio)}.</div>`:''}</div>`}).join('');
+}
+async function sair(){if(!confirm('Fechar o app? Ele para de acompanhar a carreira até você abrir de novo.'))return;
+  try{await fetch('/api/sair',{method:'POST'})}catch(e){} document.body.innerHTML='<div style="padding:60px;text-align:center;font-family:var(--head);font-size:22px">APP FECHADO. PODE FECHAR ESTA JANELA.</div>'}
+async function aplicarKits(){await api('/api/kits/aplicar',{});toast('Gravando os uniformes. Pode acompanhar o progresso no topo.');load()}
+async function rescindir(id){const c=S.contratos.find(x=>x.id==id);const m=(S.multa_estimada||{})[id];
+  $('dTitle').textContent='Rescindir contrato · '+c.empresa;
+  $('dBody').innerHTML=`<p style="line-height:1.5">O clube vai encerrar o patrocínio de <b>${esc(c.empresa)}</b> no espaço <b>${esc(slotName(c.slot))}</b>.</p>
+   <p style="line-height:1.5">Multa contratual (${(c.clausulas||{}).multa_pct||30}% do valor que falta): <b style="color:var(--red)">${m!=null?eur(m):'um terço da multa sobre o valor anual (o contrato ainda não começou)'}</b>. O valor será descontado do orçamento de transferências e da receita de patrocínio no save.</p>
+   <p style="color:var(--mut)">A empresa não vai querer negociar com o clube por 6 meses.</p>`;
+  $('dOk').textContent='Rescindir';$('dOk').onclick=async()=>{await api('/api/contrato/rescindir',{id});dlg.close();toast('Contrato rescindido.');load()};dlg.showModal()}
+async function vis(id,ch){await api('/api/contrato/visual',{id,...ch});kitStamp=Date.now();await load();toast('Ajuste salvo. Confira a prévia e clique em "Aplicar no jogo" quando quiser.')}
+
+function rMsgs(){
+  $('msgList').innerHTML=S.mensagens.length?S.mensagens.map(m=>`<div class="msg ${m.lida?'':'nova'} ${selMsg==m.id?'sel':''}" onclick="selMsg=${m.id};rMsgs()">${logo(m.empresa)}
+    <div><b>${esc(m.assunto)}</b><small>${esc(m.de)} · ${dt(m.data)}</small></div></div>`).join(''):'<div class="empty" style="margin:12px">Caixa vazia.</div>';
+  const m=S.mensagens.find(x=>x.id==selMsg);
+  if(!m){$('reader').innerHTML='<div class="empty">Escolha uma mensagem.</div>';return}
+  const o=S.ofertas.find(x=>x.id==m.oferta_id&&x.status=='aberta');
+  $('reader').innerHTML=`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><div class="lg big">${logo(m.empresa)}</div>
+    <div><h2>${esc(m.assunto)}</h2><small style="color:var(--mut)">${esc(m.de)} · ${dt(m.data)}</small></div></div><p>${esc(m.texto)}</p>
+    ${o?`<div style="display:flex;gap:8px;margin-top:18px"><button class="lime" onclick="aceitar(${o.id})">Aceitar</button><button onclick="pedir(${o.id})">Negociar</button><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button><button class="red" onclick="recusar(${o.id})">Recusar</button></div>`:''}`;
+}
+
+function rEmps(){
+  const busy=n=>{const c=S.contratos.find(c=>c.empresa==n&&(c.status=='ativo'||c.status=='assinado'));if(c)return `<span class="pill ok">patrocinador · ${esc(slotName(c.slot))}</span>`;
+    const o=S.ofertas.find(o=>o.empresa==n);if(o)return `<span class="pill wait">${o.status=='aguardando'?'negociando':'proposta aberta'}</span>`;return ''};
+  $('egrid').innerHTML=S.empresas.map(e=>{const bl=e.bloqueio_ate&&e.bloqueio_ate>S.data;
+    return `<div class="emp"><div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)}</div>
+    <small>${esc(e.setor)} · perfil ${esc(e.personalidade)}</small>${busy(e.nome)}${bl?`<small>Volta a negociar em ${dt(e.bloqueio_ate)}</small>`:''}
+    <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('');
+}
+async function procurar(nome){
+  $('dTitle').textContent='Proposta para '+nome;
+  const sl=S.livres.map(s=>`<option value="${s}">${esc(slotName(s))}</option>`).join('');
+  $('dBody').innerHTML=`<label>Posição no uniforme</label><select id="fSlot">${sl}</select>
+    <label>Valor por temporada (€)</label><input id="fVal" type="number" step="50000">
+    <small id="fHint" style="color:var(--mut)"></small>
+    <label>Duração</label><select id="fAnos"><option value="1">1 temporada</option><option value="2" selected>2 temporadas</option><option value="3">3 temporadas</option></select>
+    ${clFields({desempenho:false,multa_pct:30},0)}`;
+  const upd=async()=>{const j=await api('/api/valor_justo?empresa='+encodeURIComponent(nome)+'&slot='+$('fSlot').value);
+    $('fVal').value=j.valor;$('fHint').textContent='Valor de mercado estimado: '+eur(j.valor)+'. Pedir mais reduz a chance de aceite.'};
+  $('fSlot').onchange=upd;await upd();
+  $('dOk').textContent='Enviar proposta';
+  $('dOk').onclick=async()=>{await api('/api/procurar',{empresa:nome,slot:$('fSlot').value,valor:+$('fVal').value,anos:+$('fAnos').value,clausulas:clLidas()});dlg.close();toast('Proposta enviada. A resposta chega em alguns dias da carreira.');load()};
+  dlg.showModal();
+}
+</script>
+</body>
+</html>
