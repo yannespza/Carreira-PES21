@@ -178,23 +178,16 @@ class Career:
         return {k: struct.unpack_from('<i', self.sf.data, self.fin_off + o)[0] * UNIT for k, o in FIN.items()}
 
     def zerar_patrocinio(self):
-        """Tira do save a receita de patrocínio que veio com a carreira (e o mesmo valor do orçamento)."""
+        """Zera só a receita de patrocínio que veio com a carreira. O orçamento de transferências não é mexido."""
         o = self.fin_off + FIN['rec_patrocinio']
         v = struct.unpack_from('<i', self.sf.data, o)[0]
         if v > 0:
             struct.pack_into('<i', self.sf.data, o, 0)
-            # o mesmo valor sai do orçamento, sem deixar o caixa negativo
-            for key in ('orc_transf', 'orc_transf_2'):
-                ob = self.fin_off + FIN[key]
-                b = struct.unpack_from('<i', self.sf.data, ob)[0]
-                struct.pack_into('<i', self.sf.data, ob, max(min(b, 0), b - v))
             return v * UNIT
         return 0
 
-    def desfazer_zerar(self, valor, orc_antes):
+    def desfazer_zerar(self, valor, orc_antes=None):
         struct.pack_into('<i', self.sf.data, self.fin_off + FIN['rec_patrocinio'], valor // UNIT)
-        for key in ('orc_transf', 'orc_transf_2'):
-            struct.pack_into('<i', self.sf.data, self.fin_off + FIN[key], orc_antes // UNIT)
 
     def credit_sponsor(self, euros: int):
         """Soma 'euros' na receita de patrocínio e no orçamento de transferências."""

@@ -360,7 +360,7 @@ class App:
         partes = []
         if zerado:
             partes.append(f'a receita de patrocínio que veio com a carreira ({sim.fmt_eur(zerado)}) foi zerada '
-                          'para os novos patrocinadores começarem do zero')
+                          'para os novos patrocinadores começarem do zero (o orçamento de transferências não foi alterado)')
         if total:
             partes.append(f'{sim.fmt_eur(total)} de patrocínio foram colocados no save')
         if total_multa:
