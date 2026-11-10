@@ -288,7 +288,7 @@ async function checarAtu(){try{ATU=await (await fetch('/api/atualizacao')).json(
 async function atualizarApp(){if(!confirm('Baixar a versão '+ATU.nova+' e reiniciar o app?'))return;
   toast('Baixando a atualização…');try{await api('/api/atualizar',{});ATU=null;toast('Atualizado! O app está reiniciando…');
   setTimeout(()=>location.reload(),4000)}catch(e){}}
-setTimeout(checarAtu,2500);setInterval(checarAtu,30*60*1000);
+setTimeout(checarAtu,2500);setInterval(checarAtu,10*60*1000);
 setInterval(load,3000);load();
 
 function render(){

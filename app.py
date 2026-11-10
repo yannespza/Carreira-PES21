@@ -506,18 +506,27 @@ def _vtuple(v):
         return (0,)
 
 
+def _ultimo_commit():
+    """Pergunta ao GitHub qual é o commit mais novo (sem o cache de alguns minutos dos arquivos 'raw')."""
+    import urllib.request
+    req = urllib.request.Request(f'https://api.github.com/repos/{REPO}/commits/main',
+                                 headers={'Accept': 'application/vnd.github.sha', 'User-Agent': 'CarreiraPES21'})
+    with urllib.request.urlopen(req, timeout=8) as r:
+        return r.read().decode().strip()
+
+
 def checar_atualizacao():
     import urllib.request
-    url = f'https://raw.githubusercontent.com/{REPO}/main/versao.txt'
-    with urllib.request.urlopen(url, timeout=8) as r:
+    sha = _ultimo_commit()
+    with urllib.request.urlopen(f'https://raw.githubusercontent.com/{REPO}/{sha}/versao.txt', timeout=8) as r:
         nova = r.read().decode().strip()
-    return {'atual': VERSAO, 'nova': nova, 'tem': _vtuple(nova) > _vtuple(VERSAO)}
+    return {'atual': VERSAO, 'nova': nova, 'tem': _vtuple(nova) > _vtuple(VERSAO), 'sha': sha}
 
 
 def atualizar():
     """Baixa a versão nova do GitHub, guarda a atual em data/versoes e troca só os arquivos de código."""
     import urllib.request, zipfile, shutil
-    url = f'https://github.com/{REPO}/archive/refs/heads/main.zip'
+    url = f'https://github.com/{REPO}/archive/{_ultimo_commit()}.zip'
     with urllib.request.urlopen(url, timeout=60) as r:
         blob = r.read()
     z = zipfile.ZipFile(io.BytesIO(blob))
