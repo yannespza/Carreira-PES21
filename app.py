@@ -103,7 +103,7 @@ class App:
         m = os.path.getmtime(path)
         if path == self.save_path and m == self.save_mtime:
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
-            if self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
+            if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
                     x['status'] == 'pendente' for x in (self.state or {}).get('multas', []))):
                 with LOCK:
                     self.aplicar_creditos()
@@ -188,9 +188,16 @@ class App:
             car.credit_sponsor(-m['valor'])
             total_multa += m['valor']
         try:
-            bk = car.write(os.path.join(DATA, 'backups_save'))
+            bk = car.write(os.path.join(DATA, 'backups_save'), log)
         except Exception as e:
             self.status['erro'] = str(e)
+            log('não gravou o crédito:', e)
+            self._prox_tentativa = time.time() + 20
+            # desfaz na memória o que foi somado (a próxima tentativa soma de novo)
+            for c, pg in pend:
+                car.credit_sponsor(-pg['valor'])
+            for m in multas:
+                car.credit_sponsor(m['valor'])
             return
         self.save_mtime = car.mtime
         self.status['erro'] = None

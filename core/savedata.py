@@ -98,33 +98,53 @@ class Career:
             v = struct.unpack_from('<i', self.sf.data, o)[0]
             struct.pack_into('<i', self.sf.data, o, v + u)
 
-    def write(self, backup_dir):
+    def write(self, backup_dir, log=print):
         """Grava com segurança: backup, confere que o arquivo não mudou, grava, relê e confere."""
         if os.path.getmtime(self.path) != self.mtime:
-            raise RuntimeError('O jogo gravou o save de novo enquanto o app trabalhava. Tente outra vez.')
+            raise RuntimeError('O jogo gravou o save de novo enquanto o app trabalhava. Vou tentar de novo.')
         os.makedirs(backup_dir, exist_ok=True)
-        stamp = time.strftime('%Y%m%d_%H%M%S')
-        bk = os.path.join(backup_dir, f'ML_{stamp}.bak')
-        shutil.copy2(self.path, bk)
+        # um backup por versão do save (não repete a cada tentativa)
+        bk = os.path.join(backup_dir, f'ML_{int(self.mtime)}.bak')
+        if not os.path.exists(bk):
+            shutil.copy2(self.path, bk)
         new = pescrypt.encrypt(self.sf)
-        # confere a versão nova na memória antes de tocar no save
         chk = pescrypt.decrypt(new)
         if bytes(chk.data) != bytes(self.sf.data):
             raise RuntimeError('Falha na conferência do save. Nada foi alterado.')
-        # grava direto por cima do arquivo (sem arquivo temporário na pasta do OneDrive, que atrapalha)
-        ultimo_erro = None
-        for tentativa in range(5):
+        pasta, nome = os.path.split(self.path)
+        erros = []
+        gravou = False
+        # jeito 1: arquivo temporário que o OneDrive ignora (~*.tmp) e troca de uma vez
+        tmp = os.path.join(pasta, '~' + nome + '.tmp')
+        for _ in range(3):
             try:
-                with open(self.path, 'r+b') as f:
-                    f.seek(0); f.write(new); f.truncate()
-                    f.flush(); os.fsync(f.fileno())
-                ultimo_erro = None
+                with open(tmp, 'wb') as f:
+                    f.write(new); f.flush(); os.fsync(f.fileno())
+                os.replace(tmp, self.path)
+                gravou = True
                 break
             except OSError as e:
-                ultimo_erro = e
-                time.sleep(1.0)
-        if ultimo_erro:
-            raise RuntimeError(f'O Windows não deixou gravar o save agora ({ultimo_erro}). Vou tentar de novo.')
+                erros.append(f'troca: {e}')
+                time.sleep(0.7)
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        # jeito 2: escreve por cima do próprio arquivo
+        if not gravou:
+            for _ in range(3):
+                try:
+                    with open(self.path, 'r+b') as f:
+                        f.seek(0); f.write(new); f.truncate(); f.flush(); os.fsync(f.fileno())
+                    gravou = True
+                    break
+                except OSError as e:
+                    erros.append(f'por cima: {e}')
+                    time.sleep(0.7)
+        if not gravou:
+            log('falha ao gravar o save:', ' | '.join(erros[-2:]))
+            raise RuntimeError('O Windows não deixou gravar o save agora (' + erros[-1] + '). Vou tentar de novo em instantes.')
         # relê do disco e confere; se algo deu errado, volta o backup
         try:
             ok = bytes(pescrypt.decrypt(open(self.path, 'rb').read()).data) == bytes(self.sf.data)
@@ -134,8 +154,8 @@ class Career:
             shutil.copyfile(bk, self.path)
             raise RuntimeError('A gravação do save não conferiu; o backup foi restaurado. Nada mudou.')
         self.mtime = os.path.getmtime(self.path)
-        # limpa backups antigos (mantém os 30 mais recentes)
-        baks = sorted(f for f in os.listdir(backup_dir) if f.startswith('ML_'))
+        baks = sorted((f for f in os.listdir(backup_dir) if f.startswith('ML_')),
+                      key=lambda f: os.path.getmtime(os.path.join(backup_dir, f)))
         for f in baks[:-30]:
             try:
                 os.remove(os.path.join(backup_dir, f))
