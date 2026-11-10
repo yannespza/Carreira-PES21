@@ -102,6 +102,12 @@ class App:
             return
         m = os.path.getmtime(path)
         if path == self.save_path and m == self.save_mtime:
+            # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
+            if self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
+                    x['status'] == 'pendente' for x in (self.state or {}).get('multas', []))):
+                with LOCK:
+                    self.aplicar_creditos()
+                    self.persist()
             return
         # espera o jogo terminar de gravar (tamanho estável)
         s1 = os.path.getsize(path); time.sleep(1.5)
@@ -187,6 +193,7 @@ class App:
             self.status['erro'] = str(e)
             return
         self.save_mtime = car.mtime
+        self.status['erro'] = None
         money = car.money()
         hoje = self.state['data']
         for c, pg in pend:
@@ -380,7 +387,8 @@ class H(BaseHTTPRequestHandler):
                 fam = q.get('familia', 'verde')
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 with LOCK:
-                    cs = json.loads(json.dumps([c for c in A.state.get('contratos', []) if c['status'] in ('ativo', 'assinado')]))
+                    cs = json.loads(json.dumps([c for c in (A.state or {}).get('contratos', [])
+                                                if c['status'] in ('ativo', 'assinado')]))
                 if q.get('cand'):
                     cand = json.loads(q['cand'])
                     cs = [c for c in cs if c['slot'] != cand['slot'] and c.get('id') != cand.get('id')] + [cand]

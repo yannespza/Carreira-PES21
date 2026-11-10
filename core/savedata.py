@@ -107,15 +107,32 @@ class Career:
         bk = os.path.join(backup_dir, f'ML_{stamp}.bak')
         shutil.copy2(self.path, bk)
         new = pescrypt.encrypt(self.sf)
-        tmp = self.path + '.app_tmp'
-        with open(tmp, 'wb') as f:
-            f.write(new)
-        # confere a cópia antes de substituir
-        chk = pescrypt.decrypt(open(tmp, 'rb').read())
+        # confere a versão nova na memória antes de tocar no save
+        chk = pescrypt.decrypt(new)
         if bytes(chk.data) != bytes(self.sf.data):
-            os.remove(tmp)
             raise RuntimeError('Falha na conferência do save. Nada foi alterado.')
-        os.replace(tmp, self.path)
+        # grava direto por cima do arquivo (sem arquivo temporário na pasta do OneDrive, que atrapalha)
+        ultimo_erro = None
+        for tentativa in range(5):
+            try:
+                with open(self.path, 'r+b') as f:
+                    f.seek(0); f.write(new); f.truncate()
+                    f.flush(); os.fsync(f.fileno())
+                ultimo_erro = None
+                break
+            except OSError as e:
+                ultimo_erro = e
+                time.sleep(1.0)
+        if ultimo_erro:
+            raise RuntimeError(f'O Windows não deixou gravar o save agora ({ultimo_erro}). Vou tentar de novo.')
+        # relê do disco e confere; se algo deu errado, volta o backup
+        try:
+            ok = bytes(pescrypt.decrypt(open(self.path, 'rb').read()).data) == bytes(self.sf.data)
+        except Exception:
+            ok = False
+        if not ok:
+            shutil.copyfile(bk, self.path)
+            raise RuntimeError('A gravação do save não conferiu; o backup foi restaurado. Nada mudou.')
         self.mtime = os.path.getmtime(self.path)
         # limpa backups antigos (mantém os 30 mais recentes)
         baks = sorted(f for f in os.listdir(backup_dir) if f.startswith('ML_'))
