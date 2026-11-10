@@ -192,6 +192,9 @@ class App:
         except Exception as e:
             self.status['erro'] = str(e)
             log('não gravou o crédito:', e)
+            if 'Bad file descriptor' in str(e) or 'No such file' in str(e):
+                self.status['erro'] = ('O Windows bloqueou a gravação do save. Libere o Python em Segurança do Windows > '
+                                       'Proteção contra ransomware > Permitir um aplicativo pelo Acesso controlado a pastas.')
             self._prox_tentativa = time.time() + 20
             # desfaz na memória o que foi somado (a próxima tentativa soma de novo)
             for c, pg in pend:
@@ -359,8 +362,11 @@ class H(BaseHTTPRequestHandler):
         self.send_header('Content-Type', ctype)
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionError, OSError):
+            pass   # a janela fechou ou recarregou no meio da resposta: não é erro
 
     def do_GET(self):
         u = urlparse(self.path)
@@ -622,7 +628,17 @@ def main():
     A.logos.scan()
     threading.Thread(target=watcher, daemon=True).start()
     threading.Thread(target=logos_watcher, daemon=True).start()
-    srv = ThreadingHTTPServer(('127.0.0.1', PORT), H)
+    class Servidor(ThreadingHTTPServer):
+        daemon_threads = True
+
+        def handle_error(self, request, client_address):
+            # conexões que a janela do app fecha no meio não são erro; o resto vai para o log
+            exc = sys.exc_info()[1]
+            if isinstance(exc, (ConnectionError, OSError)):
+                return
+            log(traceback.format_exc())
+
+    srv = Servidor(('127.0.0.1', PORT), H)
     A.server = srv
     print('\n  App de Carreira rodando em', url, '\n')
     if '--sem-navegador' not in sys.argv and '--reiniciar' not in sys.argv:
