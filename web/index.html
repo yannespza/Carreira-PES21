@@ -38,7 +38,7 @@ input[type=range]{padding:0;accent-color:var(--lime)}
 .club small{color:var(--mut);font-size:11px}
 .club b{font-family:var(--head);font-size:17px;letter-spacing:.06em}
 nav{display:flex;flex:1}
-nav a{display:flex;align-items:center;gap:8px;padding:0 14px;white-space:nowrap;color:var(--mut);text-decoration:none;font-family:var(--head);
+nav a{display:flex;align-items:center;gap:7px;padding:0 10px;white-space:nowrap;font-size:13px !important;letter-spacing:.07em !important;color:var(--mut);text-decoration:none;font-family:var(--head);
   letter-spacing:.12em;font-size:14px;border-bottom:3px solid transparent;cursor:pointer}
 nav a:hover{color:var(--txt)}
 nav a.on{color:var(--txt);border-bottom-color:var(--lime)}
@@ -168,6 +168,7 @@ dialog select,dialog input{width:100%}
     <a data-t="clube" class="on">◆ Clube</a>
     <a data-t="patro">◆ Patrocínios <span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits">◆ Uniformes</a>
+    <a data-t="fin">◆ Finanças</a>
     <a data-t="news">◆ Notícias</a>
     <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
     <a data-t="emps">◆ Empresas</a>
@@ -234,6 +235,17 @@ dialog select,dialog input{width:100%}
         <div class="box"><h3>Posições <small id="candInfo"></small></h3><div id="slots"></div></div>
       </div>
     </div>
+  </section>
+
+  <!-- FINANÇAS -->
+  <section id="t-fin" class="hidden">
+    <div class="crumb">Início / <b>Finanças</b></div>
+    <div class="cards" id="finCards" style="margin-bottom:18px"></div>
+    <div class="grid2">
+      <div class="box"><h3>Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
+      <div class="box"><h3>Receitas da temporada <small>como aparecem no jogo</small></h3><div id="finRec"></div></div>
+    </div>
+    <div class="box" style="margin-top:20px"><h3>Movimentos de patrocínio <small>feitos pelo app no save</small></h3><div id="finMov"></div></div>
   </section>
 
   <!-- NOTÍCIAS -->
@@ -341,7 +353,7 @@ function render(){
   $('banners').innerHTML=bn;
   if(!ok)return;
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
-  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews})[tab]();
+  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin})[tab]();
 }
 
 function rClube(){rHumor();
@@ -386,6 +398,29 @@ function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
 function rNews(){const m=S.mundo||{noticias:[],posts:[]};
   $('newsList').innerHTML=m.noticias.length?m.noticias.map(n=>`<div class="news ${n.destaque?'dest':''}"><b>${esc(n.titulo)}</b><small>${esc(n.fonte)} · ${dt(n.data)}</small></div>`).join(''):'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';
   $('postList').innerHTML=m.posts.length?m.posts.map(p=>`<div class="post"><div class="av">${esc(p.autor[1].toUpperCase())}</div><div><b>${esc(p.autor)}</b><p>${esc(p.texto)}</p><small>${dt(p.data)} · ♥ ${p.curtidas.toLocaleString('pt-BR')}</small></div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>'}
+function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O gráfico aparece a partir do segundo save lido.</div>';
+  const W=560,H=220,P=36;const all=series.flatMap(s=>pts.map(p=>p[s.k]||0));const mx=Math.max(...all)*1.08||1,mn=0;
+  const x=i=>P+(W-P-10)*i/(pts.length-1),y=v=>H-P+( -(H-P-14)*(v-mn)/(mx-mn));
+  let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%">`;
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;g+=`<line x1="${P}" x2="${W-10}" y1="${y(v)}" y2="${y(v)}" stroke="#2a303b"/><text x="${P-6}" y="${y(v)+4}" fill="#8a93a3" font-size="10" text-anchor="end">${(v/1e6).toFixed(0)}</text>`}
+  series.forEach(s=>{g+=`<polyline fill="none" stroke="${s.c}" stroke-width="2.5" points="${pts.map((p,i)=>x(i)+','+y(p[s.k]||0)).join(' ')}"/>`;
+    const l=pts.length-1;g+=`<circle cx="${x(l)}" cy="${y(pts[l][s.k]||0)}" r="4" fill="${s.c}"/>`});
+  g+=`<text x="${P}" y="${H-10}" fill="#8a93a3" font-size="10">${dt(pts[0].data)}</text><text x="${W-10}" y="${H-10}" fill="#8a93a3" font-size="10" text-anchor="end">${dt(pts[pts.length-1].data)}</text></svg>`;
+  return g+`<div style="display:flex;gap:16px;font-size:12px;color:var(--mut)">${series.map(s=>`<span><i style="display:inline-block;width:10px;height:10px;background:${s.c};margin-right:6px"></i>${s.n}</span>`).join('')}<span>valores em € milhões</span></div>`}
+function rFin(){const d=S.dinheiro||{};const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
+  const tot=at.reduce((s,c)=>s+c.valor,0);
+  const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
+  const mul=(S.multas||[]).filter(m=>m.status=='aplicada').reduce((a,m)=>a+m.valor,0);
+  $('finCards').innerHTML=`<div class="card"><b>${eurM(d.orc_transf)}</b><span>Orç. transferências</span></div><div class="card"><b>${eurM(d.orc_salario)}</b><span>Orç. salários</span></div>
+    <div class="card"><b>${eurM(tot)}</b><span>Patrocínios / temporada</span></div><div class="card"><b>${eurM(rec)}</b><span>Já recebido pelo app</span></div><div class="card"><b>${eurM(mul)}</b><span>Multas pagas</span></div>`;
+  $('finChart').innerHTML=svgLinhas(S.fin_hist||[],[{k:'orc_transf',n:'Orç. transferências',c:'#c8f031'},{k:'rec_patrocinio',n:'Receita de patrocínio',c:'#5aa9ff'},{k:'orc_salario',n:'Orç. salários',c:'#f2c230'}]);
+  const linhas=[['Direitos de transmissão',d.rec_transmissao],['Patrocínio',d.rec_patrocinio],['Sócios torcedores',d.rec_socios],['Bilheteria',d.rec_bilheteria]];
+  const mx=Math.max(...linhas.map(l=>l[1]||0))||1;
+  $('finRec').innerHTML=linhas.map(([n,v])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${n}</span><b>${eur(v)}</b></div><div class="bar" style="margin-top:5px"><i style="width:${100*(v||0)/mx}%;background:var(--lime)"></i></div></div>`).join('')+'<p style="font-size:12px;color:var(--mut)">Vendas de produtos, prêmios, taxa de transferência e salário anual ainda não foram localizados no save.</p>';
+  const mov=[...S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status!='agendado'&&p.status!='cancelado').map(p=>({data:p.creditado_em||p.data,t:(p.tipo=='multa'?'Multa paga por ':'Pagamento de ')+c.empresa,v:p.valor,s:p.status}))),
+    ...(S.multas||[]).map(m=>({data:m.aplicada_em||m.data,t:'Multa de rescisão paga à '+m.empresa,v:-m.valor,s:m.status}))].sort((a,b)=>b.data.localeCompare(a.data));
+  const stx={pendente:'aguardando gravar',creditado:'no save · recarregue a carreira',confirmado:'confirmado no jogo',aplicada:'descontado no save'};
+  $('finMov').innerHTML=mov.length?mov.map(m=>`<div class="match" style="grid-template-columns:110px 1fr 160px 220px"><small>${dt(m.data)}</small><span>${esc(m.t)}</span><b style="color:${m.v<0?'var(--red)':'var(--green)'};text-align:right">${m.v<0?'−':'+'} ${eur(Math.abs(m.v))}</b><small style="text-align:right">${stx[m.s]||m.s}</small></div>`).join(''):'<div class="empty">Nenhum movimento ainda.</div>'}
 function offerRow(o){
   const e=S.empresas.find(x=>x.nome==o.empresa)||{};
   const wait=o.status=='aguardando';

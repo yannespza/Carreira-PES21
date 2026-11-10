@@ -143,6 +143,14 @@ class App:
             st['save_info'] = {'arquivo': path, 'slot': car.slot_name, 'clube': car.club_line,
                                'lido_em': time.strftime('%d/%m %H:%M:%S')}
             st['dinheiro'] = car.money()
+            # histórico financeiro (um ponto por data da carreira)
+            fh = st.setdefault('fin_hist', [])
+            ponto = {'data': sim.d2s(car.date), **st['dinheiro']}
+            if fh and fh[-1]['data'] == ponto['data']:
+                fh[-1] = ponto
+            else:
+                fh.append(ponto)
+            st['fin_hist'] = fh[-200:]
             if car.fin_off is None:
                 self.status['erro'] = 'Não achei o bloco de finanças nesse save.'
             self.engine.registrar_partidas(car.results, CFG['time_id'], sim.d2s(car.date))
@@ -327,6 +335,7 @@ class App:
             'save': st.get('save_info'), 'jogo_aberto': self.game_running(),
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
+            'fin_hist': st.get('fin_hist', [])[-60:],
             'mundo': mundo.Mundo(st, CFG.get('clube', 'Palmeiras'), CFG['time_id']).view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
