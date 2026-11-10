@@ -28,8 +28,8 @@ SLOT_ORDER = ['peito', 'barra', 'mangas', 'costas', 'calcao', 'calcao_tras']
 # recortes da textura para a pré-visualização (cada vista pode juntar mais de um pedaço lado a lado)
 VIEWS = {
     'frente': [(690, 1080, 1360, 1860)],
-    'costas': [(690, 640, 1360, 1080)],
-    'mangas': [(470, 760, 800, 1140), (1250, 760, 1580, 1140)],
+    'costas': [(765, 640, 1285, 1080)],
+    'mangas': [(470, 700, 762, 1110), (1288, 700, 1580, 1110)],
     'calcao': [(0, 1190, 440, 1890), (1390, 1190, 2048, 1890)],
 }
 
@@ -124,13 +124,29 @@ def _view(img, rects):
     return out
 
 
+ROTULOS = {'frente': ['FRENTE'], 'costas': ['COSTAS'], 'mangas': ['MANGA DIREITA', 'MANGA ESQUERDA'],
+           'calcao': ['CALCAO - ESQ.', 'CALCAO - DIR. / TRAS']}
+
+
+def _rotular(p, rotulos, n_partes):
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(p)
+    w = p.width / max(1, n_partes)
+    for i, t in enumerate(rotulos):
+        x = int(i * w) + 8
+        tw = 7 * len(t) + 10
+        d.rectangle([x, 6, x + tw, 24], fill=(12, 14, 18))
+        d.text((x + 5, 9), t, fill=(200, 240, 49))
+    return p
+
+
 def preview(img: Image.Image, width=520):
     """Junta as vistas (frente, costas, mangas, calção) numa imagem só para a tela do app."""
     parts = []
     for v in ('frente', 'costas', 'mangas', 'calcao'):
         p = _view(img, VIEWS[v])
         p = p.resize((width, int(p.height * width / p.width)), Image.LANCZOS)
-        parts.append(p)
+        parts.append(_rotular(p, ROTULOS[v], len(VIEWS[v])))
     H = sum(p.height for p in parts) + 6 * (len(parts) - 1)
     out = Image.new('RGB', (width, H), (14, 16, 20))
     y = 0
