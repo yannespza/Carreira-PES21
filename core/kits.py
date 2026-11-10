@@ -78,9 +78,14 @@ def colorize(logo: Image.Image, mode: str, bg_rgb):
     return solid
 
 
-def place(canvas: Image.Image, logo: Image.Image, lugar, escala=1.0, inclinacao=0, cor='auto'):
+def place(canvas: Image.Image, logo: Image.Image, lugar, escala=1.0, inclinacao=0, cor='auto', dx=0, dy=0):
     cx, cy, w, h, rot = lugar[:5]
     lado = lugar[5] if len(lugar) > 5 else 1   # inclinação espelhada entre os lados (mangas)
+    # deslocamento no sentido de leitura do logo (dx) e perpendicular a ele (dy), espelhado nos pares
+    import math
+    t = math.radians(rot)
+    cx = cx + (dx * lado) * math.cos(t) + dy * math.sin(t)
+    cy = cy - (dx * lado) * math.sin(t) + dy * math.cos(t)
     bg = canvas.convert('RGB').getpixel((int(cx), int(cy)))
     lg = colorize(logo, cor, bg)
     bw, bh = w * escala, h * escala
@@ -109,7 +114,7 @@ def compose(app_dir, variant, fname, familia, contratos, logo_loader):
             continue
         cor = (c.get('cores') or {}).get(familia, 'auto')
         for lugar in slot['lugares']:
-            place(img, logo, lugar, c.get('escala', 1.0), c.get('inclinacao', 0), cor)
+            place(img, logo, lugar, c.get('escala', 1.0), c.get('inclinacao', 0), cor, c.get('dx', 0), c.get('dy', 0))
     return img
 
 

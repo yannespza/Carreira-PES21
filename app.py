@@ -218,6 +218,7 @@ class App:
     @staticmethod
     def assinatura(cs):
         return json.dumps(sorted([[c['id'], c['slot'], c['empresa'], c.get('escala'), c.get('inclinacao'),
+                                   c.get('dx', 0), c.get('dy', 0),
                                    sorted((c.get('cores') or {}).items())] for c in cs]), ensure_ascii=False)
 
     def kits_pendentes(self):
@@ -436,6 +437,8 @@ class H(BaseHTTPRequestHandler):
                         if c['id'] == int(body['id']):
                             c['escala'] = float(body.get('escala', c['escala']))
                             c['inclinacao'] = float(body.get('inclinacao', c['inclinacao']))
+                            c['dx'] = float(body.get('dx', c.get('dx', 0)))
+                            c['dy'] = float(body.get('dy', c.get('dy', 0)))
                             c['cores'].update(body.get('cores', {}))
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/mensagens/lidas':

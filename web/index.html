@@ -401,9 +401,12 @@ function rKits(){
     if(!c) return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill">${cand&&cand.slot==s.id?'prévia':'livre'}</span></div></div>`;
     const cor=f=>['auto','original','branco','preto'].map(m=>`<option ${c.cores[f]==m?'selected':''}>${m}</option>`).join('');
     return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill ${c.status=='ativo'?'ok':'wait'}">${esc(c.empresa)}</span></div>
-      <div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1" step="0.05" value="${c.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="vis(${c.id},{escala:+this.value})"><span>${Math.round(c.escala*100)}%</span>
+      <div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${c.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="vis(${c.id},{escala:+this.value})"><span>${Math.round(c.escala*100)}%</span>
+      <span>Posição ↔</span><input type="range" min="-200" max="200" step="5" value="${c.dx||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="vis(${c.id},{dx:+this.value})"><span>${c.dx||0}</span>
+      <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${c.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="vis(${c.id},{dy:+this.value})"><span>${c.dy||0}</span>
       <span>Inclinação${s.id=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${c.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="vis(${c.id},{inclinacao:+this.value})"><span>${c.inclinacao}°</span>
       <span>Cor no ${fam}</span><select onchange="vis(${c.id},{cores:{${fam}:this.value}})">${cor(fam)}</select><span></span></div>
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="ghost" style="padding:5px 9px;font-size:11px" onclick="vis(${c.id},{escala:1,inclinacao:${s.inclinacao_padrao||0},dx:0,dy:0})">Voltar ao padrão</button></div>
       ${c.status=='assinado'?`<div style="font-size:12px;color:var(--mut);margin-top:8px">Aparece no jogo a partir de ${dt(c.inicio)}.</div>`:''}</div>`}).join('');
 }
 async function sair(){if(!confirm('Fechar o app? Ele para de acompanhar a carreira até você abrir de novo.'))return;
