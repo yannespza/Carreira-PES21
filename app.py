@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import savedata, kits, sim
+from core import savedata, kits, sim, mundo
 from core.logos import LogoBank
 
 PORT = 8765
@@ -38,7 +38,7 @@ def jsave(p, obj):
 
 
 CFG = jload(os.path.join(DATA, 'config.json'), {})
-TORNEIOS = {17: 'Brasileirão'}
+TORNEIOS = {17: 'Brasileirão', 4099: 'Libertadores'}
 
 
 def team_names():
@@ -149,10 +149,19 @@ class App:
             self.engine.avancar(car.date, primeira_leitura=novo)
             self.verificar_creditos(car)
             self.aplicar_creditos()
+            self.mundo_processar()
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
         log('save lido:', car.slot_name, car.date, 'patrocínio', st['dinheiro'].get('rec_patrocinio'))
+
+    # ----- imprensa, torcida, diretoria -----
+    def mundo_processar(self):
+        try:
+            mundo.Mundo(self.state, CFG.get('clube', 'Palmeiras'), CFG['time_id']).processar(
+                self.engine, lambda i: self.names.get(i, f'Time {i}'))
+        except Exception:
+            log(traceback.format_exc())
 
     # ----- dinheiro no jogo -----
     def verificar_creditos(self, car):
@@ -318,6 +327,7 @@ class App:
             'save': st.get('save_info'), 'jogo_aberto': self.game_running(),
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
+            'mundo': mundo.Mundo(st, CFG.get('clube', 'Palmeiras'), CFG['time_id']).view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
         }
@@ -450,6 +460,7 @@ class H(BaseHTTPRequestHandler):
                     if vis.get('cores'):
                         c['cores'].update(vis['cores'])
                     A.aplicar_creditos()
+                    A.mundo_processar()
                     A.persist()
                     return self.send(200, {'ok': True, 'contrato': c})
                 if u.path == '/api/oferta/recusar':
@@ -500,7 +511,7 @@ class H(BaseHTTPRequestHandler):
                     A.aplicar_kits(); return self.send(200, {'ok': True})
                 if u.path == '/api/contrato/rescindir':
                     multa = eng.rescindir(body['id'])
-                    A.aplicar_creditos(); A.persist()
+                    A.aplicar_creditos(); A.mundo_processar(); A.persist()
                     return self.send(200, {'ok': True, 'multa': multa})
                 if u.path == '/api/empresa':
                     e = A.state['empresas'][body['nome']]

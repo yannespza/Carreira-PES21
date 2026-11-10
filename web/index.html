@@ -143,6 +143,19 @@ dialog select,dialog input{width:100%}
 .toast{position:fixed;right:20px;bottom:20px;background:var(--panel2);border-left:4px solid var(--lime);padding:12px 16px;border-radius:3px;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;z-index:20}
 .toast.err{border-left-color:var(--red)}
 .prog{width:220px;height:10px;background:#2b313b;border-radius:2px;overflow:hidden}.prog i{display:block;height:100%;background:var(--lime);transition:width .4s}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.meter{background:var(--panel);border-radius:4px;padding:14px 16px}
+.meter h4{margin:0 0 8px;font-family:var(--head);letter-spacing:.06em;font-size:14px;display:flex;justify-content:space-between}
+.meter h4 b{font-size:22px}
+.bar{height:10px;background:#2b313b;border-radius:2px;overflow:hidden}.bar i{display:block;height:100%}
+.meter p{margin:8px 0 0;font-size:12px;color:var(--mut);line-height:1.4}
+.news{padding:10px 4px;border-bottom:1px solid var(--line)}
+.news b{display:block;font-size:15px;line-height:1.3}
+.news.dest b{font-family:var(--head);font-size:19px;letter-spacing:.02em;text-transform:uppercase;color:var(--lime)}
+.news small{color:var(--mut);font-size:11px}
+.post{display:flex;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.post .av{width:34px;height:34px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;font-family:var(--head);color:var(--lime);flex:none}
+.post b{font-size:13px}.post p{margin:3px 0;font-size:14px}.post small{color:var(--mut);font-size:11px}
 .foot{color:var(--dim);font-size:11px;margin-top:30px}
 .hidden{display:none}
 </style>
@@ -155,6 +168,7 @@ dialog select,dialog input{width:100%}
     <a data-t="clube" class="on">◆ Clube</a>
     <a data-t="patro">◆ Patrocínios <span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits">◆ Uniformes</a>
+    <a data-t="news">◆ Notícias</a>
     <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
     <a data-t="emps">◆ Empresas</a>
   </nav>
@@ -182,6 +196,7 @@ dialog select,dialog input{width:100%}
         <div class="card"><b id="cPat">—</b><span>Receita patrocínio</span></div>
       </div>
     </div>
+    <div class="grid3" id="humor"></div>
     <div class="grid2">
       <div class="box">
         <h3>Últimas partidas <small>forma: <span id="forma"></span></small></h3>
@@ -218,6 +233,15 @@ dialog select,dialog input{width:100%}
       <div>
         <div class="box"><h3>Posições <small id="candInfo"></small></h3><div id="slots"></div></div>
       </div>
+    </div>
+  </section>
+
+  <!-- NOTÍCIAS -->
+  <section id="t-news" class="hidden">
+    <div class="crumb">Início / <b>Notícias e redes sociais</b></div>
+    <div class="grid2">
+      <div class="box"><h3>Manchetes <small>imprensa esportiva</small></h3><div id="newsList"></div></div>
+      <div class="box"><h3>Redes sociais <small>o que a torcida está dizendo</small></h3><div id="postList"></div></div>
     </div>
   </section>
 
@@ -263,7 +287,7 @@ const eur=v=>v==null?'—':'€ '+Math.round(v).toLocaleString('pt-BR');
 const eurM=v=>v==null?'—':(Math.abs(v)>=1e6?'€ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':eur(v));
 const dt=s=>{if(!s)return '—';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const logo=n=>`<div class="lg"><img src="/logo/${encodeURIComponent(n)}.png" onerror="this.style.display='none'"></div>`;
+const logo=n=>`<div class="lg"><img src="${n=='__diretoria__'?'/icone.png':'/logo/'+encodeURIComponent(n)+'.png'}" onerror="this.style.display='none'"></div>`;
 const slotName=id=>(S.slots.find(s=>s.id==id)||{}).nome||id;
 const porteTag=p=>p=='grande'?'<span class="tag">GRANDE</span>':p=='media'?'<span class="tag prata">MÉDIA</span>':'<span class="tag bronze">PEQUENA</span>';
 const anos=n=>n+' temporada'+(n>1?'s':'');
@@ -317,10 +341,10 @@ function render(){
   $('banners').innerHTML=bn;
   if(!ok)return;
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
-  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps})[tab]();
+  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews})[tab]();
 }
 
-function rClube(){
+function rClube(){rHumor();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
   $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
@@ -349,6 +373,19 @@ const clFields=(cl,anosAtual)=>`<label>Cláusula de desempenho</label>
    <select id="fMulta">${[10,20,30,50].map(m=>`<option value="${m}" ${cl.multa_pct==m?'selected':''}>${m}% do valor que faltar</option>`).join('')}</select>
    ${anosAtual?`<label>Duração</label><select id="fAnosN">${[1,2,3].map(a=>`<option value="${a}" ${a==anosAtual?'selected':''}>${anos(a)}</option>`).join('')}</select>`:''}`;
 const clLidas=()=>({desempenho:$('fDes').value=='1',multa_pct:+$('fMulta').value});
+function cor(v){return v>=70?'var(--green)':v>=45?'var(--gold)':'var(--red)'}
+function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
+  const t=m.torcida,d=m.diretoria,ap=m.aproveitamento,mt=m.metas;
+  const tTxt=t>=80?'Euforia: estádio lotado e camisa vendendo':t>=60?'Torcida satisfeita':t>=40?'Torcida desconfiada':t>=25?'Torcida irritada: protestos nas redes':'Revolta: protestos no estádio';
+  const dTxt=d>=80?'Total confiança no seu trabalho':d>=55?'Diretoria tranquila':d>=35?'Diretoria cobrando resultados':'Cargo ameaçado';
+  $('humor').innerHTML=`<div class="meter"><h4>TORCIDA <b style="color:${cor(t)}">${t}</b></h4><div class="bar"><i style="width:${t}%;background:${cor(t)}"></i></div><p>${tTxt}. Torcida feliz deixa o clube mais atraente para patrocinadores.</p></div>
+   <div class="meter"><h4>DIRETORIA <b style="color:${cor(d)}">${d}</b></h4><div class="bar"><i style="width:${d}%;background:${cor(d)}"></i></div><p>${dTxt}.</p></div>
+   <div class="meter"><h4>METAS DA TEMPORADA</h4>
+    <p style="margin-top:0">Aproveitamento no Brasileirão: <b style="color:${ap==null?'var(--txt)':ap>=mt.aproveitamento?'var(--green)':'var(--red)'}">${ap==null?'—':ap+'%'}</b> (meta ${mt.aproveitamento}%)</p>
+    <p>Patrocínios por temporada: <b style="color:${m.patrocinio_anual>=mt.patrocinio?'var(--green)':'var(--gold)'}">${eurM(m.patrocinio_anual)}</b> (meta ${eurM(mt.patrocinio)})</p></div>`}
+function rNews(){const m=S.mundo||{noticias:[],posts:[]};
+  $('newsList').innerHTML=m.noticias.length?m.noticias.map(n=>`<div class="news ${n.destaque?'dest':''}"><b>${esc(n.titulo)}</b><small>${esc(n.fonte)} · ${dt(n.data)}</small></div>`).join(''):'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';
+  $('postList').innerHTML=m.posts.length?m.posts.map(p=>`<div class="post"><div class="av">${esc(p.autor[1].toUpperCase())}</div><div><b>${esc(p.autor)}</b><p>${esc(p.texto)}</p><small>${dt(p.data)} · ♥ ${p.curtidas.toLocaleString('pt-BR')}</small></div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>'}
 function offerRow(o){
   const e=S.empresas.find(x=>x.nome==o.empresa)||{};
   const wait=o.status=='aguardando';

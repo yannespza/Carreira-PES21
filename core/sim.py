@@ -98,6 +98,8 @@ class Engine:
             if p['res'] == 'V': seq += 1
             else: break
         pts += 2.0 * max(0, seq - 2)
+        # humor da torcida também pesa (torcida feliz = marca mais exposta)
+        pts += (self.s.get('mundo', {}).get('torcida', 60) - 60) / 5
         return int(max(15, min(100, self.base_atr + pts)))
 
     def msg(self, tipo, empresa, data, oferta_id=None, **v):
@@ -130,12 +132,17 @@ class Engine:
 
     # ---------- partidas ----------
     def registrar_partidas(self, results, team_id, data):
+        """O save guarda só os últimos jogos (janela que anda). Cada jogo é identificado por
+        torneio + mandante + visitante + temporada, para não contar o mesmo jogo duas vezes."""
+        ano = data[:4]
+        self._migrar_chaves()
         conhecidas = {p['chave'] for p in self.s['partidas']}
         novas = []
-        for r in results:
-            chave = f"{r['torneio']}-{r['mandante']}-{r['visitante']}-{r['offset']}"
+        for r in sorted(results, key=lambda r: r['offset']):
+            chave = f"{r['torneio']}-{r['mandante']}-{r['visitante']}-{ano}"
             if chave in conhecidas:
                 continue
+            conhecidas.add(chave)
             casa = r['mandante'] == team_id
             gp, gc = (r['gols_mandante'], r['gols_visitante']) if casa else (r['gols_visitante'], r['gols_mandante'])
             res = 'V' if gp > gc else 'E' if gp == gc else 'D'
@@ -143,6 +150,22 @@ class Engine:
                  'visitante': r['visitante'], 'gm': r['gols_mandante'], 'gv': r['gols_visitante'], 'res': res}
             self.s['partidas'].append(p); novas.append(p)
         return novas
+
+    def _migrar_chaves(self):
+        """Converte chaves antigas (com posição no arquivo) e remove jogos repetidos."""
+        if self.s.get('chaves_v2'):
+            return
+        vistos = {}; nova = []
+        for p in self.s['partidas']:
+            k = f"{p['torneio']}-{p['mandante']}-{p['visitante']}-{p['data'][:4]}"
+            if k in vistos:
+                continue
+            vistos[k] = 1; p['chave'] = k; nova.append(p)
+        self.s['partidas'] = nova
+        m = self.s.get('mundo')
+        if m:
+            m['vistos']['partidas'] = [p['chave'] for p in nova]
+        self.s['chaves_v2'] = True
 
     # ---------- avanço do tempo ----------
     def avancar(self, nova_data: dt.date, primeira_leitura=False):
