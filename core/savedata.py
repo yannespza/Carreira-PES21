@@ -29,7 +29,7 @@ def find_finance_block(data: bytes):
 
 # posições dentro do bloco de finanças (a partir do orçamento de transferências)
 FIN = {
-    'orc_transf': 0x00, 'orc_transf_2': 0x10, 'orc_salario': 0x1c,
+    'orc_transf': 0x00, 'orc_transf_2': 0x10, 'teto_salario': 0x14, 'orc_salario': 0x1c,
     'rec_transmissao': 0x2c, 'rec_patrocinio': 0x30, 'rec_socios': 0x34,
     'rec_bilheteria': 0x4c,
 }

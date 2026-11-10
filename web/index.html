@@ -399,6 +399,9 @@ const $=id=>document.getElementById(id);
 const MO=()=>(S&&S.moeda)||{simbolo:'€',taxa:1};
 const eur=v=>v==null?'—':MO().simbolo+' '+Math.round(v*MO().taxa).toLocaleString('pt-BR');
 const eurM=v=>v==null?'—':(Math.abs(v*MO().taxa)>=1e6?MO().simbolo+' '+(v*MO().taxa/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':eur(v));
+// em carreira nova o jogo ainda não gravou o saldo de salários; mostra o teto (o jogo desconta a folha na hora)
+const salTxt=d=>d.orc_salario?eurM(d.orc_salario):(d.teto_salario?'teto '+eurM(d.teto_salario):'—');
+const salDica=d=>d.orc_salario?'':'O jogo mostra o teto de salários menos a folha atual. Em carreira nova o save ainda não traz esse saldo, então o app mostra o teto.';
 async function trocarMoeda(cod){await api('/api/moeda',{cod});toast('Valores agora em '+cod+'.');load()}
 const dt=s=>{if(!s)return '—';const[y,m,d]=s.split('-');return `${d}/${m}/${y}`};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -479,7 +482,7 @@ function rClube(){rHumor();
   $('xp').innerHTML=Array.from({length:20},(_,i)=>`<i class="${i<Math.round(a/5)?'f':''}"></i>`).join('');
   $('atrN').textContent=a;
   $('atrTxt').textContent=a>=80?'Marcas grandes disputam o clube':a>=60?'Bom momento para negociar':a>=40?'Mercado morno':'Fase ruim: ofertas fracas';
-  $('cTransf').textContent=eurM(d.orc_transf);$('cSal').textContent=eurM(d.orc_salario);$('cPat').textContent=eurM(d.rec_patrocinio);
+  $('cTransf').textContent=eurM(d.orc_transf);$('cSal').textContent=salTxt(d);$('cSal').title=salDica(d);$('cPat').textContent=eurM(d.rec_patrocinio);
   $('forma').innerHTML=(S.forma||'').split('').map(r=>`<span class="res ${r}">${r}</span>`).join('');
   $('matches').innerHTML=S.partidas.length?S.partidas.map(p=>`<div class="match"><small>${esc(p.torneio_nome)}</small>
     <span class="t1">${esc(p.mandante_nome)}</span><span class="sc">${p.gm} - ${p.gv}</span><span class="t2">${esc(p.visitante_nome)}</span></div>`).join('')
@@ -543,7 +546,7 @@ function rFin(){const d=S.dinheiro||{};const at=S.contratos.filter(c=>c.status==
   const tot=at.reduce((s,c)=>s+c.valor,0);
   const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
   const mul=(S.multas||[]).filter(m=>m.status=='aplicada').reduce((a,m)=>a+m.valor,0);
-  $('finCards').innerHTML=`<div class="card"><b>${eurM(d.orc_transf)}</b><span>Orç. transferências</span></div><div class="card"><b>${eurM(d.orc_salario)}</b><span>Orç. salários</span></div>
+  $('finCards').innerHTML=`<div class="card"><b>${eurM(d.orc_transf)}</b><span>Orç. transferências</span></div><div class="card" title="${salDica(d)}"><b>${salTxt(d)}</b><span>Orç. salários</span></div>
     <div class="card"><b>${eurM(tot)}</b><span>Patrocínios / temporada</span></div><div class="card"><b>${eurM(rec)}</b><span>Já recebido pelo app</span></div><div class="card"><b>${eurM(mul)}</b><span>Multas pagas</span></div>`;
   $('finChart').innerHTML=svgLinhas(S.fin_hist||[],[{k:'orc_transf',n:'Orç. transferências',c:'#c8f031'},{k:'rec_patrocinio',n:'Receita de patrocínio',c:'#5aa9ff'},{k:'orc_salario',n:'Orç. salários',c:'#f2c230'}]);
   const linhas=[['Direitos de transmissão',d.rec_transmissao],['Patrocínio',d.rec_patrocinio],['Sócios torcedores',d.rec_socios],['Bilheteria',d.rec_bilheteria]];
