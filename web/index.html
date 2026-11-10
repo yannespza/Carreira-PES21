@@ -389,15 +389,22 @@ function pedir(id){
 }
 function verKit(id){const o=S.ofertas.find(x=>x.id==id);const sl=S.slots.find(s=>s.id==o.slot)||{};
   cand={slot:o.slot,empresa:o.empresa,escala:1,inclinacao:sl.inclinacao_padrao||0,dx:0,dy:0,cores:{verde:'auto',branco:'auto',azul:'auto',listrado:'auto'},_oferta:o.id};kitStamp=Date.now();go('kits')}
-function candSet(ch){Object.assign(cand,ch);if(ch.cores)cand.cores=Object.assign({},cand.cores,ch.cores);kitStamp=Date.now();rKits(true)}
-function ctrlHTML(v,fn,slotId){const cor=['auto','original','branco','preto'].map(m=>`<option ${(v.cores||{})[fam]==m?'selected':''}>${m}</option>`).join('');
+function candSet(ch,todos){cand.ajustes=cand.ajustes||{};const atual=ajusteDe(cand);const novo={escala:atual.escala,inclinacao:atual.inclinacao,dx:atual.dx,dy:atual.dy};
+  ['escala','inclinacao','dx','dy'].forEach(k=>{if(k in ch)novo[k]=ch[k]});
+  (todos?Object.keys(S.familias):[fam]).forEach(f=>cand.ajustes[f]=Object.assign({},novo));
+  if(ch.cores)cand.cores=Object.assign({},cand.cores,ch.cores);kitStamp=Date.now();rKits(true);if(todos)toast('Ajuste copiado para os 4 uniformes.')}
+function ajusteDe(v){const a=(v.ajustes||{})[fam]||{};return {escala:a.escala??v.escala??1,inclinacao:a.inclinacao??v.inclinacao??0,dx:a.dx??v.dx??0,dy:a.dy??v.dy??0,cores:v.cores,proprio:!!(v.ajustes||{})[fam]}}
+function ctrlHTML(v0,fn,slotId,copiar){const v=ajusteDe(v0);const cor=['auto','original','branco','preto'].map(m=>`<option ${(v.cores||{})[fam]==m?'selected':''}>${m}</option>`).join('');
   return `<div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${v.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="${fn}({escala:+this.value})"><span>${Math.round(v.escala*100)}%</span>
       <span>Posição ↔</span><input type="range" min="-200" max="200" step="5" value="${v.dx||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dx:+this.value})"><span>${v.dx||0}</span>
       <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${v.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dy:+this.value})"><span>${v.dy||0}</span>
       <span>Inclinação${slotId=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${v.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="${fn}({inclinacao:+this.value})"><span>${v.inclinacao}°</span>
-      <span>Cor no ${fam}</span><select onchange="${fn}({cores:{${fam}:this.value}})">${cor}</select><span></span></div>`}
+      <span>Cor</span><select onchange="${fn}({cores:{${fam}:this.value}})">${cor}</select><span></span></div>
+      <div style="font-size:12px;color:var(--mut);margin-top:6px">Ajuste do uniforme <b style="color:var(--lime)">${(S.familias[fam]||fam).toUpperCase()}</b>${v.proprio?'':' (ainda igual ao padrão)'} · os outros uniformes têm ajuste próprio.</div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="ghost" style="padding:5px 9px;font-size:11px" onclick="${copiar}">Copiar este ajuste para todos os uniformes</button>
+      <button class="ghost" style="padding:5px 9px;font-size:11px" onclick="${fn}({escala:1,inclinacao:${(S.slots.find(s=>s.id==slotId)||{}).inclinacao_padrao||0},dx:0,dy:0})">Voltar ao padrão</button></div>`}
 async function aceitarCand(){const o=S.ofertas.find(x=>x.id==cand._oferta);if(!o){toast('Essa proposta não está mais aberta.',true);return}
-  await api('/api/oferta/aceitar',{id:o.id,visual:{escala:cand.escala,inclinacao:cand.inclinacao,dx:cand.dx,dy:cand.dy,cores:cand.cores}});
+  await api('/api/oferta/aceitar',{id:o.id,visual:{escala:cand.escala,inclinacao:cand.inclinacao,dx:cand.dx,dy:cand.dy,cores:cand.cores,ajustes:cand.ajustes||{}}});
   toast('Contrato assinado com esse ajuste do logo!');cand=null;kitStamp=Date.now();load()}
 
 let visT=null;
@@ -410,18 +417,13 @@ function rKits(forcar){
   $('slots').innerHTML=S.slots.map(s=>{
     const c=S.contratos.find(c=>c.slot==s.id&&(c.status=='ativo'||c.status=='assinado'));
     if(cand&&cand.slot==s.id) return `<div class="slot" style="outline:1px solid var(--lime)"><div class="h"><b>${esc(s.nome)}</b><span class="pill wait">prévia · ${esc(cand.empresa)}</span></div>
-      ${ctrlHTML(cand,'candSet',s.id)}
+      ${ctrlHTML(cand,'candSet',s.id,'candSet({},true)')}
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="lime" onclick="aceitarCand()">Aceitar com esse ajuste</button>
       <button class="ghost" onclick="testarKit()">Testar no jogo</button><button class="ghost" onclick="cand=null;kitStamp=Date.now();rKits()">Fechar prévia</button></div></div>`;
     if(!c) return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill">livre</span></div></div>`;
     const cor=f=>['auto','original','branco','preto'].map(m=>`<option ${c.cores[f]==m?'selected':''}>${m}</option>`).join('');
     return `<div class="slot"><div class="h"><b>${esc(s.nome)}</b><span class="pill ${c.status=='ativo'?'ok':'wait'}">${esc(c.empresa)}</span></div>
-      <div class="ctrl"><span>Tamanho</span><input type="range" min="0.4" max="1.6" step="0.05" value="${c.escala}" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'" onchange="vis(${c.id},{escala:+this.value})"><span>${Math.round(c.escala*100)}%</span>
-      <span>Posição ↔</span><input type="range" min="-200" max="200" step="5" value="${c.dx||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="vis(${c.id},{dx:+this.value})"><span>${c.dx||0}</span>
-      <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${c.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="vis(${c.id},{dy:+this.value})"><span>${c.dy||0}</span>
-      <span>Inclinação${s.id=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${c.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="vis(${c.id},{inclinacao:+this.value})"><span>${c.inclinacao}°</span>
-      <span>Cor no ${fam}</span><select onchange="vis(${c.id},{cores:{${fam}:this.value}})">${cor(fam)}</select><span></span></div>
-      <div style="display:flex;gap:6px;margin-top:8px"><button class="ghost" style="padding:5px 9px;font-size:11px" onclick="vis(${c.id},{escala:1,inclinacao:${s.inclinacao_padrao||0},dx:0,dy:0})">Voltar ao padrão</button></div>
+      ${ctrlHTML(c,`vis.bind(null,${c.id})`,s.id,`vis(${c.id},{todos:true})`)}
       ${c.status=='assinado'?`<div style="font-size:12px;color:var(--mut);margin-top:8px">Aparece no jogo a partir de ${dt(c.inicio)}.</div>`:''}</div>`}).join('');
 }
 async function sair(){if(!confirm('Fechar o app? Ele para de acompanhar a carreira até você abrir de novo.'))return;
@@ -434,7 +436,7 @@ async function rescindir(id){const c=S.contratos.find(x=>x.id==id);const m=(S.mu
    <p style="line-height:1.5">Multa contratual (${(c.clausulas||{}).multa_pct||30}% do valor que falta): <b style="color:var(--red)">${m!=null?eur(m):'um terço da multa sobre o valor anual (o contrato ainda não começou)'}</b>. O valor será descontado do orçamento de transferências e da receita de patrocínio no save.</p>
    <p style="color:var(--mut)">A empresa não vai querer negociar com o clube por 6 meses.</p>`;
   $('dOk').textContent='Rescindir';$('dOk').onclick=async()=>{await api('/api/contrato/rescindir',{id});dlg.close();toast('Contrato rescindido.');load()};dlg.showModal()}
-async function vis(id,ch){await api('/api/contrato/visual',{id,...ch});kitStamp=Date.now();await load();toast('Ajuste salvo. Confira a prévia e clique em "Aplicar no jogo" quando quiser.')}
+async function vis(id,ch){await api('/api/contrato/visual',{id,familia:fam,...ch});kitStamp=Date.now();await load();toast('Ajuste salvo. Confira a prévia e clique em "Aplicar no jogo" quando quiser.')}
 
 function rMsgs(){
   $('msgList').innerHTML=S.mensagens.length?S.mensagens.map(m=>`<div class="msg ${m.lida?'':'nova'} ${selMsg==m.id?'sel':''}" onclick="selMsg=${m.id};rMsgs()">${logo(m.empresa)}

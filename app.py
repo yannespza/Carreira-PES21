@@ -218,7 +218,7 @@ class App:
     @staticmethod
     def assinatura(cs):
         return json.dumps(sorted([[c['id'], c['slot'], c['empresa'], c.get('escala'), c.get('inclinacao'),
-                                   c.get('dx', 0), c.get('dy', 0),
+                                   c.get('dx', 0), c.get('dy', 0), json.dumps(c.get('ajustes') or {}, sort_keys=True),
                                    sorted((c.get('cores') or {}).items())] for c in cs]), ensure_ascii=False)
 
     def kits_pendentes(self):
@@ -424,6 +424,8 @@ class H(BaseHTTPRequestHandler):
                     for k in ('escala', 'inclinacao', 'dx', 'dy'):
                         if k in vis:
                             c[k] = float(vis[k])
+                    if vis.get('ajustes'):
+                        c['ajustes'] = vis['ajustes']
                     if vis.get('cores'):
                         c['cores'].update(vis['cores'])
                     A.aplicar_creditos()
@@ -439,13 +441,18 @@ class H(BaseHTTPRequestHandler):
                                      body.get('clausulas'))
                     A.persist(); return self.send(200, {'ok': True, 'oferta': o})
                 if u.path == '/api/contrato/visual':
+                    fams = list(kits.FAMILIAS) if body.get('todos') else [body.get('familia')]
                     for c in A.state['contratos']:
                         if c['id'] == int(body['id']):
-                            c['escala'] = float(body.get('escala', c['escala']))
-                            c['inclinacao'] = float(body.get('inclinacao', c['inclinacao']))
-                            c['dx'] = float(body.get('dx', c.get('dx', 0)))
-                            c['dy'] = float(body.get('dy', c.get('dy', 0)))
-                            c['cores'].update(body.get('cores', {}))
+                            base = kits.ajuste(c, body.get('familia') or 'verde')
+                            for k in ('escala', 'inclinacao', 'dx', 'dy'):
+                                if k in body:
+                                    base[k] = float(body[k])
+                            for f in fams:
+                                if f:
+                                    c.setdefault('ajustes', {})[f] = dict(base)
+                            if body.get('cores'):
+                                c['cores'].update(body['cores'])
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/mensagens/lidas':
                     for m in A.state['mensagens']:

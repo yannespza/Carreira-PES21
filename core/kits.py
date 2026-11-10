@@ -102,6 +102,12 @@ def place(canvas: Image.Image, logo: Image.Image, lugar, escala=1.0, inclinacao=
     canvas.paste(rgb)
 
 
+def ajuste(c, familia):
+    """Ajuste do logo em um uniforme: cada uniforme tem o seu; se não tiver, usa o geral do contrato."""
+    a = (c.get('ajustes') or {}).get(familia) or {}
+    return {k: a.get(k, c.get(k, d)) for k, d in (('escala', 1.0), ('inclinacao', 0), ('dx', 0), ('dy', 0))}
+
+
 def compose(app_dir, variant, fname, familia, contratos, logo_loader):
     """contratos: lista de dicts com slot, empresa, escala, inclinacao, cores{familia: modo}"""
     img = base_image(app_dir, variant, fname)
@@ -113,8 +119,9 @@ def compose(app_dir, variant, fname, familia, contratos, logo_loader):
         if logo is None:
             continue
         cor = (c.get('cores') or {}).get(familia, 'auto')
+        a = ajuste(c, familia)
         for lugar in slot['lugares']:
-            place(img, logo, lugar, c.get('escala', 1.0), c.get('inclinacao', 0), cor, c.get('dx', 0), c.get('dy', 0))
+            place(img, logo, lugar, a['escala'], a['inclinacao'], cor, a['dx'], a['dy'])
     return img
 
 
