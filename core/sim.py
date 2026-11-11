@@ -254,7 +254,7 @@ class Engine:
         self.s['partidas'] = nova
         m = self.s.get('mundo')
         if m:
-            m['vistos']['partidas'] = [p['chave'] for p in nova]
+            m.setdefault('vistos', {'partidas': [], 'contratos': [], 'encerrados': []})['partidas'] = [p['chave'] for p in nova]
         self.s['chaves_v2'] = True
 
     # ---------- avanço do tempo ----------

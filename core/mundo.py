@@ -43,6 +43,8 @@ class Mundo:
         m.setdefault('noticias', [])
         m.setdefault('posts', [])
         m.setdefault('vistos', {'partidas': [], 'contratos': [], 'encerrados': []})
+        for k in ('partidas', 'contratos', 'encerrados'):
+            m['vistos'].setdefault(k, [])
         m.setdefault('historico', [])     # evolução (data, torcida, diretoria)
         m.setdefault('alertas_dir', {})
         self.m = m

@@ -321,6 +321,7 @@ class App:
             if prest is not None:
                 st['prestigio_tecnico'] = prest
             if novo:
+                st['carreira_nova'] = True     # para a carreira do técnico abrir uma passagem nova
                 # diretoria do clube novo recebe o técnico conforme o prestígio dele
                 st.setdefault('mundo', {})['diretoria'] = tecnico_carreira.confianca_inicial(prest)
                 # carreira começando agora (nenhum jogo no save): a receita de patrocínio do jogo volta a zero
@@ -441,7 +442,15 @@ class App:
             estrutura.registrar_marca(st, car.date)
             medico.processar(st, car.date, mu, self.engine)
             ingame.condicao_gramado(st, car.date, self.tid(), self.names)
+            # cada carreira do jogo tem uma identidade própria: recomeçar no mesmo arquivo com o mesmo clube
+            # vira uma passagem nova (o estado anterior foi arquivado) e não apaga a antiga
+            if st.pop('carreira_nova', False) and not st.get('carreira_id'):
+                st['carreira_id'] = time.strftime('%Y%m%d%H%M%S')
+                if tecnico_carreira.tem_chave(DATA, os.path.basename(self.state_path or 'carreira') + '|' + str(self.tid())):
+                    st['carreira_id_novo'] = True
             chave = os.path.basename(self.state_path or 'carreira') + '|' + str(self.tid())
+            if st.get('carreira_id_novo'):
+                chave += '|' + st['carreira_id']
             c, nova = tecnico_carreira.registrar(DATA, chave, st, self.clube(), car.date)
             st['prestigio_tecnico'] = c['prestigio']
             if nova and len(c['passagens']) > 1 and car.date:

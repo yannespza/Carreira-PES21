@@ -23,6 +23,11 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.3.1:
+- Correção: ao começar uma carreira nova, o app dava erro e não lia o save novo. Agora lê normalmente.
+- Recomeçar no mesmo arquivo de save com o mesmo clube vira uma passagem nova na carreira do técnico
+  (antes sobrescrevia a antiga).
+
 Novidades da 3.3:
 - Clube > Carreira do técnico > Mercado de técnicos: a proposta em aberto (aceitar ou recusar ali mesmo),
   o histórico de propostas e o que falta para outros clubes te procurarem (confiança, torcida, jogos).

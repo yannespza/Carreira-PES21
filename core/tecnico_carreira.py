@@ -79,6 +79,10 @@ def _desloc_nova(ps, inicio):
     return k
 
 
+def tem_chave(data_dir, chave):
+    return any(p.get('chave') == chave for p in carregar(data_dir).get('passagens', []))
+
+
 def registrar(data_dir, chave, state, clube, hoje):
     """Atualiza a passagem atual com os números do estado da carreira. Devolve a carreira inteira."""
     c = carregar(data_dir)
