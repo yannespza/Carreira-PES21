@@ -649,7 +649,8 @@ function desenharEstudio(salvo){
     <div class="kitprev"><img id="estImg" alt="prévia do estúdio"></div>
     <div style="display:flex;gap:8px;margin-top:8px"><button class="lime" style="flex:1" onclick="salvarEstudio()">Usar estas cores neste uniforme</button>
       ${salvo?`<button class="ghost" onclick="removerEstudio()">Voltar ao original</button>`:''}</div>
-    <p style="color:var(--mut);font-size:12px;margin-top:8px">Depois de salvar, clique em “Aplicar no jogo” na aba Patrocinadores no uniforme (ou no aviso do topo). O escudo e a marca do fornecedor mantêm as cores originais.</p></div>
+    <p style="color:var(--mut);font-size:12px;margin-top:8px">Depois de salvar, clique em “Aplicar no jogo” na aba Patrocinadores no uniforme (ou no aviso do topo). O escudo e a marca do fornecedor mantêm as cores originais.</p>
+    <div class="box" id="numBox" style="margin-top:12px"><h3>Número da camisa <small>o jogo coloca por cima do uniforme</small></h3><div class="empty">Carregando...</div></div></div>
    <div><div class="box"><h3>Cores do tecido <small>clique na cor nova para trocar</small></h3>
      ${EST.paleta.map(p=>`<div class="estcor"><span class="sw" style="background:${p.cor}"></span><span>${Math.round(p.frac*100)}% do uniforme</span><span>→</span>
        <input type="color" value="${tro[p.cor]||p.cor}" onchange="trocaCor('${p.cor}',this.value)"><a onclick="trocaCor('${p.cor}',null)">desfazer</a></div>`).join('')}
@@ -658,7 +659,27 @@ function desenharEstudio(salvo){
      <h3 style="margin-top:16px">Estrelas de campeão <small>acima do escudo</small></h3>
      <div style="display:flex;gap:10px;align-items:center"><select onchange="estCfg.estrelas=+this.value;previaEst()">${[0,1,2,3,4,5].map(n=>`<option ${n==(estCfg.estrelas||0)?'selected':''}>${n}</option>`).join('')}</select>
        <input type="color" value="${estCfg.cor_estrelas||'#c9a227'}" onchange="estCfg.cor_estrelas=this.value;previaEst()"><label><input type="checkbox" ${estCfg.retro?'checked':''} onchange="estCfg.retro=this.checked;previaEst()"> efeito retrô (cores desbotadas)</label></div>
-   </div></div></div>`;previaEst()}
+   </div></div></div>`;previaEst();previaNum()}
+let numT=null;
+function previaNum(){clearTimeout(numT);numT=setTimeout(async()=>{const b=$('numBox');if(!b)return;
+  const cfg=encodeURIComponent(JSON.stringify({...estCfg,ativo:true})),fam=encodeURIComponent(estFam);
+  let N;try{N=await api('/api/numero?familia='+fam+'&cfg='+cfg)}catch(e){N={tem:false}}
+  if(!$('numBox'))return;
+  if(!N.tem){b.innerHTML=`<h3>Número da camisa</h3><div class="empty">Este uniforme usa os números padrão do jogo; não há textura de número para trocar.</div>`;return}
+  const mud=estCfg.cor_numero&&estCfg.cor_numero.toLowerCase()!=N.original.toLowerCase();
+  b.innerHTML=`<h3>Número da camisa <small>o jogo coloca por cima do uniforme</small></h3>
+   <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <img alt="número 10" style="height:96px;border-radius:12px" src="/api/numero/previa?familia=${fam}&cfg=${cfg}&t=${Date.now()}">
+    <div style="flex:1;min-width:180px;font-size:13px;line-height:1.7">
+      <div>Cor do número: <span class="sw" style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;background:${N.atual}"></span> <b>${esc(N.atual)}</b>${mud?` <small style="color:var(--mut)">(original ${esc(N.original)})</small>`:''}</div>
+      <div>Cor da camisa: <span class="sw" style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;background:${N.camisa}"></span> ${esc(N.camisa)}</div>
+      <div style="color:${N.aviso?'#ff6b6b':'var(--mut)'}">${N.aviso?'⚠ Pouco contraste: o número vai ficar difícil de ler.':'Contraste bom: o número aparece bem.'}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <input type="color" value="${N.atual}" onchange="estCfg.cor_numero=this.value;previaNum()">
+        ${N.aviso?`<button class="ghost" onclick="estCfg.cor_numero='${N.sugestao}';previaNum()">Usar ${N.sugestao=='#ffffff'?'branco':'preto'}</button>`:''}
+        ${mud?`<a onclick="delete estCfg.cor_numero;previaNum()">voltar à cor original</a>`:''}</div>
+    </div></div>
+   <p style="color:var(--mut);font-size:12px;margin-top:8px">Vale também para o nome nas costas e o número do calção. Salve em “Usar estas cores neste uniforme” e depois aplique no jogo.</p>`},250)}
 function trocaCor(src,dst){estCfg.trocas=(estCfg.trocas||[]).filter(t=>t[0]!=src);if(dst&&dst.toLowerCase()!=src.toLowerCase())estCfg.trocas.push([src,dst]);desenharEstudio(!!EST.cfg)}
 function preset(k){const p=EST.presets[k];estCfg.trocas=[];(p.cores||[]).forEach((c,i)=>{if(c&&EST.paleta[i])estCfg.trocas.push([EST.paleta[i].cor,c])});estCfg.retro=!!p.retro;desenharEstudio(!!EST.cfg)}
 function previaEst(){clearTimeout(estT);estT=setTimeout(()=>{const im=$('estImg');if(!im)return;im.style.opacity=.5;

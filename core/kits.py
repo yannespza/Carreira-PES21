@@ -246,6 +246,13 @@ def install(app_dir, kit_dir, contratos, logo_loader, log=print, progresso=None)
         ftex.write(img, tpl, dst)
         done.append(variant)
         log(f'uniforme {variant} atualizado')
+        cfg = ESTUDIO.get(fam) or {}
+        try:
+            from . import numeros
+            numeros.aplicar(kit_dir, BASE['dir'] or os.path.join(app_dir, 'data', 'kits_base'), variant,
+                            cfg.get('cor_numero') if cfg.get('ativo') else None, log)
+        except Exception as e:      # o uniforme já foi gravado; o número fica como estava
+            log(f'números do uniforme {variant} não foram trocados: {e}')
     if progresso:
         progresso(len(VARIANTS), len(VARIANTS), '')
     return done

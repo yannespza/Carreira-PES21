@@ -15,6 +15,11 @@ def read(path) -> Image.Image:
         coff &= 0x7fffffff
         blk = f[off + coff:off + coff + csz]
         out += blk if csz == usz else zlib.decompress(blk)
+    if pf == 11:          # BC7 (números, nome e número do calção)
+        hdr = struct.pack('<4sIIIIIII44sII4s5I5I', b'DDS ', 124, 0x81007, h, w, len(out), 0, 1,
+                          b'\0' * 44, 32, 4, b'DX10', 0, 0, 0, 0, 0, 0x1000, 0, 0, 0, 0)
+        hdr += struct.pack('<5I', 98, 3, 0, 1, 0)
+        return Image.open(io.BytesIO(hdr + bytes(out[:w * h]))).convert('RGBA')
     fourcc = FOURCC.get(pf)
     if fourcc is None:
         return Image.frombytes('RGBA', (w, h), bytes(out[:w * h * 4]), 'raw', 'BGRA')
@@ -28,7 +33,8 @@ def write(img: Image.Image, template_path, out_path):
     t = open(template_path, 'rb').read()
     pf, w, h, dep, mips = struct.unpack_from('<HHHHB', t, 8)
     hdr = bytearray(t[:0x40])
-    struct.pack_into('<H', hdr, 8, 4)  # DXT5
+    bc7 = pf == 11 and hasattr(etcpak, 'compress_bc7')
+    struct.pack_into('<H', hdr, 8, 11 if bc7 else 4)  # BC7 quando o original é BC7; senão DXT5
     img = img.convert('RGBA')
     if img.size != (w, h):
         img = img.resize((w, h), Image.LANCZOS)
@@ -47,7 +53,7 @@ def write(img: Image.Image, template_path, out_path):
         pw, ph = max(4, mw), max(4, mh)
         if (pw, ph) != (mw, mh):
             pad = Image.new('RGBA', (pw, ph)); pad.paste(im, (0, 0)); im = pad
-        comp = etcpak.compress_bc3(im.tobytes(), pw, ph)
+        comp = (etcpak.compress_bc7 if bc7 else etcpak.compress_bc3)(im.tobytes(), pw, ph)
         chunks = [comp[i:i + 16384] for i in range(0, len(comp), 16384)]
         ctab = bytearray(); cdata = bytearray(); off = 8 * len(chunks)
         for c in chunks:

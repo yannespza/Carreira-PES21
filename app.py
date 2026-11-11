@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
+from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core.logos import LogoBank
 
@@ -948,7 +948,7 @@ class App:
         mud_est = json.dumps(self.state.get('estudio') or {}, sort_keys=True) != \
             json.dumps(self.state.get('estudio_aplicado') or {}, sort_keys=True)
         if self.assinatura(atual) == aplicado:
-            return ['cores/estrelas do Estúdio de uniformes'] if mud_est else []
+            return ['cores, estrelas ou número do Estúdio de uniformes'] if mud_est else []
         antes = {c[0]: c for c in json.loads(aplicado)}
         mud = []
         for c in atual:
@@ -1229,6 +1229,32 @@ class H(BaseHTTPRequestHandler):
                 out = io.BytesIO()
                 kits.preview(img, int(q.get('w', 640))).save(out, 'JPEG', quality=88)
                 return self.send(200, out.getvalue(), 'image/jpeg')
+            if u.path in ('/api/numero', '/api/numero/previa'):
+                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
+                kd = (A.time or {}).get('pasta') or ''
+                bd = kits.BASE['dir'] or os.path.join(APP_DIR, 'data', 'kits_base')
+                nome = numeros.costas(kd, variant) if kd else None
+                if not nome:
+                    if u.path == '/api/numero':
+                        return self.send(200, {'tem': False})
+                    return self.send(404, {'erro': 'sem textura de número'})
+                img = numeros._ler(numeros.original(kd, bd, variant, nome))
+                orig = numeros.cor_dominante(img)
+                cfg = json.loads(q['cfg']) if q.get('cfg') else (A.state or {}).get('estudio', {}).get(fam)
+                cfg = dict(cfg or {}, ativo=True)
+                pal = estudio.paleta(kits.base_estudio(APP_DIR, variant, fname, cfg))
+                camisa = pal[0]['cor'] if pal else '#333333'
+                cor = q.get('cor') or cfg.get('cor_numero') or orig
+                if u.path == '/api/numero':
+                    c = numeros.contraste(cor, camisa)
+                    return self.send(200, {'tem': True, 'original': orig, 'atual': cor, 'camisa': camisa,
+                                           'contraste': float(c), 'aviso': bool(c < 2.0), 'sugestao': numeros.sugestao(camisa)})
+                if cor.lower() != (orig or '').lower():
+                    img = numeros.recolorir(img, cor)
+                out = io.BytesIO()
+                numeros.dez(img, camisa, int(q.get('h', 110))).save(out, 'PNG')
+                return self.send(200, out.getvalue(), 'image/png')
             if u.path == '/api/preview':
                 fam = q.get('familia') or next(iter(kits.FAMILIAS))
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
