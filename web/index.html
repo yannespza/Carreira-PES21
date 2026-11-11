@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carreira · Patrocínios</title>
 <link rel="icon" href="/icone.png">
+<script src="/web/tecnico.js"></script>
 <style>
 :root{
   --bg:#0c0e12; --bg2:#12151b; --panel:#191d24; --panel2:#20252e; --line:#2a303b;
@@ -174,7 +175,9 @@ dialog select,dialog input{width:100%}
 .carta{position:relative;border-radius:10px;padding:12px 10px 10px;background:linear-gradient(160deg,var(--lime) -40%,var(--panel2) 45%);border:1px solid var(--line);cursor:grab;user-select:none;min-height:118px}
 .carta .nm{font-family:var(--head);font-size:15px;letter-spacing:.03em;margin-top:34px;line-height:1.1}
 .carta .alt{position:absolute;top:10px;right:10px;font-size:11px;color:var(--mut)}
-.carta .av2{position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;font-family:var(--head);font-size:15px;color:var(--mut)}
+.carta .av2{position:absolute;top:10px;left:10px;min-width:38px;height:26px;padding:0 6px;border-radius:4px;background:var(--bg2);display:grid;place-items:center;font-family:var(--head);font-size:15px;color:var(--txt);letter-spacing:.04em}
+.av2.pos-GL{background:#c98a12;color:#fff}.av2.pos-ZAG,.av2.pos-LE,.av2.pos-LD{background:#2f6fd0;color:#fff}
+.av2.pos-VOL,.av2.pos-MEI,.av2.pos-ME,.av2.pos-MD{background:#2e9a4d;color:#fff}.av2.pos-PE,.av2.pos-PD,.av2.pos-ATA{background:#c8373c;color:#fff}
 .carta .tg{display:inline-block;margin-top:6px;font-size:10px;padding:2px 6px;border-radius:3px;background:var(--red);color:#fff;font-weight:700}
 .carta .tg.novo{background:var(--green);color:#0b1a10}
 .carta.fora{filter:grayscale(1);opacity:.65}
@@ -199,18 +202,21 @@ dialog select,dialog input{width:100%}
 .kcard.out{filter:grayscale(1)}.kcard.out .selo{background:#222;color:#fff;border:1px solid #888}
 /* sala de imprensa */
 .sala{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#0d1016}
-.backdrop{display:grid;grid-template-columns:repeat(6,1fr);gap:14px 18px;padding:18px;opacity:.22;position:absolute;inset:0;align-content:start}
-.backdrop img{width:100%;height:42px;object-fit:contain;filter:grayscale(.2)}
-.sala .conteudo{position:relative;display:grid;grid-template-columns:170px 1fr;gap:18px;padding:20px;color:#e9ecf1}
-.rosto{width:170px;height:200px;border-radius:8px;background:#1d222b;display:grid;place-items:center;font-size:64px;overflow:hidden}
-.rosto img{width:100%;height:100%;object-fit:cover}
+.palco{position:relative;width:440px;height:390px;border-radius:8px;overflow:hidden;
+  background:linear-gradient(180deg,#f4f5f7,#dfe3e8);box-shadow:inset 0 -40px 60px rgba(0,0,0,.25)}
+.backdrop{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 18px;padding:16px 18px;position:absolute;inset:0 0 70px 0;align-content:start;
+  background-image:linear-gradient(90deg,rgba(0,0,0,.06) 1px,transparent 1px);background-size:25% 100%}
+.backdrop img{width:100%;height:38px;object-fit:contain}
+.backdrop .vazio{color:#b3bac4;font-family:var(--head);letter-spacing:.12em;text-align:center;font-size:13px;line-height:38px;white-space:nowrap;overflow:hidden}
+.sala .conteudo{position:relative;display:grid;grid-template-columns:440px 1fr;gap:22px;padding:20px;color:#e9ecf1}
+.rosto{position:absolute;left:0;right:0;bottom:0;height:350px}
 .perg{margin-bottom:14px}.perg p{margin:0 0 8px;font-weight:600}
 .perg button{display:block;width:100%;text-align:left;text-transform:none;font-family:var(--body);letter-spacing:0;margin-bottom:6px;background:rgba(255,255,255,.07);color:#e9ecf1}
 .perg button.esc{background:var(--lime);color:var(--onlime)}
 .mfold{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .mfold a{padding:4px 10px;border-radius:12px;font-size:12px;cursor:pointer;color:var(--mut);background:var(--panel2)}
 .mfold a.on{background:var(--lime);color:var(--onlime)}
-@media (max-width:900px){.kanban{grid-template-columns:1fr}.sala .conteudo{grid-template-columns:1fr}}
+@media (max-width:900px){.kanban{grid-template-columns:1fr}.sala .conteudo{grid-template-columns:1fr}.palco{width:100%}}
 .limpgrid{display:grid;grid-template-columns:1fr 1fr 300px;gap:14px}
 .limpcap{font-size:11px;color:var(--mut);margin-bottom:5px;letter-spacing:.04em}
 .limpwrap{position:relative;user-select:none;line-height:0}
@@ -228,6 +234,9 @@ dialog select,dialog input{width:100%}
 .elp{padding:9px 11px;border:1px solid var(--line,#2a2e36);border-radius:8px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
 .elp small{color:var(--mut)}
 @media (max-width:1100px){.limpgrid{grid-template-columns:1fr}}
+.tabcl{width:100%;border-collapse:collapse;font-size:12px}.tabcl th{color:var(--mut);font-weight:600;padding:4px 3px;border-bottom:1px solid var(--line)}
+.tabcl td{padding:4px 3px;text-align:center;border-bottom:1px solid var(--line)}.tabcl tr.eu td{background:color-mix(in srgb,var(--lime) 22%,transparent);font-weight:700}
+.tabcl tr.sobe td:first-child{box-shadow:inset 3px 0 0 #3fbf6a}.tabcl tr.cai td:first-child{box-shadow:inset 3px 0 0 #e0574a}
 </style>
 </head>
 <body>
@@ -274,6 +283,8 @@ dialog select,dialog input{width:100%}
       <div class="box">
         <h3>Últimas partidas <small>forma: <span id="forma"></span></small></h3>
         <div id="matches"></div>
+        <h3 style="margin-top:16px">Classificação <small id="tabInfo"></small></h3>
+        <div id="tabela"></div>
       </div>
       <div class="box">
         <h3>Patrocínio do clube <small id="contSum"></small></h3>
@@ -309,7 +320,7 @@ dialog select,dialog input{width:100%}
     </div>
     <div class="box" style="margin-top:20px" id="limpBox">
       <h3>Limpeza dos uniformes originais <small id="limpInfo"></small></h3>
-      <div style="color:var(--mut);font-size:12px;margin-bottom:10px">O app achou os patrocínios que vieram no uniforme do clube, apagou de todas as variações e guardou essas posições para os novos patrocinadores. <b>Desmarque</b> o que não é patrocínio (escudo, marca do fornecedor) e <b>arraste na imagem da esquerda</b> para marcar um patrocínio que sobrou. Depois clique em "Refazer a limpeza".</div>
+      <div style="color:var(--mut);font-size:12px;margin-bottom:10px">O app achou os patrocínios que vieram no uniforme do clube, apagou de todas as variações e guardou essas posições para os novos patrocinadores. Marcado = apaga; desmarcado = fica no uniforme e é protegido. Escudo, marca do fornecedor e o que parece desenho do uniforme (faixa, listra, estampa) já vêm desmarcados. <b>Arraste na imagem da esquerda</b> para marcar um patrocínio que sobrou. Depois clique em "Refazer a limpeza".</div>
       <div class="limpgrid">
         <div><div class="limpcap">ORIGINAL · áreas que o app apaga</div><div class="limpwrap" id="limpWrap"><img id="limpOrig" draggable="false"><div id="limpBoxes"></div><div id="limpNova" class="lb nova hidden"></div></div></div>
         <div><div class="limpcap">COMO FICOU (base do app, sem patrocínio)</div><div class="limpwrap"><img id="limpLimpa" draggable="false"></div></div>
@@ -474,6 +485,14 @@ function render(){
   ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
+function rTabela(){
+  const T=S.tabela, el=$('tabela');
+  if(!T||!T.linhas||!T.linhas.length){el.innerHTML='<div class="empty">A tabela aparece depois do primeiro jogo do campeonato.</div>';$('tabInfo').textContent='';return}
+  const meu=S.time?S.time.id:null, n=T.linhas.length;
+  $('tabInfo').textContent=T.data?'até '+dt(T.data):'';
+  el.innerHTML=`<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>`+
+    T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
+}
 function rClube(){rHumor();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
@@ -487,6 +506,7 @@ function rClube(){rHumor();
   $('matches').innerHTML=S.partidas.length?S.partidas.map(p=>`<div class="match"><small>${esc(p.torneio_nome)}</small>
     <span class="t1">${esc(p.mandante_nome)}</span><span class="sc">${p.gm} - ${p.gv}</span><span class="t2">${esc(p.visitante_nome)}</span></div>`).join('')
     :'<div class="empty">Nenhuma partida lida ainda.</div>';
+  rTabela();
   const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);$('contSum').textContent=at.length?`${eurM(tot)} / temporada`:'';
   $('clubContracts').innerHTML=at.length?at.map(c=>`<div class="row">${logo(c.empresa)}<div class="nm"><b>${esc(c.empresa)}</b><small>${esc(slotName(c.slot))} · até ${dt(c.fim)}</small></div>
@@ -515,17 +535,15 @@ function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
     <p>Patrocínios por temporada: <b style="color:${m.patrocinio_anual>=mt.patrocinio?'var(--green)':'var(--gold)'}">${eurM(m.patrocinio_anual)}</b> (meta ${eurM(mt.patrocinio)})</p></div>`}
 $('dlg').addEventListener('close',()=>$('dOk').classList.remove('hidden'));
 let TOM=null;
-function rosto(tom){const R=(S.gestao||{}).rostos||[];const t=tom||'neutro';
-  if(R.includes(t))return `<img src="/tecnico/${t}.png">`;if(R.length)return `<img src="/tecnico/${R[0]}.png">`;
-  return {feliz:'😄',neutro:'😐',irritado:'😠'}[t]||'😐'}
+function rosto(tom){const c=S.cores||[];return tecnicoSVG(tom||'neutro',c[0],c[1])}
 function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
   const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
-  const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[i%logos.length])}">`).join(''):'';
-  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="backdrop">${bd}</div><div class="conteudo"><div class="rosto">${rosto('neutro')}</div>
-    <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">Para usar o seu rosto, coloque feliz.png, neutro.png e irritado.png na pasta data\\tecnico do app. O fundo mostra os patrocinadores com contrato.</p></div></div></div>`;return}
+  const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
+  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro')}</div></div>
+    <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">O painel atrás do técnico mostra os patrocinadores com contrato.</p></div></div></div>`;return}
   const aberta=c.status=='aberta';$('colInfo').textContent=c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada');
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
-  $('sala').innerHTML=`<div class="sala"><div class="backdrop">${bd}</div><div class="conteudo"><div class="rosto">${rosto(tom)}</div><div>
+  $('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom)}</div></div><div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
     ${c.perguntas.map((q,qi)=>`<div class="perg"><p>Repórter: ${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
     ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`}
@@ -631,7 +649,7 @@ function rLimp(){if(!REV||!REV.itens){return}
   if($('limpLimpa').dataset.src!=sl){$('limpLimpa').dataset.src=sl;$('limpLimpa').src=sl}
   const pc=v=>(v/2048*100)+'%';
   $('limpBoxes').innerHTML=its.map((it,i)=>{const c=it.caixa;return `<div class="lb ${it.manual?'man':''} ${it.marcado?'':'off'}" style="left:${pc(c[0])};top:${pc(c[1])};width:${pc(c[2]-c[0])};height:${pc(c[3]-c[1])}"><i>${i+1}</i></div>`}).join('');
-  $('limpItens').innerHTML=its.length?its.map((it,i)=>`<label class="litem"><input type="checkbox" ${it.marcado?'checked':''} onchange="marcarLimp('${it.chave}',this.checked)"><b>${i+1}</b>${esc(it.nome)}${it.manual?' <small style="color:var(--mut)">(desmarque para tirar)</small>':''}</label>`).join(''):'<div class="empty">Nenhum patrocínio achado neste uniforme.</div>';
+  $('limpItens').innerHTML=its.length?its.map((it,i)=>`<label class="litem"><input type="checkbox" ${it.marcado?'checked':''} onchange="marcarLimp('${it.chave}',this.checked)"><b>${i+1}</b>${esc(it.nome)}${it.manual?' <small style="color:var(--mut)">(desmarque para tirar)</small>':''}${it.escudo?' <small style="color:var(--mut)">· fica</small>':''}</label>`).join(''):'<div class="empty">Nenhum patrocínio achado neste uniforme.</div>';
 }
 async function marcarLimp(chave,m){await api('/api/time/marcar',{familia:fam,chave,marcado:m});carregarRev()}
 async function refazerLimpeza(){await api('/api/time/limpar',{});toast('Refazendo a limpeza das variações. Quando terminar, confira e clique em "Aplicar no jogo".');setTimeout(carregarRev,800)}
@@ -650,11 +668,12 @@ let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
   ['cartas','pran','transf','evt'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
+const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
   $('elInfo').textContent=el.length?el.length+' jogadores no save':'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2">${esc(iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>
       <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rPrancheta();
   if(etab=='transf'){const tr=G.transferencias||[];
@@ -673,7 +692,7 @@ function rPrancheta(){if(!PR)PR=JSON.parse(JSON.stringify((S.gestao||{}).pranche
   const campo=$('campo');campo.querySelectorAll('.ficha').forEach(f=>f.remove());
   Object.entries(PR).forEach(([id,[x,y]])=>{const f=document.createElement('div');f.className='ficha';f.textContent=nome(+id).split(' ').slice(-1)[0];f.title=nome(+id);
     f.style.left=x+'%';f.style.top=y+'%';f.dataset.id=id;campo.appendChild(f)});
-  $('banco').innerHTML=el.filter(p=>!(p.id in PR)).map(p=>`<span data-id="${p.id}">${esc(p.nome)}</span>`).join('')}
+  $('banco').innerHTML=el.filter(p=>!(p.id in PR)).map(p=>`<span data-id="${p.id}"><b>${esc(p.pos||'')}</b> ${esc(p.nome)}</span>`).join('')}
 document.addEventListener('mousedown',e=>{const t=e.target.closest('.ficha,#banco span');if(!t)return;e.preventDefault();
   arr={id:t.dataset.id,el:t.cloneNode(true)};arr.el.className='ficha';arr.el.style.position='fixed';arr.el.style.pointerEvents='none';
   arr.el.style.left=e.clientX+'px';arr.el.style.top=e.clientY+'px';document.body.appendChild(arr.el)});

@@ -14,6 +14,12 @@ EMPRESAS_PADRAO = {
     'Vivo': ('telecom', 'grande'), 'TIM': ('telecom', 'grande'), 'Samsung': ('eletronicos', 'grande'),
     'Motorola': ('eletronicos', 'media'), 'Fiat': ('automoveis', 'grande'), 'Cimed': ('farmaceutica', 'media'),
     'Renner': ('varejo', 'media'), 'Madero': ('alimentacao', 'pequena'),
+    'Ambev': ('bebidas', 'grande'), 'Coral': ('construcao', 'grande'), 'Hypera': ('farmaceutica', 'grande'),
+    'Jacomar': ('supermercado', 'media'), 'Linx': ('tecnologia', 'media'), 'Linx Digital': ('tecnologia', 'media'), 'Condor': ('supermercado', 'grande'),
+    'Rede Condor': ('supermercado', 'grande'),
+    'Magalu': ('varejo', 'grande'), 'Mercado Livre': ('varejo', 'grande'), 'Nubank': ('banco', 'grande'),
+    'Volkswagen': ('automoveis', 'grande'), 'Unilever': ('consumo', 'grande'), 'Vedacit': ('construcao', 'media'),
+    'Zara': ('moda', 'grande'),
 }
 
 
@@ -84,6 +90,24 @@ class Engine:
             r = random.Random(_seed(nome))
             self.s['empresas'][nome] = {'setor': setor, 'porte': porte,
                                         'personalidade': r.choice(PERSONALIDADES), 'bloqueio_ate': None}
+
+    def renomear_empresa(self, velho, novo):
+        """Troca o nome de uma empresa em tudo (o nome tirado do arquivo do logo melhorou)."""
+        e = self.s['empresas']
+        if velho not in e or velho == novo:
+            return
+        if novo in e:
+            e.pop(velho)
+        else:
+            e[novo] = e.pop(velho)
+            if novo in EMPRESAS_PADRAO:
+                e[novo]['setor'], e[novo]['porte'] = EMPRESAS_PADRAO[novo]
+        for lista in ('ofertas', 'contratos', 'mensagens', 'multas'):
+            for x in self.s.get(lista, []):
+                if x.get('empresa') == velho:
+                    x['empresa'] = novo
+                    if isinstance(x.get('de'), str):
+                        x['de'] = x['de'].replace(velho, novo, 1)
 
     # ---------- utilidades ----------
     def _id(self):

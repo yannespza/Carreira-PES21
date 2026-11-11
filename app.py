@@ -135,7 +135,8 @@ class App:
             ids = savedata.elenco(bytes(car.sf.data), idx)
             edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
-            self.elenco = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}'})} for i in ids]
+            el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
+            self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
         except Exception:
             log(traceback.format_exc())
             self.elenco = []
@@ -242,11 +243,15 @@ class App:
                     st['zerar_pat'] = {'status': 'pendente'}
             st['atr_base'] = self.time.get('atratividade_base', 60)
             self.engine = sim.Engine(st, self.clube(), self.time.get('atratividade_base', 60))
-            nomes = [(n, '') for n in sorted(set(self.logos.map.values()))]
+            for velho, novo_nome in (self.logos.map.get('_renomeados') or {}).items():
+                self.engine.renomear_empresa(velho, novo_nome)
+            nomes = [(n, '') for n in self.logos.nomes()]
             self.engine.sync_empresas(nomes)
             st['save_info'] = {'arquivo': path, 'slot': car.slot_name, 'clube': car.club_line,
                                'lido_em': time.strftime('%d/%m %H:%M:%S')}
             st['dinheiro'] = car.money()
+            if car.tabela:
+                st['tabela'] = {'linhas': car.tabela, 'data': sim.d2s(car.date) if car.date else None}
             # histórico financeiro (um ponto por data da carreira)
             fh = st.setdefault('fin_hist', [])
             ponto = {'data': sim.d2s(car.date), **st['dinheiro']}
@@ -544,7 +549,7 @@ class App:
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
                       'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
-            'partidas': partidas[::-1],
+            'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
                              'torneio_nome': TORNEIOS.get(p['torneio'], f"Torneio {p['torneio']}")}
                             for p in st.get('partidas', [])[-30:]],
@@ -584,8 +589,10 @@ def logos_watcher():
     while True:
         try:
             novos = A.logos.scan()
-            if novos and A.engine:
+            if (novos or A.logos.renomeados) and A.engine:
                 with LOCK:
+                    for velho, novo_nome in A.logos.renomeados.items():
+                        A.engine.renomear_empresa(velho, novo_nome)
                     A.engine.sync_empresas([(n['nome'], n['pasta']) for n in novos])
                     A.persist()
                 log('logos novos:', [n['nome'] for n in novos])
@@ -617,6 +624,10 @@ class H(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
+            if u.path.startswith('/web/') and u.path.endswith('.js'):
+                p = os.path.join(APP_DIR, 'web', os.path.basename(u.path))
+                if os.path.exists(p):
+                    return self.send(200, open(p, 'rb').read(), 'text/javascript; charset=utf-8')
             if u.path in ('/', '/index.html'):
                 return self.send(200, open(os.path.join(APP_DIR, 'web', 'index.html'), 'rb').read(), 'text/html; charset=utf-8')
             if u.path == '/api/saves':

@@ -1,45 +1,130 @@
 """Lê a pasta de logos do usuário, tira o fundo e guarda uma cópia limpa para o app."""
 import os, re, json
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageFilter
 
 EXTS = ('.png', '.webp', '.jpg', '.jpeg')
-JUNK = re.compile(r'(png|svg|webp|jpe?g|logo|logotipo|hd|transparent|background|clipart|text|seeklogo|wine|'
-                  r'mobile|phones|others|miscellaneous|black|blue|vertical|\(\d+\)|\d{4,}\w*|[-_]\d+$)', re.I)
+VERSAO_CACHE = 2
+JUNK = re.compile(r'\b(png|svg|webp|jpe?g|logo|logos|logotipo|logomarca|hd|transparent|transparente|background|'
+                  r'no|sem|fundo|clipart|text|seeklogo|wine|mobile|phones|others|miscellaneous|black|blue|white|'
+                  r'vertical|horizontal|vector|vetor|site|simbolo|símbolo|symbol|icon|icone|thumb|digital|pharma|'
+                  r'brand|marca|oficial|official|kisspng|png\w*)\b|\(\d+\)|\b\w*\d{4,}\w*\b|\b\d{1,3}\b', re.I)
+NOMES_FIXOS = {'rede condor': 'Condor', 'iti itau': 'iti Itau', 'nubank': 'Nubank', 'tim': 'TIM'}
 
 
 def nice_name(fname):
     n = os.path.splitext(fname)[0]
-    n = re.sub(r'[_\-]+', ' ', n)
-    n = JUNK.sub(' ', n)
-    n = re.sub(r'\s+', ' ', n).strip()
-    return n.title() if n else os.path.splitext(fname)[0]
+    n = re.sub(r'[_\-.]+', ' ', n)
+    n = re.sub(r'([a-z])([A-Z])', r'\1 \2', n) if ' ' not in n.strip() and not n.isupper() else n
+    limpo = re.sub(r'\s+', ' ', JUNK.sub(' ', n)).strip()
+    if not limpo:
+        limpo = re.sub(r'\s+', ' ', n).strip()
+    fixo = NOMES_FIXOS.get(limpo.lower())
+    if fixo:
+        return fixo
+    limpo = re.sub(r'\s+', ' ', re.sub(r'[()\[\]{}.,]+', ' ', limpo)).strip() or limpo
+    if limpo.isupper() and len(limpo) <= 4:
+        return limpo
+    pal = []
+    for i, w in enumerate(limpo.split()):
+        if i and w.lower() in ('do', 'da', 'de', 'dos', 'das', 'e'):
+            pal.append(w.lower())
+        elif w.isupper() and len(w) <= 4:
+            pal.append(w)
+        else:
+            pal.append(w[:1].upper() + w[1:].lower())
+    return ' '.join(pal)
+
+
+_NOME_RUIM = re.compile(r'\d|\b(site|simbolo|vector|thumb|tipo|kiss|png|logo)\b', re.I)
+
+
+def _cores_borda(rgb, alfa):
+    """Cores que dominam a borda da imagem (fundo liso, xadrez de "transparência falsa"...)."""
+    h, w, _ = rgb.shape
+    t = max(2, min(h, w) // 100)
+    borda = np.concatenate([rgb[:t].reshape(-1, 3), rgb[-t:].reshape(-1, 3),
+                            rgb[:, :t].reshape(-1, 3), rgb[:, -t:].reshape(-1, 3)])
+    ab = np.concatenate([alfa[:t].ravel(), alfa[-t:].ravel(), alfa[:, :t].ravel(), alfa[:, -t:].ravel()])
+    if (ab >= 30).mean() < 0.5:        # a imagem já tem fundo transparente: o que encosta na borda é o logo
+        return []
+    borda = borda[ab >= 30]
+    q = borda // 12
+    k = q[:, 0] * 10000 + q[:, 1] * 100 + q[:, 2]
+    vals, cont = np.unique(k, return_counts=True)
+    ordem = np.argsort(-cont)
+    cores, soma = [], 0
+    for i in ordem[:4]:
+        if cont[i] / len(borda) < 0.08:
+            break
+        cores.append(borda[k == vals[i]].mean(0))
+        soma += cont[i] / len(borda)
+    return cores if soma >= 0.6 else []
+
+
+def _componentes_borda(m):
+    """Partes da máscara m ligadas à borda da imagem (preenchimento a partir da borda)."""
+    h, w = m.shape
+    alcan = np.zeros_like(m)
+    alcan[0, :] = m[0, :]; alcan[-1, :] = m[-1, :]; alcan[:, 0] = m[:, 0]; alcan[:, -1] = m[:, -1]
+    # propaga em escala reduzida (rápido) e depois refina no tamanho real
+    while True:
+        im = Image.fromarray((alcan * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(3))
+        novo = (np.array(im) > 0) & m
+        for _ in range(30):
+            im = Image.fromarray((novo * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(3))
+            novo2 = (np.array(im) > 0) & m
+            if (novo2 == novo).all():
+                break
+            novo = novo2
+        if (novo == alcan).all():
+            return alcan
+        alcan = novo
 
 
 def remove_background(im: Image.Image) -> Image.Image:
-    a = np.array(im.convert('RGBA')).astype(np.int32)
-    h, w, _ = a.shape
-    rgb = a[:, :, :3]; mx = rgb.max(2); mn = rgb.min(2)
-    transp = a[:, :, 3] < 30
-    bg = ((mn > 185) & ((mx - mn) < 25)) | transp
-    if bg[[0, -1], :].mean() < 0.5 and bg[:, [0, -1]].mean() < 0.5:
-        out = Image.fromarray(a.astype('uint8'), 'RGBA')
-    else:
-        mask = Image.fromarray((bg * 255).astype('uint8'), 'L')
-        border = [(x, 0) for x in range(0, w, 3)] + [(x, h - 1) for x in range(0, w, 3)] + \
-                 [(0, y) for y in range(0, h, 3)] + [(w - 1, y) for y in range(0, h, 3)]
-        for p in border:
-            if mask.getpixel(p) == 255:
-                ImageDraw.floodfill(mask, p, 128)
-        m = np.array(mask)
-        remove = m == 128
-        outer_opaque = (~transp[remove]).mean() > 0.5 if remove.any() else False
-        if outer_opaque:
-            # buracos internos (miolo do "O", do "A"...) com a mesma cor do fundo
-            remove |= (m == 255) & ~transp
-        a[:, :, 3] = np.where(remove, 0, a[:, :, 3])
-        out = Image.fromarray(a.astype('uint8'), 'RGBA')
-    bb = out.split()[3].getbbox()
+    """Tira o fundo do logo: transparência que já existe, fundo liso (branco, cinza, colorido) e o xadrez de
+    "transparência falsa" que vem em muitos PNG da internet. Buracos pequenos das letras (miolo do O, do A)
+    também ficam transparentes; partes brancas grandes do desenho ficam."""
+    rgba = np.array(im.convert('RGBA'))
+    # trabalha numa cópia reduzida (fundo é coisa grande) e aplica a máscara no tamanho real
+    h0, w0 = rgba.shape[:2]
+    f = max(1, int(np.ceil(max(h0, w0) / 700)))
+    peq = np.array(Image.fromarray(rgba).resize((max(1, w0 // f), max(1, h0 // f)), Image.BOX)).astype(np.int32)
+    rgb, alfa = peq[..., :3], peq[..., 3]
+    transp = alfa < 30
+    cores = _cores_borda(rgb, alfa)
+    if cores:
+        dist = np.min([np.abs(rgb - c).max(axis=2) for c in cores], axis=0)
+        fundo = (dist < 34) & ~transp
+        fora = _componentes_borda(fundo | transp) & fundo
+        if fora.mean() > 0.05:
+            # buracos internos pequenos com a cor do fundo (miolo das letras)
+            dentro = fundo & ~fora
+            if dentro.any():
+                from .limpeza import _rotular
+                lab = _rotular(dentro)
+                tam = np.bincount(lab.ravel()); tam[0] = 0
+                lim = 0.015 * dentro.size
+                fora |= dentro & (tam[lab] < lim)
+                if len(cores) >= 2:     # xadrez de transparência falsa dentro do logo: sempre é fundo
+                    perto = [np.abs(rgb - c).max(axis=2) < 34 for c in cores[:2]]
+                    n0 = np.bincount(lab[dentro & perto[0]], minlength=len(tam))
+                    n1 = np.bincount(lab[dentro & perto[1]], minlength=len(tam))
+                    xadrez = (n0 >= 0.2 * tam) & (n1 >= 0.2 * tam) & (tam > 0)
+                    fora |= dentro & xadrez[lab]
+            # borda suave: pixels de transição entre o logo e o fundo ficam meio transparentes
+            mask = Image.fromarray((fora * 255).astype(np.uint8)).resize((w0, h0), Image.BILINEAR)
+            m = np.array(mask).astype(np.float32) / 255
+            a = rgba.astype(np.float32)
+            if cores:
+                d = np.min([np.abs(a[..., :3] - c).max(axis=2) for c in cores], axis=0)
+                suave = np.clip((d - 20) / 50, 0, 1)
+                m = np.where((m > 0) & (m < 1), np.maximum(m, 1 - suave), m)
+            a[..., 3] = a[..., 3] * (1 - m)
+            rgba = np.clip(a + 0.5, 0, 255).astype(np.uint8)
+    out = Image.fromarray(rgba, 'RGBA')
+    bb = out.split()[3].point(lambda v: 255 if v > 20 else 0).getbbox()
     return out.crop(bb) if bb else out
 
 
@@ -57,34 +142,57 @@ class LogoBank:
         json.dump(self.map, open(self.map_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
     def scan(self):
-        """Procura logos novos na pasta do usuário. Retorna a lista de empresas novas."""
+        """Procura logos novos na pasta do usuário. Retorna a lista de empresas novas.
+        Quando a limpeza dos logos melhora (VERSAO_CACHE), refaz todos e guarda os nomes que mudaram em
+        self.renomeados (nome antigo -> novo) para o app atualizar as empresas."""
         novos = []
+        self.renomeados = {}
         if not os.path.isdir(self.logos_dir):
             return novos
-        used = set(self.map.values())
+        refazer = self.map.get('_versao') != VERSAO_CACHE
+        antigo = {k: v for k, v in self.map.items() if not k.startswith('_')}
+        if refazer:
+            self.map = {}
+        used = set(v for k, v in self.map.items() if not k.startswith('_'))
         for root, _, files in os.walk(self.logos_dir):
-            for f in files:
+            for f in sorted(files):
                 if not f.lower().endswith(EXTS):
                     continue
                 rel = os.path.relpath(os.path.join(root, f), self.logos_dir)
                 if rel in self.map:
                     continue
                 nome = nice_name(f)
+                if rel in antigo and not _NOME_RUIM.search(antigo[rel]):
+                    nome = antigo[rel]            # nome que o usuário já conhece fica
                 if nome in used:          # duplicado (mesma empresa)
                     self.map[rel] = nome
+                    if refazer and rel in antigo and antigo[rel] != nome:
+                        self.renomeados[antigo[rel]] = nome
                     continue
                 try:
                     im = Image.open(os.path.join(root, f))
                     if im.width < 600:
                         im = im.convert('RGBA').resize((im.width * 3, im.height * 3), Image.LANCZOS)
                     remove_background(im).save(os.path.join(self.cache_dir, nome + '.png'))
+                    self._mem.pop(nome, None)
                 except Exception:
                     continue
                 self.map[rel] = nome; used.add(nome)
+                if rel in antigo:
+                    if antigo[rel] != nome:
+                        self.renomeados[antigo[rel]] = nome
+                    continue
                 pasta = os.path.basename(root) if root != self.logos_dir else ''
                 novos.append({'nome': nome, 'pasta': pasta})
+        self.map['_versao'] = VERSAO_CACHE
+        if self.renomeados:
+            r = self.map.setdefault('_renomeados', {})
+            r.update(self.renomeados)
         self.save_map()
         return novos
+
+    def nomes(self):
+        return sorted(set(v for k, v in self.map.items() if not k.startswith('_')))
 
     def path(self, nome):
         return os.path.join(self.cache_dir, nome + '.png')

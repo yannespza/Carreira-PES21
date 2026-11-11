@@ -33,6 +33,18 @@ Novidades da 2.2:
 - Mensagens separadas em Diretoria e Patrocinadores; gráfico de receitas em Finanças.
 - Revisão anual dos contratos em janeiro, conforme o aproveitamento da temporada.
 
+Novidades da 2.3:
+- Classificação do campeonato na aba Clube, lida direto do save (pontos, jogos, vitórias, empates,
+  derrotas, gols e saldo; o seu clube aparece destacado).
+- Elenco com as posições em português: GL, ZAG, LE, LD, VOL, MEI, MD, ME, PD, PE, ATA.
+- Sala de imprensa com a caricatura do técnico na mesa da coletiva (feliz, neutro e irritado).
+- Logos das empresas: o fundo agora sai de verdade (branco, cor lisa e o xadrez de "transparência
+  falsa"). Nomes ruins tirados do nome do arquivo foram corrigidos (ex.: "Coral 0" virou Coral).
+- Limpeza dos uniformes refeita do zero: acha patrocínios que aparecem dos dois lados, logos em cima
+  de listras, fundo branco atrás do logo, e protege escudo, marca do fornecedor e desenhos do
+  uniforme (faixa, listra, estampa), que já vêm desmarcados na revisão. Clubes preparados na versão
+  antiga são refeitos sozinhos. O Palmeiras continua com os uniformes limpos à mão.
+
 Segurança:
 - Antes de mexer no save, o app guarda uma cópia em data\backups_save (as 30 mais recentes).
 - Os uniformes limpos (sem patrocínio) ficam em data\kits_base (Palmeiras) e data\times\<id>\kits_base (outros clubes).

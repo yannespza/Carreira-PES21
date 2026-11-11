@@ -2,7 +2,9 @@
 prepara bases limpas (sem patrocínio) e aprende onde ficam os patrocínios no molde do uniforme."""
 import os, re, json, copy, shutil, unicodedata, threading, traceback
 from PIL import Image
-from . import ftex, detector, kits
+from . import ftex, detector, kits, limpeza
+
+VERSAO_LIMPEZA = 2       # detecção nova: times preparados com a versão antiga são refeitos
 
 # posições calibradas no jogo (molde GUITAKITMAKER, conferido no Palmeiras) – usadas quando o uniforme
 # do clube não tem patrocínio naquela posição para servir de referência
@@ -77,7 +79,8 @@ def listar_variantes(pasta):
         m = re.fullmatch(r'p(\d+)(x\d+)?', v.lower())
         if not m or not os.path.isdir(os.path.join(pasta, v)):
             continue
-        arqs = [f for f in os.listdir(os.path.join(pasta, v)) if re.fullmatch(r'u\d+p\d+\.ftex', f.lower())]
+        # textura principal: u0136p1.ftex (às vezes u0136p1x3.ftex); _back, _leg e _name ficam de fora
+        arqs = sorted(f for f in os.listdir(os.path.join(pasta, v)) if re.fullmatch(r'u\d+p\d+(x\d+)?\.ftex', f.lower()))
         if not arqs:
             continue
         out.append((v, arqs[0][:-5], 'p' + m.group(1)))
@@ -101,9 +104,22 @@ class Times:
     def carregar(self, tid):
         p = os.path.join(self.dir(tid), 'time.json')
         try:
-            return json.load(open(p, encoding='utf-8'))
+            t = json.load(open(p, encoding='utf-8'))
         except Exception:
-            pass
+            t = None
+        if t is not None:
+            if not t.get('legado') and os.path.normcase(os.path.normpath(t.get('base_dir') or '')) == \
+                    os.path.normcase(os.path.normpath(os.path.join(self.data, 'kits_base'))):
+                t['legado'] = True          # Palmeiras limpo à mão nas versões antigas: nunca refaz
+                t['preparado'] = True
+                self.salvar(t)
+            if not t.get('legado') and t.get('versao_limpeza') != VERSAO_LIMPEZA:
+                # preparado com a limpeza antiga: refaz detecção e limpeza (os originais guardados continuam)
+                t['deteccao'] = {}
+                t['preparado'] = False
+                t['versao_limpeza'] = VERSAO_LIMPEZA
+                self.salvar(t)
+            return t
         if tid == 137 and os.path.isdir(os.path.join(self.data, 'kits_base', 'p1')):
             # o Palmeiras já foi preparado à mão nas versões anteriores
             t = {'id': 137, 'nome': 'Palmeiras', 'pasta': self.cfg.get('pasta_kits') or pasta_kits(
@@ -130,7 +146,7 @@ class Times:
         t = {'id': tid, 'nome': nome_curto(self.mapa, tid), 'pasta': pasta,
              'base_dir': os.path.join(self.dir(tid), 'kits_base'), 'variantes': [list(v) for v in vs],
              'familias': fams, 'slots': copy.deepcopy(PADRAO), 'ordem': list(ORDEM_PADRAO), 'preparado': False,
-             'atratividade_base': 55, 'deteccao': {}}
+             'atratividade_base': 55, 'deteccao': {}, 'versao_limpeza': VERSAO_LIMPEZA}
         self.salvar(t)
         return t
 
@@ -149,33 +165,55 @@ class Times:
     def principal(self, t, fam):
         return next(v for v in t['variantes'] if v[2] == fam)
 
+    ZONA_NOME = {'frente': 'Frente', 'costas': 'Costas', 'calcao_e': 'Calção', 'calcao_d': 'Calção'}
+
+    @staticmethod
+    def _chave_item(it):
+        c = it['caixa']
+        cx, cy = (c[0] + c[2]) // 2, (c[1] + c[3]) // 2
+        return f"{it.get('slot') or it.get('zona') or 'outro'}:{cx // 48}:{cy // 48}"
+
     def detectar(self, t, progresso=None):
-        """Acha os patrocínios do uniforme original de cada família (só detecta; não grava nada no jogo)."""
+        """Acha os patrocínios de cada variação do uniforme original (só detecta; não grava nada no jogo).
+        Escudo/marca e o que parece desenho do uniforme vêm desmarcados (ficam no uniforme)."""
         det = {}
         vs = t['variantes']
         for i, (variant, fname, fam) in enumerate(vs):
             if progresso:
                 progresso(i, len(vs), f'Procurando patrocínios: {variant}')
             img = ftex.read(self.original(t, variant, fname))
-            ach = detector.detectar_molde(img)
-            man = detector.detectar_manter(img)
+            itens = limpeza.detectar(img)
+            ach = []
+            for it in itens:
+                a = {k: it[k] for k in ('caixa', 'slot', 'lugar', 'rot', 'zona', 'escudo', 'desenho')}
+                a['chave'] = self._chave_item(it)
+                ach.append(a)
             d = det.setdefault(fam, {'variantes': {}, 'extras': [], 'desmarcados': []})
-            d['variantes'][variant] = {'achados': ach, 'manter': man}
+            d['variantes'][variant] = {'achados': ach}
             if variant == self.principal(t, fam)[0]:
                 img.convert('RGB').resize((1024, 1024), Image.LANCZOS).save(
                     os.path.join(self.dir(t['id']), f'revisao_{fam}.jpg'), quality=86)
         anterior = t.get('deteccao') or {}
-        for fam, d in det.items():   # mantém as escolhas que o usuário já tinha feito
-            if fam in anterior:
+        for fam, d in det.items():
+            if fam in anterior and anterior[fam].get('v') == VERSAO_LIMPEZA:   # mantém as escolhas do usuário
                 d['extras'] = anterior[fam].get('extras', [])
                 d['desmarcados'] = anterior[fam].get('desmarcados', [])
+            else:
+                fora = set()
+                for vv in d['variantes'].values():
+                    for a in vv['achados']:
+                        if a['escudo'] or a['desenho']:
+                            fora.add(a['chave'])
+                d['desmarcados'] = sorted(fora)
+            d['v'] = VERSAO_LIMPEZA
         t['deteccao'] = det
+        t['versao_limpeza'] = VERSAO_LIMPEZA
         self.salvar(t)
         return det
 
     @staticmethod
     def chave(a):
-        return f"{a['slot']}:{a['lugar']}"
+        return a.get('chave') or f"{a['slot']}:{a['lugar']}"
 
     def itens_revisao(self, t, fam):
         """Lista para a tela de revisão: caixas achadas no uniforme principal + as desenhadas à mão."""
@@ -183,44 +221,48 @@ class Times:
         if not d:
             return []
         v = self.principal(t, fam)[0]
-        ach = d['variantes'].get(v, {}).get('achados', [])
-        # posições achadas só nas outras variações também entram
+        ach = list(d['variantes'].get(v, {}).get('achados', []))
         vistos = {self.chave(a) for a in ach}
-        for vv in d['variantes'].values():
+        for vv in d['variantes'].values():       # o que só aparece nas outras variações também entra
             for a in vv['achados']:
                 if self.chave(a) not in vistos:
                     ach.append(a); vistos.add(self.chave(a))
         out = []
         for a in ach:
-            nome = detector.MOLDE[a['slot']]['nome']
-            if len(detector.MOLDE[a['slot']]['busca']) > 1:
-                nome += f" · {a['lugar'] + 1}"
+            if a.get('escudo'):
+                nome = 'Escudo / marca do uniforme'
+            elif a.get('slot'):
+                nome = detector.MOLDE[a['slot']]['nome']
+                if len(detector.MOLDE[a['slot']]['busca']) > 1:
+                    nome += f" · {a['lugar'] + 1}"
+            else:
+                nome = self.ZONA_NOME.get(a.get('zona'), 'Outro lugar')
+            if a.get('desenho') and not a.get('escudo'):
+                nome += ' (parece desenho do uniforme)'
             out.append({'chave': self.chave(a), 'nome': nome, 'caixa': a['caixa'],
-                        'marcado': self.chave(a) not in d.get('desmarcados', []), 'manual': False})
+                        'marcado': self.chave(a) not in d.get('desmarcados', []), 'manual': False,
+                        'escudo': bool(a.get('escudo')), 'desenho': bool(a.get('desenho'))})
         for i, c in enumerate(d.get('extras', [])):
             out.append({'chave': f'extra:{i}', 'nome': 'Área marcada por você', 'caixa': c, 'marcado': True,
                         'manual': True})
         return out
 
     def limpar(self, t, progresso=None):
-        """Apaga os patrocínios marcados em todas as variações e grava as bases limpas do app."""
+        """Apaga os patrocínios marcados em todas as variações e grava as bases limpas do app.
+        O que ficou desmarcado (escudo, marca, desenho) é protegido: nunca é apagado nem copiado."""
         vs = t['variantes']
         for i, (variant, fname, fam) in enumerate(vs):
             if progresso:
                 progresso(i, len(vs), f'Limpando {variant}')
             d = t['deteccao'][fam]
-            principal = d['variantes'][self.principal(t, fam)[0]]
-            proprio = d['variantes'].get(variant) or principal
+            proprio = d['variantes'].get(variant) or d['variantes'][self.principal(t, fam)[0]]
             fora = set(d.get('desmarcados', []))
-            caixas = {}
-            for a in principal['achados'] + [x for vv in d['variantes'].values() for x in vv['achados']]:
-                caixas.setdefault(self.chave(a), a['caixa'])
-            for a in proprio['achados']:          # cada variação usa a caixa achada nela mesma
-                caixas[self.chave(a)] = a['caixa']
-            lista = [c for k, c in caixas.items() if k not in fora] + list(d.get('extras', []))
+            lista = [{'caixa': a['caixa']} for a in proprio['achados'] if self.chave(a) not in fora]
+            lista += [{'caixa': c} for c in d.get('extras', [])]
+            manter = [a['caixa'] for a in proprio['achados'] if self.chave(a) in fora]
             orig = self.original(t, variant, fname)
             img = ftex.read(orig)
-            limpo = detector.limpar(img, lista, proprio['manter'])
+            limpo = limpeza.limpar(img, lista, manter)
             dst = os.path.join(t['base_dir'], variant, fname + '.ftex')
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             ftex.write(limpo, orig, dst)
@@ -234,8 +276,12 @@ class Times:
         achados = {}
         for fam, d in (t.get('deteccao') or {}).items():
             fora = set(d.get('desmarcados', []))
-            for a in d['variantes'][self.principal(t, fam)[0]]['achados']:
-                if self.chave(a) in fora or (a['slot'] == 'calcao_tras' and fam != 'p1'):
+            lista = sorted(d['variantes'][self.principal(t, fam)[0]]['achados'],
+                           key=lambda a: -(a['caixa'][2] - a['caixa'][0]) * (a['caixa'][3] - a['caixa'][1]))
+            for a in lista:
+                if self.chave(a) in fora or not a.get('slot') or a.get('escudo') or a.get('desenho'):
+                    continue
+                if a['slot'] == 'calcao_tras' and fam != 'p1':
                     continue
                 achados.setdefault(a['slot'], {}).setdefault(a['lugar'], a)
         slots = copy.deepcopy(PADRAO)
@@ -254,7 +300,7 @@ class Times:
             for i_busca, a in por_lugar.items():
                 x0, y0, x1, y1 = a['caixa']
                 rot = a['rot']
-                w, h = (x1 - x0 - 8), (y1 - y0 - 8)
+                w, h = (x1 - x0 - 24), (y1 - y0 - 24)
                 if rot in (90, -90):
                     w, h = h, w
                 k = MAPA_LUGAR.get(slot, {}).get(i_busca, i_busca)

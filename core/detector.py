@@ -9,13 +9,13 @@ ZONAS = [
     (690, 40, 1360, 990, 'costas'),
     (440, 640, 790, 1200, 'manga_d'),
     (1260, 640, 1610, 1200, 'manga_e'),
-    (0, 1180, 470, 1900, 'calcao_e'),
-    (1380, 1180, 2048, 1900, 'calcao_d'),
+    (0, 1180, 660, 1900, 'calcao_e'),
+    (1390, 1180, 2048, 1900, 'calcao_d'),
     (0, 60, 690, 640, 'manga_longa_d'),
     (1360, 60, 2048, 640, 'manga_longa_e'),
 ]
 # faixas do molde que não são uniforme (rótulos do kitmaker, gola, áreas de corte)
-IGNORAR = [(1360, 0, 2048, 100), (0, 0, 690, 60), (0, 1890, 2048, 2048), (660, 1860, 1380, 2048)]
+IGNORAR = [(1360, 0, 2048, 100), (0, 0, 690, 60), (0, 0, 530, 130), (0, 1890, 2048, 2048), (660, 1860, 1380, 2048)]
 
 
 def _componentes(mask):
@@ -318,7 +318,7 @@ def _fundo(borda, minimo=0.04):
     return np.array(cores)
 
 
-def achar_no_retangulo(rgb, area, faixa=10, limiar=75, juntar=True):
+def achar_no_retangulo(rgb, area, faixa=10, limiar=75, juntar=True, encosta=6):
     """Procura um logo dentro de uma área: compara cada pixel com as cores da borda da área."""
     x0, y0, x1, y1 = area
     reg = rgb[y0:y1, x0:x1]
@@ -339,7 +339,7 @@ def achar_no_retangulo(rgb, area, faixa=10, limiar=75, juntar=True):
     comps.sort(key=lambda c: -c[4])
     g = list(comps[0][:4])
     for c in comps[1:]:
-        perto = not (c[0] > g[2] + 6 or c[2] < g[0] - 6 or c[1] > g[3] + 6 or c[3] < g[1] - 6)
+        perto = not (c[0] > g[2] + encosta or c[2] < g[0] - encosta or c[1] > g[3] + encosta or c[3] < g[1] - encosta)
         # pedaços colados ao maior, ou outros logos de bom tamanho na mesma área (ex.: dois patrocínios nas costas)
         if (perto and c[4] > 0.08 * comps[0][4]) or (juntar and c[4] > 0.12 * comps[0][4] and c[4] >= 40):
             g = [min(g[0], c[0]), min(g[1], c[1]), max(g[2], c[2]), max(g[3], c[3])]
@@ -353,7 +353,7 @@ def achar_no_retangulo(rgb, area, faixa=10, limiar=75, juntar=True):
 
 
 # áreas de escudo e marca do fornecedor: nunca apagar e nunca usar como fonte de tecido
-MANTER = [(1060, 1124, 1250, 1300), (790, 1120, 990, 1270), (40, 1500, 260, 1720)]
+MANTER = [(1060, 1124, 1250, 1300), (790, 1120, 965, 1270), (40, 1640, 205, 1790)]
 
 
 def detectar_manter(img: Image.Image):

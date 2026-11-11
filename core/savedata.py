@@ -118,6 +118,9 @@ def elenco(data: bytes, team_index: int):
 
 
 _NOMES = {}
+# posição registrada do jogador (ordem do PES: GK, CB, LB, RB, DMF, CMF, LMF, RMF, AMF, LWF, RWF, SS, CF)
+POSICOES = ['GL', 'ZAG', 'LE', 'LD', 'VOL', 'MEI', 'ME', 'MD', 'MEI', 'PE', 'PD', 'ATA', 'ATA']
+ORDEM_POS = {p: i for i, p in enumerate(['GL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'MD', 'ME', 'PD', 'PE', 'ATA'])}
 
 
 def nomes_jogadores(edit_path):
@@ -147,7 +150,9 @@ def nomes_jogadores(edit_path):
         nm = d[o + 0x36:o + 0x36 + 0x3e].split(b'\0')[0]
         if pid and nm and pid not in nomes and nm[:1].isalpha():
             try:
-                nomes[pid] = {'nome': nm.decode('utf-8').strip(), 'altura': d[o + 0x0a]}
+                pos = (int.from_bytes(d[o + 0x21:o + 0x23], 'little') >> 5) & 15
+                nomes[pid] = {'nome': nm.decode('utf-8').strip(), 'altura': d[o + 0x0a],
+                              'pos': POSICOES[pos] if pos < len(POSICOES) else ''}
             except UnicodeDecodeError:
                 pass
         o += R
@@ -180,6 +185,15 @@ class Career:
         self.team_id = team_id
         self.fin_off = find_finance_block(d)
         self.results = find_results(d, team_id)
+        self.tabela = None
+        try:      # classificação do campeonato de pontos corridos do clube (a maior tabela em que ele está)
+            tabs = [t for t in classificacoes(d) if any(l['id'] == team_id for l in t)]
+            if tabs:
+                tab = max(tabs, key=lambda t: (len(t), max(l['j'] for l in t)))
+                nm = nomes_clubes(d)
+                self.tabela = [{**l, 'nome': nm.get(l['id'], f"Time {l['id']}")} for l in tab]
+        except Exception:
+            self.tabela = None
 
     def money(self):
         if self.fin_off is None:
@@ -285,3 +299,55 @@ class Career:
             except OSError:
                 pass
         return bk
+
+
+# ---------------- tabelas de classificação ----------------
+def nomes_clubes(data: bytes):
+    """Nome de cada clube da carreira: registros (código do clube + nome em UTF-8)."""
+    out = {}
+    for m in re.finditer(rb'([\x00-\xff]{4})([A-Z0-9\xc3][A-Z0-9\xc3\x80-\xbf \-\.\'/&]{2,47})\x00', data[:0x400000]):
+        code = struct.unpack('<I', m.group(1))[0]
+        tid, idx = code >> 14, code & 0x3fff
+        if 0 < tid < 200000 and idx < 0x3fff and tid not in out:
+            try:
+                out[tid] = m.group(2).decode('utf-8')
+            except UnicodeDecodeError:
+                pass
+    return out
+
+
+def classificacoes(data: bytes):
+    """Tabelas de classificação dos campeonatos de pontos corridos/grupos guardadas no save.
+    Registro de 20 bytes: código do clube, posição, e 3 palavras com os números empacotados
+    (pontos, vitórias, derrotas, empates, gols pró/contra, jogos)."""
+    a = np.frombuffer(data[:len(data) // 4 * 4], '<u4')
+    tabelas = []
+    # começo de tabela: posição 1 em +4 e a do registro seguinte (20 bytes depois) entre 1 e 2
+    ini = np.where(a == 1)[0]
+    vistos = set()
+    for i in ini:
+        o = i * 4 - 4
+        if o < 0 or o in vistos:
+            continue
+        linhas = []
+        k = o
+        ultima = 0
+        while k + 20 <= len(data):
+            code, pos, w0, w1, w2 = struct.unpack_from('<5I', data, k)
+            tid = code >> 14
+            if code == 0xffffffff or not (0 < tid < 200000) or not (ultima <= pos <= max(1, len(linhas) + 1)) or pos == 0:
+                break
+            j = w1 >> 24
+            pts = w0 & 0xff
+            v, der, emp = (w0 >> 8) & 0x3f, (w0 >> 14) & 0x3f, (w0 >> 20) & 0x3f
+            gp, gc = w1 & 0xfff, (w1 >> 12) & 0xfff
+            if j > 60 or v + der + emp != j or pts != 3 * v + emp:
+                break
+            linhas.append({'id': tid, 'pos': pos, 'pts': pts, 'j': j, 'v': v, 'e': emp, 'd': der,
+                           'gp': gp, 'gc': gc, 'sg': gp - gc})
+            ultima = pos
+            k += 20
+        if len(linhas) >= 4:
+            tabelas.append(linhas)
+            vistos.update(range(o, k, 20))
+    return tabelas
