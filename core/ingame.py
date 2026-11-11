@@ -206,32 +206,38 @@ def gramado(img, nivel, seed=1, nome='pitch_alp.ftex', forca=1.0):
 
 
 # ---------------- condição do gramado (0 a 100) ----------------
-# Cada jogo em casa castiga o gramado; os dias sem jogo recuperam. Verão chuvoso (dez a mar) castiga mais,
-# inverno seco (jun a ago) recupera menos. A manutenção do gramado (estrutura) acelera a recuperação.
-def condicao_gramado(state, hoje, team_id):
+# Cada jogo em casa castiga o gramado e ele NÃO se recupera sozinho: só volta com investimento
+# (estrutura.investir_gramado). Verão chuvoso (dez a mar) castiga mais; jogos em casa em sequência também.
+# A equipe de gramado (estrutura) diminui o desgaste por jogo.
+def condicao_gramado(state, hoje, team_id, nomes=None):
     from . import estrutura
     from .sim import d2s, s2d
-    gr = state.setdefault('gramado', {'cond': 75.0, 'data': None, 'vistos': []})
+    gr = state.setdefault('gramado', {'cond': 80.0, 'data': None, 'vistos': []})
+    gr.setdefault('eventos', [])
     if not hoje:
         return gr
-    if gr.get('data'):
-        dias = (hoje - s2d(gr['data'])).days
-        if dias > 0:
-            est = 0.7 if hoje.month in (6, 7, 8) else 1.0
-            gr['cond'] = min(100.0, gr['cond'] + dias * 1.1 * est * estrutura.recup_gramado(state))
     vistos = set(gr.get('vistos', []))
     if not gr.get('data'):         # primeira leitura: jogos antigos não desgastam
         vistos |= {p['chave'] for p in state.get('partidas', [])}
     casa = sorted([p for p in state.get('partidas', []) if p['mandante'] == team_id and p['chave'] not in vistos],
                   key=lambda p: p['data'])
-    ult = None
+    ult = max((s2d(e['data']) for e in gr['eventos'] if e['tipo'] == 'jogo'), default=None)
     for p in casa:
         d = s2d(p['data'])
-        chuva = 1.35 if d.month in (12, 1, 2, 3) else 1.0
-        gr['cond'] -= 9 * chuva + (3 if ult and (d - ult).days <= 4 else 0)
+        chuva = 1.3 if d.month in (12, 1, 2, 3) else 1.0
+        perda = 6 * chuva * estrutura.desgaste_gramado(state) + (3 if ult and (d - ult).days <= 4 else 0)
+        antes = gr['cond']
+        gr['cond'] = round(max(0.0, gr['cond'] - perda), 1)
+        adv = (nomes or {}).get(p['visitante'], '')
+        gr['eventos'].append({'data': p['data'], 'tipo': 'jogo', 'texto': f'Jogo em casa' + (f' contra {adv}' if adv else '')
+                              + (' (chuva de verão)' if chuva > 1 else ''), 'antes': antes, 'depois': gr['cond']})
         ult = d
         vistos.add(p['chave'])
-    gr['cond'] = round(max(0.0, min(100.0, gr['cond'])), 1)
+    o = gr.get('obra')
+    if o and s2d(o['fim']) <= hoje:
+        estrutura.aplicar_gramado(gr, o['ganho'], o['nome'] + ' (concluído)', o['fim'])
+        gr.pop('obra')
+    gr['eventos'] = gr['eventos'][-40:]
     gr['vistos'] = sorted(vistos)[-200:]
     gr['data'] = d2s(hoje)
     h = gr.setdefault('hist', [])

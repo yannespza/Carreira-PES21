@@ -23,6 +23,16 @@ EMPRESAS_PADRAO = {
 }
 
 
+# marcas de alcance mundial: são as únicas que patrocinam clubes de fora do Brasil
+GLOBAIS = {'Samsung', 'Motorola', 'Volkswagen', 'Unilever', 'Zara', 'Fiat', 'Ambev'}
+
+
+def e_global(nome, e=None):
+    if e is not None and e.get('global') is not None:
+        return bool(e['global'])
+    return nome in GLOBAIS
+
+
 # o que cada perfil de empresa prefere nas cláusulas: (quer cláusula de desempenho?, multa de rescisão %)
 PREF_CLAUSULAS = {'agressiva': (True, 20), 'oportunista': (True, 10), 'paciente': (False, 30), 'fiel': (False, 30)}
 MULTAS = (10, 20, 30, 50)
@@ -131,6 +141,12 @@ class Engine:
                     x['empresa'] = novo
                     if isinstance(x.get('de'), str):
                         x['de'] = x['de'].replace(velho, novo, 1)
+
+    def elegivel(self, nome):
+        """Clube de fora do Brasil só recebe propostas de marcas mundiais."""
+        if (self.s.get('pais') or 'Brasil') == 'Brasil':
+            return True
+        return e_global(nome, self.s['empresas'].get(nome))
 
     # ---------- utilidades ----------
     def _id(self):
@@ -301,8 +317,9 @@ class Engine:
             if o['status'] in ('aberta', 'aguardando'):
                 usadas[o['empresa']] = usadas.get(o['empresa'], 0) + 1
         for slot in (slots or SLOT_ORDER):
-            pool = [(n, e) for n, e in self.s['empresas'].items() if atr >= PORTE_MIN_ATR[e['porte']] - 10]
-            pool = pool or list(self.s['empresas'].items())
+            todas = [(n, e) for n, e in self.s['empresas'].items() if self.elegivel(n)]
+            pool = [(n, e) for n, e in todas if atr >= PORTE_MIN_ATR[e['porte']] - 10]
+            pool = pool or todas
             r.shuffle(pool)
             # empresas que ainda não fizeram proposta vêm primeiro
             pool.sort(key=lambda x: usadas.get(x[0], 0))
@@ -342,6 +359,8 @@ class Engine:
                         c['empresa'] == nome and c['status'] in ('assinado', 'ativo') for c in self.s['contratos']):
                     continue
                 if e.get('bloqueio_ate') and s2d(e['bloqueio_ate']) > dia:
+                    continue
+                if not self.elegivel(nome):
                     continue
                 if e['setor'] in self.setores_ocupados(slot):
                     continue
@@ -452,7 +471,7 @@ class Engine:
         c = r.choice(alvos)
         setor = self.s['empresas'].get(c['empresa'], {}).get('setor')
         atr = self.atratividade()
-        cands = [n for n, e in self.s['empresas'].items() if e.get('setor') == setor and n != c['empresa']
+        cands = [n for n, e in self.s['empresas'].items() if e.get('setor') == setor and n != c['empresa'] and self.elegivel(n)
                  and atr >= PORTE_MIN_ATR[e['porte']] and not (e.get('bloqueio_ate') and s2d(e['bloqueio_ate']) > dia)
                  and not any(x['empresa'] == n and x['status'] in ('assinado', 'ativo') for x in self.s['contratos'])]
         if not cands:
@@ -581,6 +600,8 @@ class Engine:
         if slot not in self.slots_livres(hoje):
             raise ValueError('Essa posição já está ocupada.')
         e = self.s['empresas'][empresa]
+        if not self.elegivel(empresa):
+            raise ValueError(f'A {empresa} só atua no Brasil e não patrocina clubes de fora. Procure uma marca mundial.')
         if e.get('bloqueio_ate') and s2d(e['bloqueio_ate']) > hoje:
             raise ValueError(f'A {empresa} pediu um tempo antes de voltar a negociar.')
         if any(o['empresa'] == empresa and o['status'] in ('aberta', 'aguardando') for o in self.s['ofertas']):

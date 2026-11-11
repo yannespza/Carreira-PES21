@@ -23,6 +23,26 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.9:
+- Ranking real dos clubes (Clube > Ranking): Série A e B do Brasil e os principais sul-americanos do jogo.
+  Nota = 45% valor do elenco + 30% torcida + 25% prestígio. Fontes: Transfermarkt (Lance! Biz, jan/2026)
+  para a Série A, Datafolha para torcidas, ranking da CBF 2026 para prestígio; Série B e estrangeiros são
+  estimativas (marcados com *). Times do jogo fora da lista recebem nota pela liga (Série C, D etc.).
+- Propostas de emprego pelo ranking: demitido, chegam clubes à altura do seu prestígio (ou menores);
+  em alta, sondam clubes maiores que o seu, inclusive de outros países da América do Sul.
+- Clubes de fora do Brasil só recebem propostas de marcas mundiais. Em Comercial > Empresas, toque no
+  selo "nacional/mundial" de cada empresa para mudar.
+- Gramado: não se recupera mais sozinho. Cada jogo em casa tira cerca de 6% (mais no verão chuvoso e em
+  jogos seguidos). Barra com a porcentagem e o estado depois de cada partida em Clube > Estrutura e marca.
+  Investimentos com valores reais convertidos a R$ 6,20 por euro: manutenção de rotina (R$ 45 mil),
+  tratamento intensivo (R$ 180 mil), replantio das áreas gastas (R$ 500 mil, 7 dias) e troca completa
+  (R$ 2 milhões, 14 dias). A "Equipe de gramado" da estrutura diminui o desgaste por jogo.
+- Departamento médico (Elenco > Departamento médico): lesões em jogo e no treino, com gravidade, fase da
+  recuperação, previsão de volta e progresso. Aviso fixo no topo com quem NÃO pode ser escalado e
+  mensagem do departamento médico na lesão e na liberação. Tratamento intensivo pago corta 30% do tempo
+  que falta. Melhorar o departamento médico antecipa também quem já está no DM.
+- Fotos dos jogadores no elenco, lidas das minifaces do GOGOSZ; sem foto, fica a silhueta.
+
 Novidades da 2.8:
 - Carreira do técnico (Clube > Carreira do técnico): fica guardada fora dos saves e continua quando você
   começa uma carreira nova com outro clube. Junta clubes, jogos, títulos, acessos, quedas e demissões e

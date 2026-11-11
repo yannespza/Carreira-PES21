@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
-from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira
+from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico
 from core.logos import LogoBank
 
 PORT = 8765
@@ -44,6 +44,48 @@ TORNEIOS = {17: 'Brasileirão', 79: 'Série B', 81: 'Série C', 80: 'Série D', 
             5: 'Sudamericana', 6: 'Sudamericana (final)', 7: 'Recopa', 1: 'Intercontinental'}
 
 
+def mapa_kitserver():
+    """{id: 'Pais\\Liga\\Time'} do kitserver do GOGOSZ (país e liga de cada time do jogo)."""
+    out = {}
+    p = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', 'kitserver', 'map.txt')
+    try:
+        for line in open(p, encoding='utf-8-sig', errors='replace'):
+            m = re.match(r'\s*(\d+)\s*,\s*"([^"]+)"', line)
+            if m:
+                out[int(m.group(1))] = m.group(2)
+    except OSError:
+        pass
+    return out
+
+
+# pastas onde o patch guarda as minifotos dos jogadores (common\render\symbol\player\<id>.dds)
+PASTAS_FOTO = ('Minifaces', 'Faces', 'Facesbase', 'Custom Players')
+
+
+def foto_jogador(pid):
+    """PNG da foto do jogador (cache em data/fotos); None se o patch não tiver foto dele."""
+    cache = os.path.join(DATA, 'fotos')
+    cf = os.path.join(cache, f'{pid}.png')
+    if os.path.exists(cf):
+        return open(cf, 'rb').read()
+    if os.path.exists(cf + '.sem') and time.time() - os.path.getmtime(cf + '.sem') < 3 * 86400:
+        return None          # sem foto: procura de novo a cada 3 dias (caso você instale fotos novas)
+    os.makedirs(cache, exist_ok=True)
+    for pasta in PASTAS_FOTO:
+        f = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', pasta, 'common', 'render', 'symbol', 'player', f'{pid}.dds')
+        if os.path.exists(f):
+            try:
+                from PIL import Image
+                im = Image.open(f).convert('RGBA')
+                im.thumbnail((256, 256))
+                b = io.BytesIO(); im.save(b, 'PNG'); open(cf, 'wb').write(b.getvalue())
+                return b.getvalue()
+            except Exception:
+                log(traceback.format_exc())
+    open(cf + '.sem', 'w').close()
+    return None
+
+
 def team_names():
     names = {}
     p = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', 'kitserver', 'map.txt')
@@ -61,6 +103,8 @@ class App:
     def __init__(self):
         self.logos = LogoBank(APP_DIR, CFG['pasta_logos'])
         self.names = team_names()
+        self.mapa = mapa_kitserver()
+        diretoria.MAPA = self.mapa
         self.state_path = None
         self.state = None
         self.engine = None
@@ -257,6 +301,7 @@ class App:
                 novo = True
                 log('carreira nova detectada; estado anterior arquivado em', arq)
             st['time_id'] = self.tid()
+            st['pais'] = (self.mapa.get(self.tid()) or 'Brasil').split('\\')[0]
             prest = tecnico_carreira.carregar(DATA).get('prestigio')
             if prest is not None:
                 st['prestigio_tecnico'] = prest
@@ -325,6 +370,8 @@ class App:
             nomes = lambda i: self.names.get(i, f'Time {i}')
             if novas and antes:
                 g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes, self.rivais_ids())
+                for p in sorted(novas, key=lambda p: p['chave']):
+                    medico.lesao_em_jogo(g, p, self.elenco, mu, self.engine)
             if car.date:      # campeonato terminou? título, acesso, rebaixamento (antes da revisão de janeiro)
                 g.fim_de_liga(self.engine, mu, st.get('tabela'), car.date)
                 g.copas(self.engine, mu, car.date)
@@ -352,7 +399,8 @@ class App:
             estrutura.avancar(st, car.date, mu)
             diretoria.processar(st, self.engine, mu, car.date, self.names)
             estrutura.registrar_marca(st, car.date)
-            ingame.condicao_gramado(st, car.date, self.tid())
+            medico.processar(st, car.date, mu, self.engine)
+            ingame.condicao_gramado(st, car.date, self.tid(), self.names)
             chave = os.path.basename(self.state_path or 'carreira') + '|' + str(self.tid())
             c, nova = tecnico_carreira.registrar(DATA, chave, st, self.clube(), car.date)
             st['prestigio_tecnico'] = c['prestigio']
@@ -394,7 +442,18 @@ class App:
             'gramado': {'cond': cond, 'nivel': ingame.nivel_gramado(cond)[0] if cond is not None else None,
                         'hist': gr.get('hist', [])[-30:]},
             'retro': ret, 'tecnico': tecnico_carreira.view(tecnico_carreira.carregar(DATA)),
+            'medico': medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None),
+            'ranking': self.ranking_view(),
         }
+
+    def ranking_view(self):
+        t = ranking.tabela(self.mapa)
+        atual = next((c for c in t if c['id'] == self.tid()), None)
+        return {'lista': [{k: c[k] for k in ('id', 'pos', 'nome', 'pais', 'liga', 'valor', 'torcida', 'prestigio',
+                                              'nota', 'nivel', 'medido')} for c in t if c['pais'] == 'Brasil' and c['liga'] in ('Série A', 'Série B')
+                          or c['nota'] >= 25],
+                'atual': atual, 'prestigio_tecnico': (self.state or {}).get('prestigio_tecnico'),
+                'pais': (self.state or {}).get('pais')}
 
     def cores_time(self):
         t = self.time
@@ -765,7 +824,7 @@ class App:
                              'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, 'Copa')})
         empresas = []
         for n, e in sorted(st.get('empresas', {}).items()):
-            empresas.append({'nome': n, **e})
+            empresas.append({'nome': n, **e, 'global': sim.e_global(n, e)})
         return {
             'pronto': self.state is not None, 'versao': VERSAO,
             'clube': self.clube(), 'time': self.time_view(),
@@ -870,6 +929,13 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/estado':
                 with LOCK:
                     return self.send(200, A.view())
+            if u.path.startswith('/foto/') and u.path.endswith('.png'):
+                try:
+                    pid = int(os.path.basename(u.path)[:-4])
+                except ValueError:
+                    return self.send(404, {'erro': 'id'})
+                b = foto_jogador(pid)
+                return self.send(200, b, 'image/png') if b else self.send(404, {'erro': 'sem foto'})
             if u.path.startswith('/retro/') and u.path.endswith('.png'):
                 with LOCK:
                     st = A.state or {}
@@ -1195,6 +1261,22 @@ class H(BaseHTTPRequestHandler):
                     o = estrutura.investir(A.state, body.get('depto'), sim.s2d(A.state['data']))
                     A.aplicar_creditos(); A.persist()
                     return self.send(200, {'ok': True, 'obra': o})
+                if u.path == '/api/medico/tratar':
+                    medico.tratar(A.state, body.get('id'), sim.s2d(A.state['data']))
+                    A.aplicar_creditos(); A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/gramado/investir':
+                    if not A.state.get('data'):
+                        raise ValueError('O app ainda não leu a data da carreira.')
+                    r_ = estrutura.investir_gramado(A.state, body.get('acao'), sim.s2d(A.state['data']))
+                    A.aplicar_creditos(); A.persist()
+                    threading.Thread(target=A.atualizar_ingame, kwargs={'forcar': True}, daemon=True).start()
+                    return self.send(200, {'ok': True, **{k: r_[k] for k in ('nome', 'custo')}})
+                if u.path == '/api/empresa/global':
+                    e_ = eng.s['empresas'].get(body.get('nome'))
+                    if not e_:
+                        raise ValueError('Empresa não encontrada.')
+                    e_['global'] = bool(body.get('global'))
+                    A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/vestiario/capitao':
                     vestiario.definir_capitao(A.state, body.get('nome') or None, A.state.get('data'))
                     A.persist(); return self.send(200, {'ok': True})

@@ -197,6 +197,27 @@ dialog select,dialog input{width:100%}
 .carta .tg{display:inline-block;margin-top:6px;font-size:10px;padding:2px 6px;border-radius:3px;background:var(--red);color:#fff;font-weight:700}
 .carta .tg.novo{background:var(--green);color:#0b1a10}
 .carta.fora{filter:grayscale(1);opacity:.65}
+.carta .ft{width:72px;height:72px;margin:30px auto 0;border-radius:50%;overflow:hidden;background:var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='24' r='12' fill='%23465061'/%3E%3Cpath d='M10 60c2-14 11-21 22-21s20 7 22 21z' fill='%23465061'/%3E%3C/svg%3E") center/80% no-repeat;border:2px solid rgba(255,255,255,.12)}
+.carta .ft img{width:100%;height:100%;object-fit:cover;display:block}
+.carta .ft+.nm{margin-top:8px;text-align:center}
+.gbar{height:22px;border-radius:4px;background:#2b313b;overflow:hidden;position:relative}
+.gbar i{display:block;height:100%;transition:width .4s}
+.gbar span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--head);font-size:13px;color:#fff;text-shadow:0 1px 2px #000}
+.acoes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.acao{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.acao b{font-family:var(--head);letter-spacing:.03em}.acao small{color:var(--mut);font-size:12px;line-height:1.4;flex:1}
+.acao .pr{font-family:var(--head);font-size:18px;color:var(--lime)}
+.dm{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.dmc{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:4px;padding:14px;display:flex;gap:12px}
+.dmc.leve{border-left-color:var(--gold)}.dmc.afastado{border-left-color:#8a93a3}
+.dmc .ph{width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden;background:var(--bg2)}.dmc .ph img{width:100%;height:100%;object-fit:cover}
+.dmc b{font-family:var(--head);font-size:16px;letter-spacing:.03em}.dmc p{margin:4px 0;font-size:13px;color:var(--mut)}
+.nao{display:inline-block;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.05em}
+.lib{display:inline-block;background:var(--green);color:#0b1a10;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px}
+.rk{width:100%;border-collapse:collapse;font-size:13px}.rk th{text-align:left;color:var(--mut);font-weight:600;font-size:11px;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line)}
+.rk td{padding:7px 8px;border-bottom:1px solid var(--line)}.rk tr.eu td{background:rgba(200,255,0,.08)}.rk tr.faixa td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
+.rk .nt{font-family:var(--head);font-size:15px}
+@media(max-width:1000px){.acoes{grid-template-columns:repeat(2,1fr)}}
 /* prancheta */
 .campo{position:relative;aspect-ratio:68/105;max-height:640px;margin:0 auto;border-radius:8px;
   background:repeating-linear-gradient(0deg,#1f6b3a 0 9%,#1c6235 9% 18%);border:2px solid #d9e8dc;overflow:hidden}
@@ -405,11 +426,12 @@ dialog select,dialog input{width:100%}
   <!-- CLUBE -->
   <section id="t-clube">
     <div class="crumb">Início / Clube / <b>Visão geral</b></div>
-    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a><a data-sub="dir">Diretoria</a><a data-sub="est">Estrutura e marca</a><a data-sub="riv">Clássicos</a><a data-sub="temp">Temporadas</a><a data-sub="tec">Carreira do técnico</a></div>
+    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a><a data-sub="dir">Diretoria</a><a data-sub="est">Estrutura e marca</a><a data-sub="riv">Clássicos</a><a data-sub="rank">Ranking</a><a data-sub="temp">Temporadas</a><a data-sub="tec">Carreira do técnico</a></div>
     <div id="c-tab" class="hidden"><div class="box"><h3>Classificação <small id="tabInfo"></small></h3><div id="tabela"></div></div></div>
     <div id="c-dir" class="hidden"><div id="dirBox"></div></div>
     <div id="c-est" class="hidden"><div id="estBox"></div></div>
     <div id="c-riv" class="hidden"><div id="rivBox"></div></div>
+    <div id="c-rank" class="hidden"><div id="rankBox"></div></div>
     <div id="c-temp" class="hidden"><div id="tempBox"></div></div>
     <div id="c-tec" class="hidden"><div id="tecBox"></div></div>
     <div id="c-geral">
@@ -496,9 +518,10 @@ dialog select,dialog input{width:100%}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Vestiário</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="cards-el" id="elList"></div>
       <p style="font-size:12px;color:var(--mut);margin-top:14px">Posição, overall, rosto, lesão e suspensão ainda não foram localizados no save. Por enquanto os cartões mostram nome, altura e os afastamentos criados pelo app.</p></div></div>
+    <div id="e-dm" class="hidden"><div id="dmBox"></div></div>
     <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
       <div class="box"><h3>Prancheta <small>arraste os jogadores para o campo</small></h3><div class="campo" id="campo"><div class="area t"></div><div class="area b"></div></div>
         <div style="display:flex;gap:6px;margin-top:10px"><button class="ghost" onclick="limparPrancheta()">Limpar campo</button></div></div>
@@ -672,6 +695,8 @@ function render(){
   const tp=S.time&&S.time.prep;
   if(tp&&tp.rodando) bn+=`<div class="banner"><p><b>Preparando os uniformes do ${esc(S.time.nome)}:</b> o app está tirando os patrocínios originais das ${S.time.n_uniformes} variações e guardando onde eles ficavam. ${esc(tp.msg||'')}</p><div class="prog"><i style="width:${Math.round(100*(tp.i||0)/(tp.n||1))}%"></i></div></div>`;
   else if(tp&&tp.erro) bn+=`<div class="banner err"><p>Preparação dos uniformes: ${esc(tp.msg)}</p></div>`;
+  {const M=(S.carreira||{}).medico||{};const L=(M.ativos||[]);if(L.length)bn+=`<div class="banner err"><p><b>🩺 Não escale:</b> ${L.map(x=>`${esc(x.jogador)} (até ${dt(x.volta)})`).join(', ')}.</p><button class="ghost" onclick="go('elenco');document.querySelector('#etabs a[data-e=dm]').click()">Ver DM</button></div>`;
+   const R=(M.liberados||[]).filter(x=>x.ha<=3);if(R.length)bn+=`<div class="banner"><p><b>✅ Liberado(s) para jogar:</b> ${R.map(x=>esc(x.jogador)).join(', ')}.</p></div>`;}
   {const D=(S.carreira||{}).diretoria||{};const ver=`<button class="ghost" onclick="go('clube');abrirSub('c','dir')">Ver</button>`;
    if(D.status=='demitido') bn+=`<div class="banner err"><p><b>Você foi demitido.</b> ${esc(D.motivo||'')}. Veja as propostas de outros clubes.</p>${ver}</div>`;
    else if(D.sondagem) bn+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer contratar você.</b> Decida se fica ou aceita.</p>${ver}</div>`;
@@ -704,10 +729,10 @@ function rIngame(){const g=S.ingame;const el=$('ingameBox');if(!el)return;
   el.innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">
     <div>🏟️ <b>${esc(g.estadio||'estádio não encontrado no map_teams.txt')}</b></div>
     <div>🚩 Faixas: <b>${g.faixas=='apoio'?'de apoio':g.faixas=='protesto'?'de protesto':'originais'}</b>${g.faixas_n?` <small style="color:var(--mut)">(${g.faixas_n} faixa(s))</small>`:''} <small style="color:var(--mut)">· ${esc(g.faixas_motivo||('torcida '+t+'/100'))}</small></div>
-    <div>🌱 Gramado: <b>${(()=>{const c=((S.carreira||{}).gramado||{}).cond;return (c==null?'':Math.round(c)+'/100 · ')+(g.gramado=='otimo'?'impecável':g.gramado=='ruim'?'castigado':'normal')})()}</b> <small style="color:var(--mut)">· desgasta a cada jogo em casa, recupera nos dias de folga</small></div>
+    <div>🌱 Gramado: <b>${(()=>{const c=((S.carreira||{}).gramado||{}).cond;return (c==null?'':Math.round(c)+'% · ')+(g.gramado=='otimo'?'impecável':g.gramado=='ruim'?'castigado':'normal')})()}</b> <small style="color:var(--mut)">· desgasta a cada jogo em casa e só recupera com investimento (Clube › Estrutura e marca)</small></div>
     <div>📐 Bandeirinhas: <b>${g.bandeirinha?'cores do clube + patrocinador master':'originais'}</b></div>
     <button class="ghost" onclick="api('/api/ingame/atualizar',{}).then(()=>{toast('Estádio atualizado. Vale a partir do próximo jogo em casa.');load()})">Refazer agora</button></div>`}
-function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();
+function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();rRank();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
   $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
@@ -742,10 +767,10 @@ function rDir(){const D=(S.carreira||{}).diretoria;const el=$('dirBox');if(!el)r
    <div class="meter"><h4>META NA LIGA</h4>${M?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.liga.texto)}</p><p>${M.liga_status.pos?`Hoje: <b>${M.liga_status.pos}º</b> · `:''}<span class="pill ${LS[M.liga_status.status][1]}">${LS[M.liga_status.status][0]}</span></p>`:'<p>Definida na primeira leitura da temporada.</p>'}</div>
    <div class="meter"><h4>COPA</h4>${M&&M.copa?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.copa.texto)}</p><p><span class="pill ${M.copa_status.status=='cumprida'?'ok':'wait'}">${M.copa_status.status=='cumprida'?'cumprida':'em andamento'}</span></p>`:'<p style="margin-top:0">Sem meta de copa nesta temporada.</p>'}</div></div>`;
   if(D.ultimato)h+=`<div class="banner err"><p><b>Ultimato da diretoria.</b> Restam ${D.ultimato.restam} jogo(s): faça 7 pontos no período ou recupere a confiança até 40.</p></div>`;
-  if(D.sondagem)h+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer você.</b> Recusar renova o seu contrato e anima a torcida. Aceitar encerra o trabalho aqui: comece uma carreira nova no jogo com o ${esc(D.sondagem.nome)} e o app passa a acompanhar o novo clube, levando a sua carreira de técnico junto.</p><button class="ghost" onclick="sondagem(false)">Recusar e ficar</button><button class="lime" onclick="sondagem(true)">Aceitar</button></div>`;
+  if(D.sondagem)h+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer você${D.sondagem.pais?` (${esc(D.sondagem.pais)}, ${D.sondagem.pos}º no ranking)`:''}.</b> Recusar renova o seu contrato e anima a torcida. Aceitar encerra o trabalho aqui: comece uma carreira nova no jogo com o ${esc(D.sondagem.nome)} e o app passa a acompanhar o novo clube, levando a sua carreira de técnico junto.</p><button class="ghost" onclick="sondagem(false)">Recusar e ficar</button><button class="lime" onclick="sondagem(true)">Aceitar</button></div>`;
   if(D.status!='empregado')h+=`<div class="box" style="margin-bottom:16px"><h3>${D.status=='demitido'?'Você foi demitido':'Você deixou o clube'} <small>${esc(D.motivo||'')}</small></h3>
     <p style="color:var(--mut);margin-top:0">Para assumir um destes clubes, comece uma carreira nova no PES com ele: o app passa a acompanhar o novo time sozinho e a sua carreira de técnico (títulos e prestígio) continua.</p>
-    ${(D.propostas||[]).map(p=>`<div class="row"><div class="nm"><b>${esc(p.nome)}</b><small>quer você no comando</small></div></div>`).join('')||'<div class="empty">Nenhuma proposta.</div>'}
+    ${(D.propostas||[]).map(p=>`<div class="row"><div class="nm"><b>${esc(p.nome)}</b><small>${p.pais?esc(p.pais)+' · '+esc(p.liga)+' · '+p.pos+'º no ranking · '+esc(p.nivel):'quer você no comando'}</small></div>${p.nota!=null?`<span class="pill">nota ${p.nota}</span>`:''}</div>`).join('')||'<div class="empty">Nenhuma proposta.</div>'}
     <div style="margin-top:10px"><button class="ghost" onclick="continuarClube()">Continuar no ${esc(S.clube)} mesmo assim</button></div></div>`;
   h+=`<div class="grid2"><div class="box"><h3>Histórico do cargo</h3>${(D.historico||[]).map(x=>`<div class="ev"><div class="ic">${{ultimato:'⏳',superou:'💪',demissao:'❌',renovacao:'✍️',fica:'🤝',saida:'✈️',volta:'↩️'}[x.tipo]||'•'}</div><div><b>${esc(x.texto)}</b><small>${dt(x.data)}</small></div></div>`).join('')||'<div class="empty">Nada por enquanto.</div>'}</div>
     <div class="box"><h3>Como funciona</h3><p style="color:var(--mut);font-size:13px;line-height:1.55;margin-top:0">Confiança abaixo de 25 gera um ultimato de 4 jogos. No fim da temporada, meta cumprida renova o contrato; rebaixamento, ou meta perdida com confiança abaixo de 45, derruba o técnico. Com confiança e torcida em alta, outros clubes podem sondar você.</p>
@@ -755,7 +780,7 @@ async function sondagem(a){if(a&&!confirm('Aceitar a proposta? O trabalho neste 
 async function continuarClube(){await api('/api/diretoria/continuar',{});toast('O presidente voltou atrás. Você segue no comando.');load()}
 function rEstr(){const E=(S.carreira||{}).estrutura;const el=$('estBox');if(!el||!E)return;
   const niv=n=>`<span class="niv">${Array.from({length:5},(_,i)=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`;
-  el.innerHTML=`<div class="grid3" style="grid-template-columns:1fr 1.4fr"><div class="meter"><h4>VALOR DA MARCA <b style="color:${cor(E.marca)}">${E.marca}</b></h4><div class="bar"><i style="width:${E.marca}%;background:${cor(E.marca)}"></i></div><p>Sobe com títulos, acessos, torcida feliz e marketing; cai com rebaixamento. Hoje soma <b>${E.marca_bonus>0?'+':''}${E.marca_bonus}</b> na atratividade para patrocinadores. Acima de 60, empresas concorrentes tentam tomar o espaço de um patrocinador atual, pagando a multa dele.</p></div>
+  el.innerHTML=rGramado(E)+`<div class="grid3" style="grid-template-columns:1fr 1.4fr"><div class="meter"><h4>VALOR DA MARCA <b style="color:${cor(E.marca)}">${E.marca}</b></h4><div class="bar"><i style="width:${E.marca}%;background:${cor(E.marca)}"></i></div><p>Sobe com títulos, acessos, torcida feliz e marketing; cai com rebaixamento. Hoje soma <b>${E.marca_bonus>0?'+':''}${E.marca_bonus}</b> na atratividade para patrocinadores. Acima de 60, empresas concorrentes tentam tomar o espaço de um patrocinador atual, pagando a multa dele.</p></div>
    <div class="meter"><h4>EVOLUÇÃO DA MARCA</h4>${spark(E.marca_hist)}</div></div>
    <div class="deps">${E.deptos.map(d=>`<div class="box dep"><h3>${d.icone} ${esc(d.nome)} ${niv(d.nivel)}</h3><p>Hoje: <b>${esc(d.efeito)}</b></p>
     ${d.obra?`<p class="obra">🚧 Obra para o nível ${d.obra.para}: fica pronta em ${dt(d.obra.fim)} (faltam ${d.obra.dias} dia(s) da carreira)</p>`:d.proximo?`<p style="color:var(--mut)">Nível ${d.nivel+1}: ${esc(d.proximo)}</p><button class="lime" onclick="investir('${d.id}',${d.custo})">Investir ${eurM(d.custo)} · ${d.dias_obra} dias de obra</button>`:'<p style="color:var(--green)">Nível máximo.</p>'}</div>`).join('')}</div>
@@ -794,6 +819,41 @@ function rTec(){const T=(S.carreira||{}).tecnico;const el=$('tecBox');if(!el||!T
    <div class="box"><h3>Passagens de ${esc(nome)}</h3>${T.passagens.map(p=>`<div class="row"><div class="nm"><b>${esc(p.clube)}</b><small>${dt(p.inicio)} – ${p.ativa?'hoje':dt(p.fim)} · ${p.jogos} jogos · ${p.V}V ${p.E}E ${p.D}D${p.acessos?' · '+p.acessos+' acesso(s)':''}${p.rebaixamentos?' · '+p.rebaixamentos+' rebaixamento(s)':''}</small>
     <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${p.titulos_nomes.map(t=>`<span class="pill ok">🏆 ${esc(t)}</span>`).join('')}${p.saida=='demitido'?`<span class="pill off">demitido${p.motivo_saida?': '+esc(p.motivo_saida):''}</span>`:p.saida=='saiu'?'<span class="pill">saiu para outro clube</span>':p.ativa?'<span class="pill ok">no comando</span>':''}</div></div></div>`).join('')}
    <p style="font-size:12px;color:var(--mut);margin-top:12px">A carreira do técnico fica guardada fora dos saves. Ao começar uma carreira nova no jogo, com qualquer clube, ela continua daqui.</p></div>`}
+const gcor=c=>c>=82?'var(--green)':c>=60?'#7cc46a':c>=45?'var(--gold)':'var(--red)';
+const gtxt=c=>c>=82?'Impecável':c>=60?'Bom':c>=45?'Regular':c>=25?'Castigado':'Péssimo';
+function rGramado(E){const G=E.gramado||{};const c=G.cond??80;
+  return `<div class="box" style="margin-bottom:16px"><h3>🌱 Gramado do estádio <small>${G.desgaste_jogo?'cada jogo em casa tira cerca de '+G.desgaste_jogo+'% (mais no verão chuvoso)':''}</small></h3>
+   <div class="gbar"><i style="width:${c}%;background:${gcor(c)}"></i><span>${Math.round(c)}% · ${gtxt(c)}</span></div>
+   <p style="font-size:12px;color:var(--mut);margin:8px 0 0">O gramado não se recupera sozinho: só volta com investimento. A partir de 82% fica impecável no jogo; abaixo de 45% aparece castigado. Valores baseados em estádios brasileiros reais (manutenção de R$ 30 mil a R$ 60 mil por mês; troca completa por cerca de R$ 2 milhões), convertidos a R$ 6,20 por euro.</p>
+   ${G.obra?`<div class="banner" style="margin-top:12px"><p>🚧 <b>${esc(G.obra.nome)}</b> em andamento: fica pronto em ${dt(G.obra.fim)}.</p></div>`:''}
+   <div class="acoes">${(G.acoes||[]).map(a=>`<div class="acao"><b>${esc(a.nome)}</b><small>${esc(a.texto)}</small><span class="pr">${eurM(a.custo)}</span><span style="font-size:12px;color:var(--mut)">R$ ${a.reais.toLocaleString('pt-BR')} · ${a.ganho>=100?'deixa em 100%':'+'+a.ganho+'%'}</span><button class="lime" ${G.obra||c>=100?'disabled':''} onclick="gramadoInv('${a.id}','${esc(a.nome)}',${a.custo})">Contratar</button></div>`).join('')}</div>
+   <h4 style="margin:18px 0 6px;font-size:12px;letter-spacing:.06em;color:var(--mut)">ESTADO DEPOIS DE CADA PARTIDA E INVESTIMENTO</h4>
+   ${(G.eventos||[]).map(e=>`<div class="jl"><small>${dt(e.data)}</small>${e.tipo=='jogo'?'⚽':'🛠️'} ${esc(e.texto)} <span style="margin-left:auto;font-family:var(--head)">${Math.round(e.antes)}% → <b style="color:${gcor(e.depois)}">${Math.round(e.depois)}%</b></span></div>`).join('')||'<div class="empty" style="font-size:12px">Nenhum jogo em casa desde que o app começou a acompanhar o gramado.</div>'}</div>`}
+async function gramadoInv(k,n,c){if(!confirm(n+' por '+eurM(c)+'? O valor sai do orçamento de transferências do save. Depois, recarregue a carreira no jogo sem salvar antes.'))return;await api('/api/gramado/investir',{acao:k});toast(n+' contratado.');load()}
+async function togGlobal(n,v){await api('/api/empresa/global',{nome:n,global:v});load()}
+function rDM(){const M=(S.carreira||{}).medico||{};const A=M.ativos||[],L=M.liberados||[];
+  const ft=id=>`<div class="ph"><img src="/foto/${id}.png" onerror="this.remove()"></div>`;
+  $('dmBox').innerHTML=`<div class="grid3"><div class="meter"><h4>NO DEPARTAMENTO MÉDICO <b style="color:${A.length?'var(--red)':'var(--green)'}">${A.length}</b></h4><p style="margin-top:0">O jogo não sabe das lesões do app: <b>não escale</b> quem está aqui e volte a escalar quando aparecer como liberado. Você recebe uma mensagem do departamento médico nos dois casos.</p></div>
+   <div class="meter"><h4>DEPARTAMENTO MÉDICO · NÍVEL ${M.nivel||'—'}</h4><p style="margin-top:0">${esc(M.efeito||'')}. Investir no departamento (Clube › Estrutura e marca) encurta as próximas lesões e também quem já está no DM, quando a obra termina.</p></div>
+   <div class="meter"><h4>TRATAMENTO INTENSIVO</h4><p style="margin-top:0">Fisioterapia extra e câmara hiperbárica: corta 30% do tempo que falta. Uma vez por lesão, pago com o orçamento de transferências.</p></div></div>
+   <div class="box"><h3>Indisponíveis</h3>${A.length?`<div class="dm">${A.map(x=>`<div class="dmc ${x.gravidade=='leve'?'leve':x.tipo!='lesao'?'afastado':''}">${ft(x.jogador_id)}<div style="flex:1"><b>${esc(x.jogador)}</b> <span class="nao">NÃO ESCALAR</span>
+     <p><b style="font-size:13px;color:var(--txt)">${esc(x.titulo)}</b> · ${x.tipo=='lesao'?'lesão '+esc(x.gravidade)+(x.origem=='jogo'?' (em jogo)':' (no treino)'):esc(x.tipo)}</p>
+     <p>Fase: ${esc(x.fase)} · volta em <b style="color:var(--txt)">${dt(x.volta)}</b> (${x.falta} dia(s))</p>
+     <div class="bar" style="margin:6px 0"><i style="width:${x.prog}%;background:var(--lime)"></i></div><p style="font-size:11px">Recuperação ${x.prog}% · ${x.total} dias no total${x.tratado?' · tratamento intensivo feito':''}</p>
+     ${(x.historico||[]).map(h=>`<p style="font-size:11px">• ${esc(h.texto)}</p>`).join('')}
+     ${x.custo_trat?`<button class="ghost" style="margin-top:6px" onclick="tratar('${x.id}','${esc(x.jogador)}',${x.custo_trat})">Tratamento intensivo · ${eurM(x.custo_trat)}</button>`:''}</div></div>`).join('')}</div>`:'<div class="empty">Ninguém no departamento médico. Elenco todo à disposição.</div>'}</div>
+   <div class="box" style="margin-top:16px"><h3>Liberados nos últimos 14 dias</h3>${L.map(x=>`<div class="jl"><span class="lib">LIBERADO</span> <b>${esc(x.jogador)}</b> · ${esc(x.titulo)} <small style="margin-left:auto">desde ${dt(x.volta)}</small></div>`).join('')||'<div class="empty" style="font-size:12px">Ninguém voltou recentemente.</div>'}</div>`}
+async function tratar(id,n,c){if(!confirm('Tratamento intensivo para '+n+' por '+eurM(c)+'?'))return;await api('/api/medico/tratar',{id});toast('Tratamento iniciado: volta antecipada.');load()}
+let RKF='todos';
+function rRank(){const R=(S.carreira||{}).ranking;const el=$('rankBox');if(!el||!R)return;const a=R.atual,p=R.prestigio_tecnico??50;
+  const lst=R.lista.filter(c=>RKF=='todos'||(RKF=='br'?c.pais=='Brasil':c.pais!='Brasil'));
+  el.innerHTML=`<div class="grid3"><div class="meter"><h4>SEU CLUBE ${a?`<b>${a.pos}º</b>`:''}</h4><p style="margin-top:0;font-size:15px;color:var(--txt)">${a?esc(a.nome)+' · nota '+a.nota+' · '+esc(a.nivel):'Fora do ranking'}</p><p>${a?esc(a.pais)+' · '+esc(a.liga):''}</p></div>
+   <div class="meter"><h4>SEU PRESTÍGIO <b style="color:${cor(p)}">${p}</b></h4><p style="margin-top:0">Demitido, chegam clubes com nota entre ${Math.max(0,p-28)} e ${p+4}. Em alta, sondam clubes maiores que o seu, até nota ${Math.max((a?a.nota:50)+8,p+15).toFixed(0)}.</p></div>
+   <div class="meter"><h4>COMO É A NOTA</h4><p style="margin-top:0">45% valor do elenco + 30% torcida + 25% prestígio nacional. Série A: Transfermarkt jan/2026; torcidas: Datafolha; prestígio: ranking CBF 2026. Os marcados com * são estimativas.</p></div></div>
+   <div class="seg" style="max-width:420px">${[['todos','Todos'],['br','Brasil'],['sul','Sul-americanos']].map(([k,n])=>`<button class="${RKF==k?'on':''}" onclick="RKF='${k}';rRank()">${n}</button>`).join('')}</div>
+   <div class="box"><table class="rk"><tr><th>#</th><th>CLUBE</th><th>PAÍS · LIGA</th><th>ELENCO</th><th>TORCIDA</th><th>PRESTÍGIO</th><th>NOTA</th><th>NÍVEL</th></tr>
+   ${lst.map(c=>`<tr class="${a&&c.id==a.id?'eu':''} ${c.nota>=p-28&&c.nota<=p+4?'faixa':''}"><td>${c.pos}</td><td><b>${esc(c.nome)}</b></td><td style="color:var(--mut)">${esc(c.pais)} · ${esc(c.liga)}</td><td>€ ${c.valor.toLocaleString('pt-BR')} mi${c.medido?'':'*'}</td><td>${c.torcida}</td><td>${c.prestigio}</td><td class="nt">${c.nota}</td><td>${esc(c.nivel)}</td></tr>`).join('')}</table>
+   <p style="font-size:12px;color:var(--mut);margin-top:10px">A faixa dourada à esquerda marca os clubes que podem te contratar se você for demitido hoje. Clubes de fora do Brasil só recebem propostas de marcas mundiais (marque em Patrocínio › Empresas quais são).</p></div>`}
 function rVest(){const V=(S.carreira||{}).vestiario||{};const G=S.gestao||{};const c=V.clima??60;
   $('vestBox').innerHTML=`<div class="grid3"><div class="meter"><h4>CLIMA DO GRUPO <b style="color:${cor(c)}">${c}</b></h4><div class="bar"><i style="width:${c}%;background:${cor(c)}"></i></div><p>${c>=75?'Grupo fechado com a comissão':c>=50?'Ambiente normal':c>=35?'Clima tenso: reclamações e panelinhas':'Vestiário rachado'}. Sobe com vitórias e técnico que protege o grupo; cai com derrotas, indisciplina e jogador exposto na coletiva.</p></div>
    <div class="meter"><h4>CAPITÃO</h4><select id="capSel" style="width:100%" onchange="api('/api/vestiario/capitao',{nome:this.value}).then(()=>{this.blur();toast('Braçadeira entregue.');load()})"><option value="">— escolher —</option>${(S.elenco||[]).filter(p=>!p.nome.startsWith('Jogador ')).map(p=>`<option ${p.nome==V.capitao?'selected':''}>${esc(p.nome)}</option>`).join('')}</select><p>Segura parte do baque das derrotas e, com o clima ruim, pode reunir o elenco.</p></div>
@@ -1065,14 +1125,14 @@ async function procurarDeNovo(){if(!confirm('Procurar os patrocínios de novo no
 })();
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['cartas','pran','transf','evt'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+  ['cartas','pran','transf','evt','dm'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral de '+S.moral_data+' (Dados do time)':' · para ver a moral, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
   return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
       <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rPrancheta();
@@ -1083,6 +1143,7 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
     $('kIn').innerHTML=ins.length?ins.map(t=>card(t,'in','CONTRATADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma chegada ainda.</div>';
     $('kOut').innerHTML=outs.length?outs.map(t=>card(t,'out','VENDIDO / DISPENSADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma saída ainda.</div>'}
   if(etab=='evt')rVest();
+  if(etab=='dm')rDM();
 }
 // prancheta: posições em % do campo, guardadas no app
 let PR=null,arr=null;
@@ -1177,7 +1238,7 @@ function rEmps(){
     const o=S.ofertas.find(o=>o.empresa==n);if(o)return `<span class="pill wait">${o.status=='aguardando'?'negociando':'proposta aberta'}</span>`;return ''};
   $('egrid').innerHTML=S.empresas.map(e=>{const bl=e.bloqueio_ate&&e.bloqueio_ate>S.data;
     const vig=S.contratos.some(c=>c.empresa==e.nome&&(c.status=='ativo'||c.status=='assinado'));
-    return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}<div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)}</div>
+    return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}<div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)} <span class="pill ${e.global?'ok':''}" style="cursor:pointer" title="Marca mundial pode patrocinar clubes de fora do Brasil. Clique para trocar." onclick="togGlobal('${esc(e.nome)}',${!e.global})">${e.global?'🌎 mundial':'🇧🇷 nacional'}</span></div>
     <small>${esc(e.setor)} · perfil ${esc(e.personalidade)}</small>${busy(e.nome)}${bl?`<small>Volta a negociar em ${dt(e.bloqueio_ate)}</small>`:''}
     <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('')+
     ((S.empresas_removidas||[]).length?`<div class="emp" style="grid-column:1/-1"><b>Removidas</b><small>${S.empresas_removidas.map(n=>`${esc(n)} <a style="color:var(--lime);cursor:pointer" onclick="restaurarEmp('${esc(n)}')">restaurar</a>`).join(' · ')}</small></div>`:'');

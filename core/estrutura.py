@@ -3,7 +3,7 @@
 Departamentos (nível 1 a 5) que você melhora pagando com o orçamento de transferências do save:
 - Departamento médico: lesões duram menos;
 - Centro de treinamento: menos lesões no treino e vestiário mais tranquilo;
-- Manutenção do gramado: o gramado de casa se recupera mais rápido entre os jogos;
+- Equipe de gramado: cada jogo em casa desgasta menos o gramado (a recuperação depende de investir nele);
 - Marketing: a marca do clube cresce mais e atrai patrocinadores melhores.
 Cada melhoria vira uma obra com prazo; o efeito vale quando a obra termina.
 
@@ -19,9 +19,9 @@ DEPTOS = {
     'ct': {'nome': 'Centro de treinamento', 'icone': '🏋️',
            'efeito': ['30% mais lesões no treino', 'risco normal no treino', '15% menos lesões no treino',
                       '30% menos lesões e vestiário mais calmo', '45% menos lesões e vestiário mais calmo']},
-    'gramado': {'nome': 'Manutenção do gramado', 'icone': '🌱',
-                'efeito': ['gramado se recupera devagar', 'recuperação normal', 'recuperação 30% mais rápida',
-                           'recuperação 60% mais rápida', 'recuperação no dobro da velocidade']},
+    'gramado': {'nome': 'Equipe de gramado', 'icone': '🌱',
+                'efeito': ['cada jogo desgasta 30% mais', 'desgaste normal por jogo', 'cada jogo desgasta 15% menos',
+                           'cada jogo desgasta 30% menos', 'cada jogo desgasta 45% menos']},
     'marketing': {'nome': 'Marketing', 'icone': '📣',
                   'efeito': ['marca -2 na atratividade', 'sem bônus', 'marca +2 na atratividade',
                              'marca +4 na atratividade', 'marca +6 na atratividade']},
@@ -29,7 +29,7 @@ DEPTOS = {
 ORDEM = ['medico', 'ct', 'gramado', 'marketing']
 DURACAO_LESAO = [1.25, 1.0, 0.85, 0.72, 0.6]
 RISCO_TREINO = [1.3, 1.0, 0.85, 0.7, 0.55]
-RECUP_GRAMADO = [0.6, 1.0, 1.3, 1.6, 2.0]
+DESGASTE_GRAMADO = [1.3, 1.0, 0.85, 0.7, 0.55]
 BONUS_MKT = [-2, 0, 2, 4, 6]
 # custo para ir ao próximo nível (do 1 para o 2, ..., do 4 para o 5), em euros, antes do ajuste pelo porte do clube
 CUSTO = [1_500_000, 3_000_000, 5_500_000, 9_000_000]
@@ -65,8 +65,60 @@ def risco_treino(state):
     return RISCO_TREINO[nivel(state, 'ct') - 1]
 
 
-def recup_gramado(state):
-    return RECUP_GRAMADO[nivel(state, 'gramado') - 1]
+def desgaste_gramado(state):
+    return DESGASTE_GRAMADO[nivel(state, 'gramado') - 1]
+
+
+# ---------------- investimentos no gramado ----------------
+# Valores reais de estádios brasileiros, convertidos a R$ 6,20 por euro (cotação usada pelo Lance! em 2026):
+# - manutenção mensal de gramado natural: cerca de R$ 30 mil (Mané Garrincha) a R$ 60 mil (Arena da Amazônia);
+# - troca completa de gramado natural padrão Fifa: cerca de R$ 2 milhões (Arena da Amazônia);
+# - reforma do gramado da Neo Química Arena para jogo da NFL: R$ 2,7 milhões.
+# Replantio parcial e tratamento intensivo são estimativas entre esses extremos.
+TAXA_REAL = 6.2
+GRAMADO_ACOES = {
+    'rotina': {'nome': 'Manutenção de rotina', 'reais': 45_000, 'ganho': 8, 'dias': 0,
+               'texto': 'Um mês de equipe: corte, irrigação, adubação e marcação.'},
+    'intensivo': {'nome': 'Tratamento intensivo', 'reais': 180_000, 'ganho': 22, 'dias': 0,
+                  'texto': 'Aeração, ressemeadura das falhas e iluminação artificial de crescimento por um mês.'},
+    'replantio': {'nome': 'Replantio das áreas gastas', 'reais': 500_000, 'ganho': 45, 'dias': 7,
+                  'texto': 'Troca das placas de grama nas pequenas áreas e no meio-campo. Fica pronto em 7 dias.'},
+    'troca': {'nome': 'Troca completa do gramado', 'reais': 2_000_000, 'ganho': 100, 'dias': 14,
+              'texto': 'Gramado natural novo, padrão Fifa, no campo todo. Fica pronto em 14 dias.'},
+}
+
+
+def custo_gramado(k):
+    return int(round(GRAMADO_ACOES[k]['reais'] / TAXA_REAL / 100) * 100)
+
+
+def investir_gramado(state, k, hoje):
+    if k not in GRAMADO_ACOES:
+        raise ValueError('Opção desconhecida.')
+    gr = state.setdefault('gramado', {'cond': 80.0, 'data': None, 'vistos': []})
+    if gr.get('obra'):
+        raise ValueError('Já tem uma obra no gramado em andamento.')
+    a = GRAMADO_ACOES[k]
+    c = custo_gramado(k)
+    orc = (state.get('dinheiro') or {}).get('orc_transf')
+    if orc is not None and orc < c:
+        raise ValueError(f'O orçamento de transferências ({fmt_eur(orc)}) não cobre o serviço ({fmt_eur(c)}).')
+    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+                                            'valor': c, 'status': 'pendente', 'motivo': f"Gramado: {a['nome']}"})
+    if a['dias']:
+        gr['obra'] = {'acao': k, 'nome': a['nome'], 'ganho': a['ganho'], 'inicio': d2s(hoje),
+                      'fim': d2s(hoje + dt.timedelta(days=a['dias']))}
+    else:
+        aplicar_gramado(gr, a['ganho'], a['nome'], d2s(hoje))
+    return {'custo': c, **a}
+
+
+def aplicar_gramado(gr, ganho, nome, data):
+    antes = gr.get('cond', 80.0)
+    gr['cond'] = round(min(100.0, antes + ganho), 1)
+    gr.setdefault('eventos', []).append({'data': data, 'tipo': 'investimento', 'texto': nome,
+                                         'antes': antes, 'depois': gr['cond']})
+    gr['eventos'] = gr['eventos'][-40:]
 
 
 def investir(state, k, hoje):
@@ -142,7 +194,11 @@ def view(state, hoje):
                     'proximo': DEPTOS[k]['efeito'][n] if n < 5 else None, 'custo': custo(state, k),
                     'obra': o and {**o, 'dias': max(0, (s2d(o['fim']) - hoje).days) if hoje else None},
                     'dias_obra': OBRA_DIAS[n - 1] if n < 5 else None})
-    return {'deptos': out, 'marca': marca(state), 'marca_bonus': bonus_atratividade(state),
+    gr = state.get('gramado') or {}
+    gram = {'cond': gr.get('cond'), 'obra': gr.get('obra'), 'eventos': (gr.get('eventos') or [])[-15:][::-1],
+            'acoes': [{'id': k, **a, 'custo': custo_gramado(k)} for k, a in GRAMADO_ACOES.items()],
+            'desgaste_jogo': round(6 * desgaste_gramado(state), 1)}
+    return {'deptos': out, 'gramado': gram, 'marca': marca(state), 'marca_bonus': bonus_atratividade(state),
             'marca_hist': state.get('marca_hist', [])[-30:], 'debitos': state.get('debitos', [])[-12:][::-1]}
 
 

@@ -89,7 +89,20 @@ def _msg(engine, data, assunto, texto, de=None, extra=None):
                                   'tipo': 'diretoria', 'oferta_id': None, 'lida': False, **(extra or {})})
 
 
+MAPA = {}        # {id: 'Pais\\Liga\\Time'} do kitserver (o app preenche ao abrir)
+
+
 def _propostas(state, nomes, n=3, fortes=False, r=None):
+    """Clubes do ranking real que procuram o técnico, conforme o prestígio dele (ranking.py)."""
+    from . import ranking
+    seed = (r or random.Random(1)).random()
+    ps = ranking.propostas(state.get('prestigio_tecnico') or 50, state.get('time_id'), MAPA, n, fortes, seed)
+    if ps:
+        return ps
+    return _propostas_tabela(state, nomes, n, fortes, r)
+
+
+def _propostas_tabela(state, nomes, n=3, fortes=False, r=None):
     """Clubes que procuram o técnico: os de baixo da tabela quando ele está desempregado, os de cima numa sondagem."""
     r = r or random.Random(1)
     tid = state.get('time_id')
