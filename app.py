@@ -463,7 +463,18 @@ class App:
                 self.sync_estudio()
             st = self.state
             # carreira nova no mesmo arquivo: a data voltou muito
-            if st.get('data') and car.date and car.date < sim.s2d(st['data']) - dt.timedelta(days=30):
+            # (ou voltou um pouco e o save tem menos jogos do clube do que o app já registrou)
+            volta = st.get('data') and car.date and car.date < sim.s2d(st['data'])
+            menos_jogos = False
+            if volta:
+                try:
+                    menos_jogos = len(sumulas.do_time(bytes(car.sf.data), car.team_id)) < len(st.get('partidas', []))
+                except Exception:
+                    menos_jogos = False
+            # ou o app guarda jogo com data depois da data do save (só pode ser de outra carreira)
+            futuro = bool(car.date) and any(str(p.get('data', '')) > car.date.isoformat()
+                                            for p in st.get('partidas', []) if isinstance(p, dict))
+            if (volta and (car.date < sim.s2d(st['data']) - dt.timedelta(days=30) or menos_jogos)) or futuro:
                 arq = sp.replace('.json', time.strftime('_arquivo_%Y%m%d_%H%M%S.json'))
                 os.replace(sp, arq) if os.path.exists(sp) else None
                 self.state = st = {}
@@ -777,6 +788,8 @@ class App:
             try:
                 from PIL import Image
                 v = t['variantes'][0]
+                if not os.path.exists(kits.base_path(APP_DIR, v[0], v[1])):
+                    return None             # base do uniforme ainda não copiada (preparo em andamento)
                 img = kits.base_image(APP_DIR, v[0], v[1]).convert('RGB').convert('RGBA')
                 x0, y0, x1, y1 = [int(c) for c in (kits.ESCUDO.get(v[0]) or [1098, 1105, 1222, 1232])]
                 x0, y0, x1, y1 = x0 - 12, y0 - 12, x1 + 12, y1 + 12

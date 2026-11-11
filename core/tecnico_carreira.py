@@ -152,10 +152,30 @@ def prestigio(c):
         v += 5 * p.get('acessos', 0) - 8 * p.get('rebaixamentos', 0)
         if p.get('saida') == 'demitido':
             v -= 5
-        elif p.get('saida') == 'saiu':
+        elif p.get('saida') == 'saiu' and not relampago(p):
             v += 2
-    v += min(6, len(ps) - 1) if len(ps) > 1 else 0      # rodagem
+    # rodagem: só contam os clubes em que o técnico ficou de verdade
+    firmes = sum(1 for p in ps if not relampago(p))
+    v += min(6, firmes - 1) if firmes > 1 else 0
+    # trocar demais de clube (ou de save) pesa: cada passagem relâmpago tira prestígio,
+    # e uma sequência delas dá fama de instável
+    v -= PENA_RELAMPAGO * sum(1 for p in ps if relampago(p))
+    seq = 0
+    for p in ps:
+        seq = seq + 1 if relampago(p) else 0
+        if seq >= 3:
+            v -= PENA_INSTAVEL
     return int(max(5, min(100, round(v))))
+
+
+JOGOS_MINIMOS = 10            # menos jogos que isso no clube = passagem relâmpago
+PENA_RELAMPAGO = 4
+PENA_INSTAVEL = 5             # a cada passagem relâmpago a partir da 3ª seguida
+
+
+def relampago(p):
+    """Passagem encerrada (saiu, demitido ou carreira trocada no jogo) com poucos jogos."""
+    return not p.get('ativa') and p.get('jogos', 0) < JOGOS_MINIMOS
 
 
 def nivel(prest):
@@ -179,7 +199,9 @@ def view(c):
         tot['titulos'] += len(p.get('titulos', []))
     ap = round(100 * (3 * tot['V'] + tot['E']) / (3 * tot['jogos'])) if tot['jogos'] else None
     pr = c.get('prestigio', prestigio(c))
+    rel = sum(1 for p in ps if relampago(p))
     return {'prestigio': pr, 'nivel': nivel(pr), 'bonus': bonus_atratividade(pr), 'aproveitamento': ap, **tot,
+            'relampagos': rel, 'pena_relampago': PENA_RELAMPAGO, 'jogos_minimos': JOGOS_MINIMOS,
             'passagens': [_passagem_view(p) for p in ps][::-1]}
 
 
@@ -187,7 +209,7 @@ def _passagem_view(p):
     """Datas na linha do tempo do técnico; as do jogo ficam em *_jogo."""
     k = p.get('desloc_anos', 0)
     fim = p.get('fim') or (None if p.get('ativa') else p.get('ultima_leitura'))
-    return {**p, 'inicio_jogo': p.get('inicio'), 'fim_jogo': fim, 'atual_jogo': p.get('ultima_leitura'),
+    return {**p, 'relampago': relampago(p), 'inicio_jogo': p.get('inicio'), 'fim_jogo': fim, 'atual_jogo': p.get('ultima_leitura'),
             'inicio': deslocar(p.get('inicio'), k), 'fim': deslocar(fim, k),
             'atual': deslocar(p.get('ultima_leitura'), k),
             'titulos': [{**t, 'data': deslocar(t.get('data'), k)} for t in p.get('titulos', [])],
