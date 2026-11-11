@@ -23,6 +23,17 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.6.1:
+- Corrigido: listas de seleção (post nas redes, cores etc.) fechavam sozinhas e voltavam para a primeira
+  opção. O app agora só redesenha a tela quando algo muda, e espera você terminar de escolher.
+- Bônus por título: as propostas trazem cláusula de bônus para as competições que o clube disputa no
+  ano (lidas pelos jogos do save). Peso: Copa do Brasil e Série B 1x, Brasileirão 2x, Libertadores 4x,
+  Interclubes 6x, Super Mundial 10x (bônus = % da cota anual x peso).
+- Fim de campeonato: quando a tabela termina, o app registra título, acesso (4 primeiros da Série B) ou
+  rebaixamento (4 últimos da Série A), paga os bônus e gera notícias.
+- Revisão de janeiro: acesso e títulos aumentam as cotas; rebaixamento reduz e quem tem cláusula de
+  desempenho sai sem multa.
+
 Novidades da 2.6:
 - Cena da coletiva com fotos de verdade: importe o pacote da cena (.zip) em Mídia > Sala de imprensa >
   Fotos do técnico. A blusa ganha a cor do clube, o escudo e a marca master; o painel atrás mostra os

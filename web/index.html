@@ -602,7 +602,11 @@ function abrirSub(g,k){document.querySelectorAll(`.tabs2[data-grp="${g}"] a`).fo
   document.querySelectorAll(`.tabs2[data-grp="${g}"] a`).forEach(x=>{const el=$(g+'-'+x.dataset.sub);if(el)el.classList.toggle('hidden',x.dataset.sub!=k)});
   if(g=='u'&&k=='est'&&typeof rEstudio=='function')rEstudio();}
 document.querySelectorAll('.tabs2[data-grp] a').forEach(a=>a.onclick=()=>abrirSub(a.parentElement.dataset.grp,a.dataset.sub));
-async function load(){try{S=await api('/api/estado');render()}catch(e){}}
+let lastS='';
+async function load(force=true){try{const r=await fetch('/api/estado');const t=await r.text();
+  // só redesenha quando algo mudou no app (antes redesenhava a cada 3 s e fechava listas abertas)
+  if(!force&&t===lastS)return;lastS=t;S=JSON.parse(t);render()}catch(e){}}
+function editando(){const a=document.activeElement;return a&&a.closest&&a.closest('main')&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)}
 let SAVES=null;
 async function carregarSaves(){try{const j=await (await fetch('/api/saves')).json();SAVES=j;
   const ms=$('moSel');if(S.moeda&&document.activeElement!==ms){const o=Object.entries(S.moeda.opcoes).map(([k,v])=>`<option value="${k}" ${k==S.moeda.cod?'selected':''}>${v} ${k}</option>`).join('');if(ms.innerHTML!=o)ms.innerHTML=o}
@@ -616,7 +620,7 @@ async function atualizarApp(){if(!confirm('Baixar a versão '+ATU.nova+' e reini
   toast('Baixando a atualização…');try{await api('/api/atualizar',{});ATU=null;toast('Atualizado! O app está reiniciando…');
   setTimeout(()=>location.reload(),4000)}catch(e){}}
 setTimeout(checarAtu,2500);setInterval(checarAtu,10*60*1000);
-setInterval(load,3000);load();
+setInterval(()=>load(false),3000);load();
 
 function render(){
   if(!S)return;
@@ -652,6 +656,7 @@ function render(){
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
   if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
   aplicarCores();rTimeline();
+  if(editando()&&!render.forcar){clearTimeout(render.t);render.t=setTimeout(()=>{render.forcar=1;render();render.forcar=0},4000);return}
   ({clube:rClube,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
@@ -688,7 +693,9 @@ function rClube(){rHumor();
   $('clubOffers').innerHTML=of.length?of.map(o=>`<div class="row" style="cursor:pointer" onclick="go('patro')">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${anos(o.anos)}</small></div><div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div></div>`).join(''):'<div class="empty">Sem propostas no momento.</div>';
 }
 
-function clChips(cl){if(!cl)return '';return `<span class="pill ${cl.desempenho?'wait':'ok'}">${cl.desempenho?'com':'sem'} cláusula de desempenho</span> <span class="pill">multa de rescisão ${cl.multa_pct}%</span>`}
+function clChips(cl){if(!cl)return '';return `<span class="pill ${cl.desempenho?'wait':'ok'}">${cl.desempenho?'com':'sem'} cláusula de desempenho</span> <span class="pill">multa de rescisão ${cl.multa_pct}%</span>${cl.bonus_pct&&(cl.competicoes||[]).length?' '+cl.competicoes.map(c=>`<span class="pill ok" title="bônus por título: ${cl.bonus_pct}% da cota x peso ${TPESO[c]||1}">🏆 ${COMPN[c]||c} +${cl.bonus_pct*(TPESO[c]||1)}%</span>`).join(' '):''}`}
+const TPESO={copa_brasil:1,serie_b:1,brasileirao:2,libertadores:4,interclubes:6,mundial:10};
+const COMPN={copa_brasil:'Copa do Brasil',serie_b:'Série B',brasileirao:'Brasileirão',libertadores:'Libertadores',interclubes:'Interclubes',mundial:'Super Mundial'};
 const clFields=(cl,anosAtual)=>`<label>Cláusula de desempenho</label>
    <select id="fDes"><option value="0" ${!cl.desempenho?'selected':''}>Não — se a empresa quiser sair por fase ruim, paga a multa</option>
      <option value="1" ${cl.desempenho?'selected':''}>Sim — a empresa pode sair sem multa se o time for mal</option></select>
@@ -758,7 +765,7 @@ const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'j
  lesao:'elenco',retorno:'elenco',evento:'elenco',jog_elogio:'elenco',jog_critica:'elenco',
  diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores'};
 const CATN={jogo:['Jogos','⚽'],tabela:['Tabela','📊'],mercado:['Patrocínio','💼'],elenco:['Elenco','🩺'],diretoria:['Diretoria','🏛️'],imprensa:['Coletiva','🎙️'],bastidores:['Bastidores','👀']};
-let NF='todas',NLIST=[];
+let NF='todas',NLIST=[],POSTSEL=0;
 const jnAv=j=>`<div class="jn" style="background:${j.cor}" title="${esc(j.nome)}">${esc(iniciais(j.nome.replace(/"[^"]*"/,'')))}</div>`;
 function fecharMat(){$('mat').classList.remove('on')}
 async function abrirMat(i){const n=NLIST[i];if(!n)return;const cat=NCAT[n.tipo]||'bastidores';
@@ -807,7 +814,7 @@ function rFeed(){const m=S.mundo||{posts:[]};const ns=m.noticias||[];const ops=m
   const termo=`<div class="termo"><b>${emo}</b><div style="flex:1"><small style="color:var(--mut)">HUMOR DA TORCIDA · ${t}/100</small><div class="bar"><i style="left:calc(${t}% - 2px)"></i></div></div></div>`;
   const nome=(S.gestao||{}).tecnico_nome||m.tecnico||'Técnico';
   const box=`<div class="postbox"><div style="display:flex;gap:10px;align-items:center">${avatarPost('',true)}<b>${esc(nome)}</b><small style="color:var(--mut)">publicar como técnico</small></div>
-    <select id="postSel">${ops.map((x,i)=>`<option value="${i}">${esc(x)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`;
+    <select id="postSel" onchange="POSTSEL=this.value">${ops.map((x,i)=>`<option value="${i}" ${String(i)===String(POSTSEL)?'selected':''}>${esc(x)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`;
   const posts=(m.posts||[]).map((p,i)=>{const rs=p.respostas||[];
     return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico)}<div style="flex:1;min-width:0">
       <div class="hd"><b>${esc(p.tecnico?nome:nomePost(p.autor))}</b>${p.tecnico||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>

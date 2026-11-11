@@ -38,7 +38,7 @@ def jsave(p, obj):
 
 
 CFG = jload(os.path.join(DATA, 'config.json'), {})
-TORNEIOS = {17: 'Brasileirão', 4099: 'Libertadores'}
+TORNEIOS = {17: 'Brasileirão', 23: 'Série B', 4099: 'Libertadores'}
 
 
 def team_names():
@@ -316,6 +316,8 @@ class App:
             nomes = lambda i: self.names.get(i, f'Time {i}')
             if novas and antes:
                 g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes)
+            if car.date:      # campeonato terminou? título, acesso, rebaixamento (antes da revisão de janeiro)
+                g.fim_de_liga(self.engine, mu, st.get('tabela'), car.date)
             # eventos da semana e revisão de janeiro, para cada semana que passou desde a última leitura
             if antes and car.date:
                 d = sim.s2d(antes)

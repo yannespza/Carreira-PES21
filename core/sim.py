@@ -28,10 +28,26 @@ PREF_CLAUSULAS = {'agressiva': (True, 20), 'oportunista': (True, 10), 'paciente'
 MULTAS = (10, 20, 30, 50)
 
 
+# competições conhecidas pelo id do torneio no save e o peso do bônus por título
+COMP_IDS = {17: 'brasileirao', 23: 'serie_b', 4099: 'libertadores'}
+COMP_NOMES = {'copa_brasil': 'Copa do Brasil', 'brasileirao': 'Brasileirão', 'serie_b': 'Série B',
+              'libertadores': 'Libertadores', 'interclubes': 'Interclubes', 'mundial': 'Super Mundial'}
+TITULO_PESO = {'copa_brasil': 1, 'serie_b': 1, 'brasileirao': 2, 'libertadores': 4, 'interclubes': 6, 'mundial': 10}
+BONUS_BASE_PCT = 10      # bônus por título = 10% da cota anual x peso do título
+
+
+def bonus_txt(cl):
+    cs = cl.get('competicoes') or []
+    if not cl.get('bonus_pct') or not cs:
+        return ''
+    return '; bônus por título: ' + ', '.join(
+        f"{COMP_NOMES.get(c, c)} +{cl['bonus_pct'] * TITULO_PESO.get(c, 1)}%" for c in cs) + ' da cota anual'
+
+
 def clausulas_txt(cl):
     d = 'com cláusula de desempenho (a empresa pode sair sem multa se o time for mal)' if cl.get('desempenho') \
         else 'sem cláusula de desempenho'
-    return f"{d}; multa de rescisão de {cl.get('multa_pct', 30)}% do valor restante para quem romper"
+    return f"{d}; multa de rescisão de {cl.get('multa_pct', 30)}% do valor restante para quem romper" + bonus_txt(cl)
 
 
 def d2s(d): return d.isoformat()
@@ -280,7 +296,7 @@ class Engine:
                 anos = r.choice([1, 1, 2, 2, 3])
                 validade = dia + dt.timedelta(days=r.randint(21, 35))
                 pd, pm = PREF_CLAUSULAS[e['personalidade']]
-                cl = {'desempenho': pd if r.random() < 0.85 else not pd, 'multa_pct': pm}
+                cl = self._clausulas(pd, pm, r)
                 o = {'id': self._id(), 'empresa': nome, 'slot': slot, 'valor': valor, 'anos': anos,
                      'inicio': ds, 'validade': d2s(validade), 'status': 'aberta', 'origem': 'inicio',
                      'criada': ds, 'rodadas': 0, 'clausulas': cl}
@@ -325,7 +341,7 @@ class Engine:
             validade = dia + dt.timedelta(days=r.randint(10, 21))
             inicio = dia + dt.timedelta(days=r.choice([0, 7, 14, 30]))
             pd, pm = PREF_CLAUSULAS[self.s['empresas'][nome]['personalidade']]
-            cl = {'desempenho': pd if r.random() < 0.85 else not pd, 'multa_pct': pm}
+            cl = self._clausulas(pd, pm, r)
             o = {'id': self._id(), 'empresa': nome, 'slot': slot, 'valor': valor, 'anos': anos,
                  'inicio': d2s(inicio), 'validade': d2s(validade), 'status': 'aberta', 'origem': 'empresa',
                  'criada': ds, 'rodadas': 0, 'clausulas': cl}
@@ -333,6 +349,25 @@ class Engine:
             self.msg('oferta', nome, ds, o['id'], posicao=pos_txt(slot), valor=fmt_eur(valor),
                      anos=anos_txt(anos), validade=fmt_data(validade))
             self._anexar_clausulas(cl)
+
+    def competicoes_do_ano(self, ano=None):
+        """Competições que o clube disputa no ano, pelos ids de torneio das partidas lidas no save."""
+        if not ano:
+            h = self.hoje()
+            ps = self.s.get('partidas', [])
+            ano = h.year if h else (int(max(p['data'] for p in ps)[:4]) if ps else 0)
+        ids = {p['torneio'] for p in self.s.get('partidas', []) if p.get('data', '')[:4] == str(ano)}
+        if not ids:       # começo de ano sem jogos: usa o ano anterior
+            ids = {p['torneio'] for p in self.s.get('partidas', []) if p.get('data', '')[:4] == str(ano - 1)}
+        return [COMP_IDS[i] for i in sorted(ids) if i in COMP_IDS]
+
+    def _clausulas(self, pd, pm, r):
+        cl = {'desempenho': pd if r.random() < 0.85 else not pd, 'multa_pct': pm}
+        cs = self.competicoes_do_ano()
+        if cs and r.random() < 0.8:
+            cl['bonus_pct'] = r.choice([5, 10, 10, 15])
+            cl['competicoes'] = cs
+        return cl
 
     def _anexar_clausulas(self, cl):
         if self.s['mensagens']:
@@ -465,6 +500,9 @@ class Engine:
                                       'multa_pct': int(clausulas.get('multa_pct', 30))}
         else:
             o['clausulas_pedidas'] = dict(o.get('clausulas') or {'desempenho': False, 'multa_pct': 30})
+        for k in ('bonus_pct', 'competicoes'):        # o bônus por título continua na contraproposta
+            if (o.get('clausulas') or {}).get(k):
+                o['clausulas_pedidas'][k] = o['clausulas'][k]
         if anos:
             o['anos_pedidos'] = int(anos)
         o['status'] = 'aguardando'
@@ -488,6 +526,9 @@ class Engine:
              'resposta_em': d2s(hoje + dt.timedelta(days=r.randint(3, 8))),
              'clausulas_pedidas': {'desempenho': bool((clausulas or {}).get('desempenho', False)),
                                    'multa_pct': int((clausulas or {}).get('multa_pct', 30))}}
+        cs = self.competicoes_do_ano()
+        if cs:
+            o['clausulas_pedidas'].update(bonus_pct=BONUS_BASE_PCT, competicoes=cs)
         self.s['ofertas'].append(o)
         return o
 

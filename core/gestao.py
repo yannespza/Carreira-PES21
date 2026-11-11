@@ -1,7 +1,7 @@
 """Gestão do clube além dos patrocínios: coletivas de imprensa, eventos do vestiário, movimentação do
 elenco (chegadas e saídas), revisão anual dos contratos e prancheta. Tudo roda só no app (não mexe no save)."""
 import random, datetime as dt
-from .sim import d2s, s2d, fmt_eur, _seed
+from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES
 
 # ---------------- coletivas de imprensa ----------------
 # cada resposta: texto, tom (para o rosto do técnico) e efeito em torcida e diretoria
@@ -240,6 +240,75 @@ class Gestao:
             self.g['elenco_nomes'] = todos
 
     # ---------- revisão anual dos contratos (janeiro) ----------
+    # ---------- fim de campeonato: título, acesso, rebaixamento e bônus ----------
+    def fim_de_liga(self, engine, mundo, tabela, dia):
+        """Quando todos os times da tabela do clube completaram os jogos (turno e returno), registra a
+        posição final. 1º lugar = título (paga o bônus dos contratos); 4 primeiros da Série B sobem;
+        4 últimos da Série A caem."""
+        linhas = (tabela or {}).get('linhas') or []
+        n = len(linhas)
+        if n < 8 or any(l['j'] < 2 * (n - 1) for l in linhas):
+            return
+        meu = next((l for l in linhas if l['id'] == self.team_id), None)
+        if not meu:
+            return
+        temps = self.g.setdefault('temporadas', [])
+        ano = dia.year if dia.month >= 6 else dia.year - 1
+        if any(t['ano'] == ano for t in temps):
+            return
+        div = 'B' if 'serie_b' in engine.competicoes_do_ano(ano) else 'A'
+        t = {'ano': ano, 'pos': meu['pos'], 'n': n, 'divisao': div, 'pts': meu['pts'], 'titulos': []}
+        if meu['pos'] == 1:
+            t['titulos'].append('brasileirao' if div == 'A' else 'serie_b')
+        if div == 'B' and meu['pos'] <= 4:
+            t['acesso'] = True
+        if div == 'A' and meu['pos'] > n - 4:
+            t['rebaixado'] = True
+        temps.append(t)
+        ds = d2s(dia)
+        r = random.Random(_seed('fim', ano, self.clube))
+        if t['titulos']:
+            comp = COMP_NOMES[t['titulos'][0]]
+            mundo.m['noticias'].append({'data': ds, 'tipo': 'lider', 'destaque': True, 'fonte': 'Globo Esporte',
+                                        'titulo': f'É CAMPEÃO! {self.clube} conquista o título do {comp} {ano}'})
+            mundo._torcida(15)
+            mundo.m['diretoria'] = min(100, mundo.m['diretoria'] + 20)
+            self.titulo(engine, t['titulos'][0], dia)
+        if t.get('acesso'):
+            mundo.m['noticias'].append({'data': ds, 'tipo': 'sobe', 'destaque': True, 'fonte': 'Lance!',
+                                        'titulo': f'Acesso garantido! {self.clube} volta à Série A'})
+            mundo._torcida(10)
+        if t.get('rebaixado'):
+            mundo.m['noticias'].append({'data': ds, 'tipo': 'cai', 'destaque': True, 'fonte': 'Lance!',
+                                        'titulo': f'Rebaixado: {self.clube} vai disputar a Série B em {ano + 1}'})
+            mundo._torcida(-20)
+            mundo.m['diretoria'] = max(0, mundo.m['diretoria'] - 25)
+
+    def titulo(self, engine, comp, dia):
+        """Título conquistado: cada contrato com cláusula de bônus para essa competição paga
+        cota anual x bônus% x peso do título (Copa do Brasil 1x, Brasileirão 2x, Libertadores 4x,
+        Interclubes 6x, Super Mundial 10x)."""
+        ds = d2s(dia)
+        linhas = []
+        for c in engine.s['contratos']:
+            cl = c.get('clausulas') or {}
+            if c['status'] != 'ativo' or not cl.get('bonus_pct') or comp not in (cl.get('competicoes') or []):
+                continue
+            if any(pg.get('tipo') == 'bonus' and pg.get('comp') == comp and pg['data'][:4] == ds[:4]
+                   for pg in c['pagamentos']):
+                continue
+            v = int(round(c['valor'] * cl['bonus_pct'] / 100 * TITULO_PESO.get(comp, 1) / 50_000) * 50_000)
+            c['pagamentos'].append({'data': ds, 'valor': v, 'status': 'pendente', 'tipo': 'bonus', 'comp': comp})
+            linhas.append(f"• {c['empresa']}: {fmt_eur(v)} ({cl['bonus_pct']}% x {TITULO_PESO.get(comp, 1)})")
+        self.g.setdefault('titulos', []).append({'comp': comp, 'data': ds})
+        if linhas:
+            engine.s['mensagens'].append({
+                'id': engine._id(), 'data': ds, 'empresa': '__diretoria__', 'de': 'Departamento de marketing',
+                'assunto': f'Bônus pelo título do {COMP_NOMES.get(comp, comp)}', 'tipo': 'diretoria',
+                'oferta_id': None, 'lida': False,
+                'texto': 'O título acionou as cláusulas de bônus dos patrocinadores. O dinheiro entra no '
+                         'orçamento de transferências:\n' + '\n'.join(linhas)})
+
     def revisao_anual(self, engine, mundo, dia):
         ano = dia.year
         if dia.month != 1 or any(r['ano'] == ano for r in self.g['revisoes']):
@@ -249,10 +318,28 @@ class Gestao:
             self.g['revisoes'].append({'ano': ano, 'aproveitamento': None, 'mudancas': []})
             return
         fator = 1.15 if ap >= 70 else 1.08 if ap >= 60 else 0.85 if ap < 35 else 0.93 if ap < 45 else 1.0
+        t = next((x for x in self.g.get('temporadas', []) if x['ano'] == ano - 1), {})
+        tits = [x for x in self.g.get('titulos', []) if x['data'][:4] == str(ano - 1)]
+        motivo = []
+        if t.get('acesso'):
+            fator = max(fator, 1.0) + 0.20; motivo.append('o acesso à Série A')
+        if tits:
+            fator = max(fator, 1.0) + 0.10 * len(tits); motivo.append('os títulos da temporada')
+        rescindidos = []
+        if t.get('rebaixado'):
+            fator = min(fator, 1.0) - 0.25; motivo.append('o rebaixamento')
+            # quem tem cláusula de desempenho sai sem multa
+            for c in engine.s['contratos']:
+                if c['status'] == 'ativo' and (c.get('clausulas') or {}).get('desempenho'):
+                    engine._encerrar(c, d2s(dia), 'empresa (rebaixamento, cláusula de desempenho)')
+                    rescindidos.append(c['empresa'])
+        fator = round(fator, 2)
         mud = []
         for c in engine.s['contratos']:
             if c['status'] != 'ativo' or fator == 1.0:
                 continue
+            if c.get('anos', 1) < 2 and not (t.get('acesso') or t.get('rebaixado') or tits):
+                continue      # contrato curto só muda em caso de acesso, rebaixamento ou título
             futuros = [pg for pg in c['pagamentos'] if pg['status'] == 'agendado' and pg.get('tipo') != 'multa']
             if not futuros:
                 continue
@@ -261,14 +348,22 @@ class Gestao:
                 pg['valor'] = novo
             mud.append({'empresa': c['empresa'], 'antes': c['valor'], 'depois': novo})
             c['valor'] = novo
-        self.g['revisoes'].append({'ano': ano, 'aproveitamento': ap, 'fator': fator, 'mudancas': mud})
+        self.g['revisoes'].append({'ano': ano, 'aproveitamento': ap, 'fator': fator, 'mudancas': mud,
+                                   'rescindidos': rescindidos, 'motivo': motivo})
+        if rescindidos:
+            engine.s['mensagens'].append({
+                'id': engine._id(), 'data': d2s(dia), 'empresa': '__diretoria__', 'de': 'Departamento de marketing',
+                'assunto': 'Patrocinadores saíram após o rebaixamento', 'tipo': 'diretoria', 'oferta_id': None,
+                'lida': False, 'texto': 'Com o rebaixamento, estes patrocinadores usaram a cláusula de desempenho e '
+                                        'encerraram o contrato sem multa: ' + ', '.join(rescindidos) + '.'})
         if mud:
             subiu = fator > 1
             linhas = '\n'.join(f"• {m['empresa']}: {fmt_eur(m['antes'])} → {fmt_eur(m['depois'])}" for m in mud)
             engine.s['mensagens'].append({
                 'id': engine._id(), 'data': d2s(dia), 'empresa': '__diretoria__', 'de': 'Departamento de marketing',
                 'assunto': 'Revisão anual dos patrocínios', 'tipo': 'diretoria', 'oferta_id': None, 'lida': False,
-                'texto': (f"Fechamos a revisão anual dos contratos com base no aproveitamento de {ap}% na temporada. "
+                'texto': (f"Fechamos a revisão anual dos contratos com base no aproveitamento de {ap}% na temporada"
+                          + (', considerando ' + ' e '.join(motivo) if motivo else '') + '. '
                           + ('Os patrocinadores aceitaram reajustar para cima' if subiu else
                              'Com a campanha fraca, os patrocinadores reduziram as cotas')
                           + ' a partir das próximas parcelas:\n' + linhas)})
