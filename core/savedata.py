@@ -272,6 +272,7 @@ class Career:
         bk = os.path.join(backup_dir, f'ML_{int(self.mtime)}.bak')
         if not os.path.exists(bk):
             shutil.copy2(self.path, bk)
+        limpar_backups(backup_dir)
         new = pescrypt.encrypt(self.sf)
         chk = pescrypt.decrypt(new)
         if bytes(chk.data) != bytes(self.sf.data):
@@ -342,6 +343,17 @@ def nomes_clubes(data: bytes):
             except UnicodeDecodeError:
                 pass
     return out
+
+
+def limpar_backups(backup_dir, manter=10):
+    """Guarda só as cópias de segurança mais recentes do save (cada uma tem uns 21 MB)."""
+    import glob
+    bks = sorted(glob.glob(os.path.join(backup_dir, 'ML_*.bak')), key=os.path.getmtime, reverse=True)
+    for velho in bks[manter:]:
+        try:
+            os.remove(velho)
+        except OSError:
+            pass
 
 
 def classificacoes(data: bytes):

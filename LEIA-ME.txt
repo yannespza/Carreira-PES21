@@ -23,6 +23,11 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.5.1 (prova real):
+- As cópias de segurança do save (uns 21 MB cada) agora ficam só as 10 mais recentes. Antes nunca eram
+  apagadas e já passavam de 600 MB.
+- Conferido contra o próprio save: classificação, gols por partida, elenco, contratos e a gravação do dinheiro.
+
 Novidades da 3.5:
 - Elenco: fim de contrato de cada jogador (do arquivo "Dados do time") e aviso de quem está no último ano.
 - Partidas: os jogos simulados agora entram no histórico do app (antes só os jogados), e as Estatísticas

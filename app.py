@@ -1765,6 +1765,10 @@ def main():
             abrir_janela(url)
         return
     log('App iniciado, versão', VERSAO)
+    try:
+        savedata.limpar_backups(os.path.join(DATA, 'backups_save'))
+    except Exception:
+        log(traceback.format_exc())
     # a pasta de logos é lida pela verificação automática logo em seguida (num PC novo isso leva um tempo,
     # e a janela do app não precisa esperar)
     threading.Thread(target=watcher, daemon=True).start()
