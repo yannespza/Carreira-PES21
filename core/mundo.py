@@ -15,48 +15,9 @@ def eur_mi(v):
     return f"{simb} {v * taxa / 1e6:.1f} mi".replace('.', ',')
 
 
-# ---------------- textos ----------------
-MANCHETES = {
-    'goleada': ["{clube} atropela o {adv} e faz {placar}", "Show do {clube}: {placar} sobre o {adv}",
-                "Massacre! {clube} não toma conhecimento do {adv} ({placar})",
-                "{clube} dá aula e goleia o {adv} por {placar}"],
-    'vitoria': ["{clube} vence o {adv} por {placar}", "{clube} supera o {adv} e soma mais três pontos",
-                "Com {placar}, {clube} bate o {adv}", "{clube} faz o dever de casa: {placar} no {adv}",
-                "Vitória importante: {clube} {placar} {adv}"],
-    'empate': ["{clube} fica no {placar} com o {adv}", "Empate com o {adv} deixa gosto amargo no {clube}",
-               "{clube} e {adv} não saem do {placar}", "Igualdade no placar: {clube} {placar} {adv}"],
-    'derrota': ["{clube} perde para o {adv} por {placar}", "Tropeço: {clube} é derrotado pelo {adv}",
-                "{adv} vence e complica a vida do {clube} ({placar})", "Noite ruim: {clube} cai diante do {adv}"],
-    'vexame': ["Vexame! {clube} é goleado pelo {adv} ({placar})", "Apagão: {clube} leva {placar} do {adv}",
-               "Torcida protesta após {placar} para o {adv}", "Crise à vista: {clube} sofre goleada do {adv}"],
-    'seq_vitorias': ["{clube} embala: {n} vitórias seguidas", "Fase iluminada: {clube} chega a {n} triunfos em sequência",
-                     "Ninguém segura o {clube}: {n} vitórias consecutivas"],
-    'seq_derrotas': ["{clube} vive crise: {n} derrotas seguidas", "Pressão aumenta: {clube} perde a {n}ª seguida",
-                     "Sequência negativa preocupa no {clube}: {n} jogos sem vencer"],
-    'contrato_grande': ["{empresa} fecha com o {clube}: {valor} por temporada no {posicao}",
-                        "Mercado aquecido: {clube} anuncia {empresa} como patrocinador",
-                        "{clube} acerta com a {empresa} e reforça o caixa"],
-    'contrato': ["{clube} anuncia a {empresa} no {posicao}", "Novo parceiro: {empresa} estampa o {posicao} do {clube}"],
-    'rescisao': ["{empresa} deixa de patrocinar o {clube}", "Fim da parceria entre {clube} e {empresa}",
-                 "{clube} perde o patrocínio da {empresa}"],
-    'diretoria_cobra': ["Presidente cobra reação do {clube} após fase ruim", "Diretoria do {clube} pede mais em campo",
-                        "Bastidores: clima esquenta na diretoria do {clube}"],
-    'diretoria_elogia': ["Diretoria do {clube} elogia o trabalho do técnico", "Presidente celebra o momento do {clube}"],
-}
+# ---------------- textos (banco em textos.py) ----------------
+from .textos import MANCHETES, POSTS, PRESIDENTE, RESPOSTAS, POSTS_TECNICO, FONTES
 
-POSTS = {
-    'euforia': ["QUE TIME! 🔥🔥🔥 {clube} é outro patamar", "esse time tá jogando por música, não tem pra ninguém 🔥",
-                "dá pra sonhar com título sim, demais", "{placar} e ainda foi pouco kkkkk",
-                "o técnico merece estátua na porta do estádio 🏆"],
-    'feliz': ["vitória importante, segue o baile", "três pontos é o que importa", "boa, mas dá pra melhorar no segundo tempo",
-              "bom resultado, bora manter a sequência", "{clube} trabalhando ✅"],
-    'neutro': ["empate fora não é o fim do mundo", "jogo travado, faltou criatividade", "ponto é ponto... mas esperava mais",
-               "time precisa de reforço no meio", "segue o campeonato"],
-    'chateado': ["que fase... time sem alma", "não dá pra perder assim pro {adv}", "cadê a intensidade??",
-                 "alguém explica essas substituições?", "torcida não merece isso"],
-    'revolta': ["FORA TODO MUNDO 😡", "vergonha, {placar} é inaceitável", "diretoria acorda!! isso aqui é o {clube}",
-                "devolve o dinheiro do ingresso", "chega de desculpa, quero resultado"],
-}
 ARROBAS_PALMEIRAS = ['@verdao_raiz', '@alviverde_sp', '@palestrino10', '@torcedor_fiel', '@mancha_ofc', '@porco_doido',
                      '@verde_mais', '@academia_fc', '@sp_palestra', '@nacao_verde', '@cronista_alviverde', '@jornalistaFC']
 
@@ -68,16 +29,7 @@ def arrobas(clube):
     return [f'@{c}_raiz', f'@torcida{c}', f'@{c}_oficialfans', f'@sou{c}', f'@{c}10', f'@nacao_{c}',
             f'@{c}depressao', f'@fala{c}', '@torcedor_fiel', '@jornalistaFC', '@cornetafc', '@resenha_fut']
 
-PRESIDENTE = {
-    'boas_vindas': ["Bem-vindo ao comando do {clube}. A diretoria espera {meta_txt}. Conte com o nosso apoio."],
-    'elogio': ["Estamos muito satisfeitos com o desempenho recente. Siga assim e o {clube} vai longe.",
-               "O momento é excelente. A diretoria confia plenamente no seu trabalho."],
-    'cobranca': ["A sequência recente preocupa a diretoria. Esperamos uma reação imediata.",
-                 "Os resultados não estão à altura do {clube}. Precisamos de mais."],
-    'ultimato': ["A paciência da diretoria está no limite. Sem reação nos próximos jogos, teremos que rever o comando técnico.",
-                 "Sejamos francos: a situação é insustentável. Precisamos de vitórias já."],
-    'meta_financeira': ["Ótimo trabalho no mercado de patrocínios: {valor} por temporada em contratos. O caixa agradece.",],
-}
+TECNICO_PADRAO = 'Yannes Zola'
 
 
 class Mundo:
@@ -99,27 +51,80 @@ class Mundo:
     def _hoje(self):
         return self.s.get('data')
 
-    def noticia(self, tipo, data, rnd, destaque=False, **v):
+    def tecnico(self):
+        return (self.s.get('cfg_tecnico') or TECNICO_PADRAO)
+
+    def _vars(self, v, rnd):
         v.setdefault('clube', self.clube)
+        v.setdefault('tecnico', self.tecnico())
+        el = self.s.get('elenco_nomes') or []
+        v.setdefault('jogador', rnd.choice(el) if el else 'o camisa 10')
+        if 'empresa' not in v:
+            cs = [c['empresa'] for c in self.s.get('contratos', []) if c['status'] in ('ativo', 'assinado')]
+            v['empresa'] = rnd.choice(cs) if cs else 'o novo patrocinador'
+        v.setdefault('setor', 'marca')
+        for k in ('adv', 'placar', 'n', 'pos', 'pts', 'lider', 'valor', 'posicao', 'frase', 'meta'):
+            v.setdefault(k, '')
+        return v
+
+    def noticia(self, tipo, data, rnd, destaque=False, **v):
+        self._vars(v, rnd)
         txt = rnd.choice(MANCHETES[tipo]).format(**v)
-        fonte = rnd.choice(['Globo Esporte', 'Lance!', 'ESPN', 'UOL Esporte', 'Gazeta Esportiva', 'TNT Sports'])
-        self.m['noticias'].append({'data': data, 'titulo': txt, 'tipo': tipo, 'fonte': fonte, 'destaque': destaque})
+        self.m['noticias'].append({'data': data, 'titulo': txt, 'tipo': tipo, 'fonte': rnd.choice(FONTES),
+                                   'destaque': destaque})
         self.m['noticias'] = self.m['noticias'][-200:]
 
+    def _respostas(self, humor, rnd, autor, v, n=None):
+        pool = RESPOSTAS.get(humor) or RESPOSTAS['neutro']
+        n = rnd.randint(0, 3) if n is None else n
+        outros = [a for a in arrobas(self.clube) if a != autor]
+        return [{'autor': rnd.choice(outros), 'texto': rnd.choice(pool).format(**v),
+                 'curtidas': rnd.randint(0, 600)} for _ in range(n)]
+
     def posts(self, humor, data, rnd, n=3, **v):
-        v.setdefault('clube', self.clube)
+        self._vars(v, rnd)
         for t in rnd.sample(POSTS[humor], min(n, len(POSTS[humor]))):
-            self.m['posts'].append({'data': data, 'autor': rnd.choice(arrobas(self.clube)), 'texto': t.format(**v),
-                                    'humor': humor, 'curtidas': rnd.randint(40, 4000)})
+            autor = rnd.choice(arrobas(self.clube))
+            cur = rnd.randint(40, 4000)
+            self.m['posts'].append({'data': data, 'autor': autor, 'texto': t.format(**v), 'humor': humor,
+                                    'curtidas': cur, 'reposts': int(cur * rnd.uniform(0.05, 0.3)),
+                                    'respostas': self._respostas(humor, rnd, autor, v)})
         self.m['posts'] = self.m['posts'][-300:]
+
+    def post_tecnico(self, contexto, idx, data):
+        texto, efeito = POSTS_TECNICO[contexto][idx]
+        rnd = random.Random(_seed('tec', data, contexto, idx, len(self.m['posts'])))
+        v = self._vars({}, rnd)
+        texto = texto.format(**v)
+        # torcida reage conforme o momento: palavra bonita em fase ruim rende menos
+        t = self.m['torcida']
+        bom = efeito > 0 and (t >= 45 or rnd.random() < 0.5)
+        self._torcida(efeito if bom else min(0, efeito))
+        cur = int(rnd.randint(2000, 9000) * (0.6 + t / 100))
+        arroba = '@' + ''.join(c for c in self.tecnico().lower() if c.isalnum())
+        self.m['posts'].append({'data': data, 'autor': arroba, 'tecnico': True, 'texto': texto,
+                                'humor': 'tecnico', 'curtidas': cur, 'reposts': int(cur * 0.2),
+                                'respostas': self._respostas('tecnico_bom' if bom else 'tecnico_ruim', rnd, arroba, v,
+                                                             n=rnd.randint(2, 4))})
+        self.m['ult_post_tecnico'] = data
+        return bom
+
+    def contexto_tecnico(self):
+        ps = self.s.get('partidas', [])
+        if ps:
+            ult = ps[-1]
+            return {'V': 'vitoria', 'D': 'derrota', 'E': 'empate'}[ult['res']]
+        return 'geral'
 
     def presidente(self, engine, tipo, data, **v):
         r = random.Random(_seed('pres', tipo, data))
         v.setdefault('clube', self.clube)
+        v.setdefault('tecnico', self.tecnico())
         texto = r.choice(PRESIDENTE[tipo]).format(**v)
         assunto = {'boas_vindas': 'Metas da temporada', 'elogio': 'Mensagem da presidência',
                    'cobranca': 'Cobrança da diretoria', 'ultimato': 'URGENTE: situação do time',
-                   'meta_financeira': 'Patrocínios'}[tipo]
+                   'meta_financeira': 'Patrocínios', 'tabela_boa': 'Posição na tabela',
+                   'tabela_ruim': 'Posição na tabela'}[tipo]
         engine.s['mensagens'].append({'id': engine._id(), 'data': data, 'empresa': '__diretoria__',
                                       'de': 'Presidência · ' + self.clube, 'assunto': assunto, 'texto': texto,
                                       'tipo': 'diretoria', 'oferta_id': None, 'lida': False})
@@ -189,6 +194,8 @@ class Mundo:
                 vis['encerrados'].append(c['id'])
                 self.noticia('rescisao', data, r, empresa=c['empresa'], posicao=pos)
                 self._torcida(-2 if c['valor'] >= 5_000_000 else -1)
+        self._tabela(engine, data)
+        self._semana(data)
         self._diretoria(engine, data)
         h = self.m['historico']
         if not h or h[-1][0] != data:
@@ -196,6 +203,71 @@ class Mundo:
         else:
             h[-1] = [data, self.m['torcida'], self.m['diretoria']]
         self.m['historico'] = h[-120:]
+
+    def _tabela(self, engine, data):
+        """Notícias de posição na tabela quando ela muda (lida do save)."""
+        T = (self.s.get('tabela') or {}).get('linhas') or []
+        if not T:
+            return
+        jogos = sum(l['j'] for l in T)
+        ant = self.m.get('tab_ult') or {}
+        if ant.get('jogos') == jogos:
+            return
+        meu = next((l for l in T if l['id'] == self.team_id), None)
+        self.m['tab_ult'] = {'jogos': jogos, 'pos': meu['pos'] if meu else None,
+                             'lider': T[0]['id']}
+        if not meu or not ant:
+            return
+        r = random.Random(_seed('tab', data, jogos))
+        n = len(T)
+        pos, pa = meu['pos'], ant.get('pos')
+        v = dict(pos=pos, pts=meu['pts'], lider=T[0].get('nome', ''))
+        if pos == 1:
+            self.noticia('lider' if pa != 1 else 'lider_segue', data, r, destaque=pa != 1, **v)
+            if pa != 1:
+                self._torcida(3)
+        else:
+            if pa and pos <= 4 < pa:
+                self.noticia('g4', data, r, destaque=True, **v); self._torcida(2)
+            elif pa and pos > n - 4 >= pa:
+                self.noticia('z4', data, r, destaque=True, **v); self._torcida(-3)
+            elif pa and pos < pa:
+                self.noticia('sobe', data, r, **v)
+            elif pa and pos > pa:
+                self.noticia('cai', data, r, **v)
+            if r.random() < 0.6:
+                self.noticia('outro_lider', data, r, pts=T[0]['pts'], pos=pos, lider=T[0].get('nome', ''))
+        # diretoria comenta a tabela de vez em quando
+        al = self.m['alertas_dir']
+        hoje = dt.date.fromisoformat(data)
+        u = al.get('tabela')
+        if meu['j'] >= 5 and (not u or (hoje - dt.date.fromisoformat(u)).days >= 45):
+            if pos <= max(2, n // 6):
+                al['tabela'] = data; self.presidente(engine, 'tabela_boa', data, pos=pos)
+            elif pos > n - 4:
+                al['tabela'] = data; self.presidente(engine, 'tabela_ruim', data, pos=pos)
+
+    def _semana(self, data):
+        """Bastidores: a cada semana da carreira sai alguma notícia e a torcida conversa nas redes."""
+        hoje = dt.date.fromisoformat(data)
+        u = self.m.get('ult_semana')
+        if u and (hoje - dt.date.fromisoformat(u)).days < 7:
+            return
+        self.m['ult_semana'] = data
+        r = random.Random(_seed('sem', data))
+        for _ in range(r.randint(1, 2)):
+            self.noticia('bastidores', data, r)
+        # rumor de patrocínio com empresa que ainda não está no clube
+        emps = [e for e in (self.s.get('empresas') or {}) if not any(
+            c['empresa'] == e and c['status'] in ('ativo', 'assinado') for c in self.s.get('contratos', []))]
+        if emps and r.random() < 0.35:
+            self.noticia('rumor_patro', data, r, empresa=r.choice(emps))
+        self.posts('semana', data, r, n=r.randint(2, 4))
+        cs = [c for c in self.s.get('contratos', []) if c['status'] == 'ativo']
+        if cs and r.random() < 0.4:
+            c = r.choice(cs)
+            setor = ((self.s.get('empresas') or {}).get(c['empresa']) or {}).get('setor', 'marca')
+            self.posts('patro', data, r, n=1, empresa=c['empresa'], setor=setor)
 
     def _torcida(self, delta):
         self.m['torcida'] = int(max(0, min(100, self.m['torcida'] + delta)))
@@ -231,6 +303,14 @@ class Mundo:
         if alvo == 'V' and n >= 3:
             self.noticia('seq_vitorias', p['data'], r, destaque=True, n=n); self._torcida(2)
             humor = 'euforia'
+        inv = 0
+        for x in reversed(seq):
+            if x['res'] != 'D':
+                inv += 1
+            else:
+                break
+        if inv in (5, 8, 10, 15, 20):
+            self.noticia('invicto', p['data'], r, destaque=True, n=inv)
         if alvo == 'D' and n >= 3:
             self.noticia('seq_derrotas', p['data'], r, destaque=True, n=n); self._torcida(-3)
             humor = 'revolta'
@@ -285,5 +365,8 @@ class Mundo:
         ap = self.aproveitamento()
         return {'torcida': self.m['torcida'], 'diretoria': self.m['diretoria'], 'metas': self.metas(),
                 'aproveitamento': ap, 'patrocinio_anual': self.patrocinio_anual(),
-                'noticias': self.m['noticias'][-40:][::-1], 'posts': self.m['posts'][-40:][::-1],
+                'noticias': self.m['noticias'][-60:][::-1], 'posts': self.m['posts'][-60:][::-1],
+                'tecnico': self.tecnico(), 'opcoes_post': [t for t, _ in POSTS_TECNICO[self.contexto_tecnico()]]
+                + [t.replace('{clube}', self.clube) for t, _ in POSTS_TECNICO['geral']],
+                'contexto_post': self.contexto_tecnico(),
                 'historico': self.m['historico'][-40:]}

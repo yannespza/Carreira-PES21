@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import savedata, kits, sim, mundo, times, gestao
+from core import tecnico, estudio, savedata, kits, sim, mundo, times, gestao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -137,6 +137,8 @@ class App:
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
+            if self.state is not None:
+                self.state['elenco_nomes'] = [j['nome'] for j in el if not j['nome'].startswith('Jogador ')]
         except Exception:
             log(traceback.format_exc())
             self.elenco = []
@@ -228,6 +230,7 @@ class App:
                 self.state_path = sp
                 self.state = jload(sp, {})
                 novo = not self.state
+                self.sync_estudio()
             st = self.state
             # carreira nova no mesmo arquivo: a data voltou muito
             if st.get('data') and car.date and car.date < sim.s2d(st['data']) - dt.timedelta(days=30):
@@ -285,6 +288,7 @@ class App:
     # ----- imprensa, torcida, diretoria -----
     def mundo_processar(self):
         try:
+            self.state['cfg_tecnico'] = CFG.get('tecnico_nome') or 'Yannes Zola'
             mundo.Mundo(self.state, self.clube(), self.tid()).processar(
                 self.engine, lambda i: self.names.get(i, f'Time {i}'))
         except Exception:
@@ -332,8 +336,8 @@ class App:
         return {'coletivas': g.get('coletivas', [])[-8:][::-1], 'eventos': evs,
                 'transferencias': g.get('transferencias', [])[-60:][::-1], 'prancheta': g.get('prancheta', {}),
                 'revisoes': g.get('revisoes', [])[-5:][::-1],
-                'rostos': sorted(f[:-4] for f in os.listdir(os.path.join(DATA, 'tecnico'))
-                                 if f.lower().endswith('.png')) if os.path.isdir(os.path.join(DATA, 'tecnico')) else []}
+                'rostos': tecnico.listar(os.path.join(DATA, 'tecnico')),
+                'tecnico_nome': CFG.get('tecnico_nome') or 'Yannes Zola'}
 
     # ----- dinheiro no jogo -----
     def verificar_creditos(self, car):
@@ -468,6 +472,10 @@ class App:
                                    c.get('dx', 0), c.get('dy', 0), json.dumps(c.get('ajustes') or {}, sort_keys=True),
                                    sorted((c.get('cores') or {}).items())] for c in cs]), ensure_ascii=False)
 
+    def sync_estudio(self):
+        kits.ESTUDIO.clear()
+        kits.ESTUDIO.update((self.state or {}).get('estudio') or {})
+
     def kits_pendentes(self):
         if self.state is None or not self.time or not self.time.get('preparado'):
             return []
@@ -478,8 +486,10 @@ class App:
                     "originais (confira a limpeza na aba Uniformes antes de aplicar)"]
         if aplicado == 'teste':
             return ['voltar ao normal depois do teste (contratos que ainda não começaram saem do uniforme)']
+        mud_est = json.dumps(self.state.get('estudio') or {}, sort_keys=True) != \
+            json.dumps(self.state.get('estudio_aplicado') or {}, sort_keys=True)
         if self.assinatura(atual) == aplicado:
-            return []
+            return ['cores/estrelas do Estúdio de uniformes'] if mud_est else []
         antes = {c[0]: c for c in json.loads(aplicado)}
         mud = []
         for c in atual:
@@ -500,6 +510,8 @@ class App:
             raise ValueError('Os uniformes do clube ainda estão sendo preparados. Aguarde terminar.')
         cs = json.loads(json.dumps(self.contratos_visiveis()))
         sig = self.assinatura(cs)
+        self.sync_estudio()
+        est = json.loads(json.dumps(self.state.get('estudio') or {}))
 
         def prog(i, n, v):
             self.status['kits_prog'] = [i, n]
@@ -511,6 +523,7 @@ class App:
                 kits.install(APP_DIR, self.time['pasta'], cs, self.logos.load, log, prog)
                 with LOCK:
                     self.state['kits_aplicados'] = sig
+                    self.state['estudio_aplicado'] = est
                     self.persist()
                 self.status['kits'] = 'ok'
                 self.status['kits_msg'] = time.strftime('Uniformes aplicados às %H:%M:%S')
@@ -660,6 +673,25 @@ class H(BaseHTTPRequestHandler):
                 if os.path.exists(p):
                     return self.send(200, open(p, 'rb').read(), 'image/png')
                 return self.send(404, {'erro': 'logo'})
+            if u.path == '/api/estudio':
+                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
+                A.sync_estudio()
+                pal = estudio.paleta(kits.base_image(APP_DIR, variant, fname))
+                return self.send(200, {'paleta': pal, 'cfg': (A.state or {}).get('estudio', {}).get(fam),
+                                       'presets': estudio.PRESETS, 'familias': kits.FAMILIAS})
+            if u.path == '/api/estudio/previa':
+                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
+                A.sync_estudio()
+                cfg = json.loads(q['cfg']) if q.get('cfg') else None
+                with LOCK:
+                    cs = json.loads(json.dumps([c for c in (A.state or {}).get('contratos', [])
+                                                if c['status'] in ('ativo', 'assinado')]))
+                img = kits.compose(APP_DIR, variant, fname, fam, cs, A.logos.load, estudio_cfg=cfg)
+                out = io.BytesIO()
+                kits.preview(img, int(q.get('w', 640))).save(out, 'JPEG', quality=88)
+                return self.send(200, out.getvalue(), 'image/jpeg')
             if u.path == '/api/preview':
                 fam = q.get('familia') or next(iter(kits.FAMILIAS))
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
@@ -829,6 +861,39 @@ class H(BaseHTTPRequestHandler):
                             if body.get('cores'):
                                 c['cores'].update(body['cores'])
                     A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/estudio/salvar':
+                    cfg = body.get('cfg') or {}
+                    cfg['ativo'] = True
+                    A.state.setdefault('estudio', {})[body['familia']] = cfg
+                    A.sync_estudio(); A.persist()
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/estudio/remover':
+                    (A.state.get('estudio') or {}).pop(body['familia'], None)
+                    A.sync_estudio(); A.persist()
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/tecnico/foto':
+                    import base64
+                    dados = base64.b64decode(body['dados'].split(',')[-1])
+                    humor = body.get('humor') if body.get('humor') in tecnico.HUMORES else 'neutro'
+                    nome = tecnico.salvar(os.path.join(DATA, 'tecnico'), humor, dados)
+                    return self.send(200, {'ok': True, 'nome': nome})
+                if u.path == '/api/tecnico/apagar':
+                    tecnico.apagar(os.path.join(DATA, 'tecnico'), body['nome'])
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/tecnico/nome':
+                    CFG['tecnico_nome'] = (body.get('nome') or '').strip()[:40] or 'Yannes Zola'
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    A.state['cfg_tecnico'] = CFG['tecnico_nome']
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/rede/postar':
+                    mu = mundo.Mundo(A.state, A.clube(), A.tid())
+                    ctx = mu.contexto_tecnico()
+                    i = int(body['i'])
+                    n_ctx = len(mundo.POSTS_TECNICO[ctx])
+                    bom = mu.post_tecnico(ctx if i < n_ctx else 'geral', i if i < n_ctx else i - n_ctx,
+                                          A.state.get('data') or '2026-01-01')
+                    A.persist()
+                    return self.send(200, {'ok': True, 'bom': bom})
                 if u.path == '/api/coletiva/responder':
                     mu = mundo.Mundo(A.state, A.clube(), A.tid())
                     tom = gestao.Gestao(A.state, A.clube(), A.tid()).responder(

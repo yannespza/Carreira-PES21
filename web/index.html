@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carreira · Patrocínios</title>
 <link rel="icon" href="/icone.png">
-<script src="/web/tecnico.js"></script>
 <style>
 :root{
   --bg:#0c0e12; --bg2:#12151b; --panel:#191d24; --panel2:#20252e; --line:#2a303b;
@@ -237,6 +236,24 @@ dialog select,dialog input{width:100%}
 .tabcl{width:100%;border-collapse:collapse;font-size:12px}.tabcl th{color:var(--mut);font-weight:600;padding:4px 3px;border-bottom:1px solid var(--line)}
 .tabcl td{padding:4px 3px;text-align:center;border-bottom:1px solid var(--line)}.tabcl tr.eu td{background:color-mix(in srgb,var(--lime) 22%,transparent);font-weight:700}
 .tabcl tr.sobe td:first-child{box-shadow:inset 3px 0 0 #3fbf6a}.tabcl tr.cai td:first-child{box-shadow:inset 3px 0 0 #e0574a}
+.postbox{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+.postbox select{width:100%}.postbox .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700}.av.tec{background:var(--lime);color:#111}.verif{font-size:11px;color:var(--lime)}
+.post.ptec{background:color-mix(in srgb,var(--lime) 8%,transparent)}.resp{font-size:12px;margin-top:6px;padding:6px 8px;border-left:2px solid var(--line);color:var(--txt)}
+.resp small{color:var(--mut)}
+.tecfoto{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);height:345px;max-width:96%;object-fit:contain;object-position:bottom;filter:drop-shadow(0 6px 14px #0008)}
+.tecvazio{position:absolute;left:20%;right:20%;bottom:120px;color:#b3bac4;text-align:center;font-size:13px;border:1px dashed #556;border-radius:8px;padding:18px}
+.mesa{position:absolute;left:0;bottom:0;width:100%;height:110px}
+.flash{position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(#fff9,#fff0 65%);animation:fl 2.6s infinite}
+.flash.f1{left:6%;top:12%}.flash.f2{right:8%;top:30%;animation-delay:1.3s}@keyframes fl{0%,80%,100%{opacity:0}85%{opacity:1}}
+.luzq{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,#ffd98a33,#0000 60%)}
+.tecgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.tecmini{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;min-height:70px}
+.tm{display:flex;flex-direction:column;align-items:center;font-size:11px}.tm img{height:70px;background:#2a303b;border-radius:6px}.tm a{color:var(--mut);cursor:pointer}
+.btnup{display:inline-block;cursor:pointer;padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+@media (max-width:900px){.tecgrid{grid-template-columns:1fr}}
+.estcor{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px}.estcor .sw{width:26px;height:26px;border-radius:6px;border:1px solid var(--line)}
+.estcor input[type=color]{width:46px;height:30px;padding:0;border:none;background:none}.estcor a{color:var(--mut);cursor:pointer;font-size:12px}
+.presets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.presets button{display:flex;align-items:center;gap:8px;text-align:left;font-size:12px}
+.presets i{display:inline-block;width:26px;height:16px;border-radius:4px;flex:none}
 </style>
 </head>
 <body>
@@ -245,13 +262,12 @@ dialog select,dialog input{width:100%}
   <div class="club"><small>Clube comandado</small><b id="clubName">—</b></div>
   <nav id="nav">
     <a data-t="clube" class="on">◆ Clube</a>
-    <a data-t="patro">◆ Patrocínios <span class="badge hidden" id="bOf"></span></a>
+    <a data-t="patro">◆ Comercial <span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits">◆ Uniformes</a>
     <a data-t="elenco">◆ Elenco</a>
     <a data-t="fin">◆ Finanças</a>
-    <a data-t="news">◆ Notícias</a>
+    <a data-t="news">◆ Mídia</a>
     <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
-    <a data-t="emps">◆ Empresas</a>
   </nav>
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
@@ -264,6 +280,9 @@ dialog select,dialog input{width:100%}
   <!-- CLUBE -->
   <section id="t-clube">
     <div class="crumb">Início / Clube / <b>Visão geral</b></div>
+    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a></div>
+    <div id="c-tab" class="hidden"><div class="box"><h3>Classificação <small id="tabInfo"></small></h3><div id="tabela"></div></div></div>
+    <div id="c-geral">
     <div class="hero">
       <div>
         <h1><span id="hName">—</span><span class="tag" id="hTier">—</span></h1>
@@ -283,8 +302,8 @@ dialog select,dialog input{width:100%}
       <div class="box">
         <h3>Últimas partidas <small>forma: <span id="forma"></span></small></h3>
         <div id="matches"></div>
-        <h3 style="margin-top:16px">Classificação <small id="tabInfo"></small></h3>
-        <div id="tabela"></div>
+        <h3 style="margin-top:16px">Na tabela <small><a style="color:var(--lime);cursor:pointer" onclick="abrirSub('c','tab')">ver completa</a></small></h3>
+        <div id="tabMini"></div>
       </div>
       <div class="box">
         <h3>Patrocínio do clube <small id="contSum"></small></h3>
@@ -293,24 +312,33 @@ dialog select,dialog input{width:100%}
         <div id="clubOffers"></div>
       </div>
     </div>
+    </div>
   </section>
 
   <!-- PATROCÍNIOS -->
   <section id="t-patro" class="hidden">
-    <div class="crumb">Início / Patrocínios / <b>Mercado</b></div>
-    <div class="tabs2" id="ptabs"><a data-p="of" class="on">Propostas</a><a data-p="ct">Contratos</a><a data-p="hi">Histórico</a></div>
+    <div class="crumb">Início / Comercial / <b>Patrocínios e empresas</b></div>
+    <div class="tabs2" id="ptabs"><a data-p="of" class="on">Propostas</a><a data-p="ct">Contratos</a><a data-p="hi">Histórico</a><a data-p="em">Empresas</a></div>
     <div id="p-of"></div>
     <div id="p-ct" class="hidden"></div>
     <div id="p-hi" class="hidden"></div>
+    <div id="p-em" class="hidden">
+    <p style="color:var(--mut);margin-top:-6px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira.</p>
+    <div class="egrid" id="egrid"></div></div>
   </section>
 
   <!-- UNIFORMES -->
   <section id="t-kits" class="hidden">
-    <div class="crumb">Início / Uniformes / <b>Patrocinadores no uniforme</b></div>
+    <div class="crumb">Início / Uniformes / <b>Patrocinadores, estúdio e limpeza</b></div>
+    <div class="tabs2" data-grp="u"><a data-sub="pat" class="on">Patrocinadores no uniforme</a><a data-sub="est">Estúdio</a><a data-sub="limp">Limpeza dos originais</a></div>
+    <div id="u-est" class="hidden"><div id="estudio"></div></div>
+    <div id="u-pat">
     <div class="kitwrap">
       <div>
         <div class="seg" id="famSeg"></div>
         <div class="kitprev"><img id="kitImg" alt="prévia do uniforme"></div>
+        <button class="lime" style="width:100%;margin-top:8px" onclick="aplicarKits()" id="btnAplicarKits">Aplicar no jogo (todos os uniformes)</button>
+        <div id="kitsStatus" style="color:var(--mut);font-size:12px;margin-top:4px"></div>
         <button class="ghost" style="width:100%;margin-top:8px" onclick="testarKit()">Testar no jogo (só este uniforme, inclui contratos que ainda não começaram)</button>
         <div style="color:var(--mut);font-size:12px;margin-top:8px">Prévia da textura aberta (a camisa "desmontada"): frente · costas · mangas · calção. Em cada manga, o logo de cima fica na parte de trás do braço e o de baixo na frente. A prévia mostra os contratos ativos e os já assinados. Os 10 uniformes do jogo só mudam quando você clicar em "Aplicar no jogo".</div>
       </div>
@@ -318,7 +346,9 @@ dialog select,dialog input{width:100%}
         <div class="box"><h3>Posições <small id="candInfo"></small></h3><div id="slots"></div></div>
       </div>
     </div>
-    <div class="box" style="margin-top:20px" id="limpBox">
+    </div>
+    <div id="u-limp" class="hidden">
+    <div class="box" id="limpBox">
       <h3>Limpeza dos uniformes originais <small id="limpInfo"></small></h3>
       <div style="color:var(--mut);font-size:12px;margin-bottom:10px">O app achou os patrocínios que vieram no uniforme do clube, apagou de todas as variações e guardou essas posições para os novos patrocinadores. Marcado = apaga; desmarcado = fica no uniforme e é protegido. Escudo, marca do fornecedor e o que parece desenho do uniforme (faixa, listra, estampa) já vêm desmarcados. <b>Arraste na imagem da esquerda</b> para marcar um patrocínio que sobrou. Depois clique em "Refazer a limpeza".</div>
       <div class="limpgrid">
@@ -327,6 +357,7 @@ dialog select,dialog input{width:100%}
         <div><div class="limpcap">MARCAÇÕES</div><div id="limpItens" style="max-height:520px;overflow:auto"></div>
           <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="lime" onclick="refazerLimpeza()">Refazer a limpeza</button><button class="ghost" onclick="procurarDeNovo()">Procurar de novo</button></div></div>
       </div>
+    </div>
     </div>
   </section>
 
@@ -360,12 +391,11 @@ dialog select,dialog input{width:100%}
 
   <!-- NOTÍCIAS -->
   <section id="t-news" class="hidden">
-    <div class="crumb">Início / <b>Notícias e redes sociais</b></div>
-    <div class="box" style="margin-bottom:20px"><h3>Sala de imprensa <small id="colInfo"></small></h3><div id="sala"></div></div>
-    <div class="grid2">
-      <div class="box"><h3>Manchetes <small>imprensa esportiva</small></h3><div id="newsList"></div></div>
-      <div class="box"><h3>Redes sociais <small>o que a torcida está dizendo</small></h3><div id="postList"></div></div>
-    </div>
+    <div class="crumb">Início / <b>Mídia</b></div>
+    <div class="tabs2" data-grp="m"><a data-sub="not" class="on">Notícias</a><a data-sub="col">Sala de imprensa</a><a data-sub="red">Redes sociais</a></div>
+    <div id="m-col" class="hidden"><div class="box"><h3>Sala de imprensa <small id="colInfo"></small></h3><div id="sala"></div></div></div>
+    <div id="m-not"><div class="box"><h3>Manchetes <small>imprensa esportiva</small></h3><div id="newsList"></div></div></div>
+    <div id="m-red" class="hidden"><div class="box"><h3>Redes sociais <small>o que a torcida está dizendo</small></h3><div id="postList"></div></div></div>
   </section>
 
   <!-- MENSAGENS -->
@@ -377,12 +407,6 @@ dialog select,dialog input{width:100%}
     </div>
   </section>
 
-  <!-- EMPRESAS -->
-  <section id="t-emps" class="hidden">
-    <div class="crumb">Início / <b>Empresas</b></div>
-    <p style="color:var(--mut);margin-top:-6px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira.</p>
-    <div class="egrid" id="egrid"></div>
-  </section>
   <div class="foot">App de Carreira · uso pessoal · versão <span id="ver">—</span>. Os dados vêm do último save gravado pelo jogo.</div>
 </main>
 
@@ -433,8 +457,41 @@ function go(t){tab=t;document.querySelectorAll('#nav a').forEach(a=>a.classList.
 document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>go(a.dataset.t));
 document.querySelectorAll('#ptabs a').forEach(a=>a.onclick=()=>{ptab=a.dataset.p;
   document.querySelectorAll('#ptabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['of','ct','hi'].forEach(k=>$('p-'+k).classList.toggle('hidden',k!=ptab))});
+  ['of','ct','hi','em'].forEach(k=>$('p-'+k).classList.toggle('hidden',k!=ptab))});
 
+let EST=null,estFam=null,estCfg=null,estT=null;
+async function rEstudio(){
+  if(!S||!S.familias)return; if(!estFam||!(estFam in S.familias))estFam=Object.keys(S.familias)[0];
+  EST=await api('/api/estudio?familia='+encodeURIComponent(estFam));
+  const salvo=EST.cfg;estCfg=salvo?JSON.parse(JSON.stringify(salvo)):{trocas:[],estrelas:0,cor_estrelas:'#c9a227',retro:false};
+  estCfg.paleta=EST.paleta;desenharEstudio(!!salvo)}
+function desenharEstudio(salvo){
+  const tro=Object.fromEntries((estCfg.trocas||[]).map(t=>[t[0],t[1]]));
+  $('estudio').innerHTML=`<div class="kitwrap"><div>
+    <div class="seg">${Object.entries(S.familias).map(([k,n])=>`<button class="${k==estFam?'on':'ghost'}" onclick="estFam='${k}';rEstudio()">${esc(n)}</button>`).join('')}</div>
+    <div class="kitprev"><img id="estImg" alt="prévia do estúdio"></div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="lime" style="flex:1" onclick="salvarEstudio()">Usar estas cores neste uniforme</button>
+      ${salvo?`<button class="ghost" onclick="removerEstudio()">Voltar ao original</button>`:''}</div>
+    <p style="color:var(--mut);font-size:12px;margin-top:8px">Depois de salvar, clique em “Aplicar no jogo” na aba Patrocinadores no uniforme (ou no aviso do topo). O escudo e a marca do fornecedor mantêm as cores originais.</p></div>
+   <div><div class="box"><h3>Cores do tecido <small>clique na cor nova para trocar</small></h3>
+     ${EST.paleta.map(p=>`<div class="estcor"><span class="sw" style="background:${p.cor}"></span><span>${Math.round(p.frac*100)}% do uniforme</span><span>→</span>
+       <input type="color" value="${tro[p.cor]||p.cor}" onchange="trocaCor('${p.cor}',this.value)"><a onclick="trocaCor('${p.cor}',null)">desfazer</a></div>`).join('')}
+     <h3 style="margin-top:16px">Modelos comemorativos</h3>
+     <div class="presets">${Object.entries(EST.presets).map(([k,p])=>`<button class="ghost" onclick="preset('${k}')"><i style="background:linear-gradient(90deg,${(p.cores||[]).filter(Boolean).join(',')}${(p.cores||[]).filter(Boolean).length<2?','+((p.cores||[]).filter(Boolean)[0]||'#efe6d2'):''})"></i>${esc(p.nome)}</button>`).join('')}</div>
+     <h3 style="margin-top:16px">Estrelas de campeão <small>acima do escudo</small></h3>
+     <div style="display:flex;gap:10px;align-items:center"><select onchange="estCfg.estrelas=+this.value;previaEst()">${[0,1,2,3,4,5].map(n=>`<option ${n==(estCfg.estrelas||0)?'selected':''}>${n}</option>`).join('')}</select>
+       <input type="color" value="${estCfg.cor_estrelas||'#c9a227'}" onchange="estCfg.cor_estrelas=this.value;previaEst()"><label><input type="checkbox" ${estCfg.retro?'checked':''} onchange="estCfg.retro=this.checked;previaEst()"> efeito retrô (cores desbotadas)</label></div>
+   </div></div></div>`;previaEst()}
+function trocaCor(src,dst){estCfg.trocas=(estCfg.trocas||[]).filter(t=>t[0]!=src);if(dst&&dst.toLowerCase()!=src.toLowerCase())estCfg.trocas.push([src,dst]);desenharEstudio(!!EST.cfg)}
+function preset(k){const p=EST.presets[k];estCfg.trocas=[];(p.cores||[]).forEach((c,i)=>{if(c&&EST.paleta[i])estCfg.trocas.push([EST.paleta[i].cor,c])});estCfg.retro=!!p.retro;desenharEstudio(!!EST.cfg)}
+function previaEst(){clearTimeout(estT);estT=setTimeout(()=>{const im=$('estImg');if(!im)return;im.style.opacity=.5;
+  im.onload=()=>im.style.opacity=1;im.src='/api/estudio/previa?familia='+encodeURIComponent(estFam)+'&w=640&cfg='+encodeURIComponent(JSON.stringify({...estCfg,ativo:true}))},250)}
+async function salvarEstudio(){await api('/api/estudio/salvar',{familia:estFam,cfg:estCfg});toast('Cores salvas. Clique em “Aplicar no jogo” para gravar no PES.');await load();rEstudio()}
+async function removerEstudio(){await api('/api/estudio/remover',{familia:estFam});toast('Uniforme volta às cores originais na próxima aplicação.');await load();rEstudio()}
+function abrirSub(g,k){document.querySelectorAll(`.tabs2[data-grp="${g}"] a`).forEach(x=>x.classList.toggle('on',x.dataset.sub==k));
+  document.querySelectorAll(`.tabs2[data-grp="${g}"] a`).forEach(x=>{const el=$(g+'-'+x.dataset.sub);if(el)el.classList.toggle('hidden',x.dataset.sub!=k)});
+  if(g=='u'&&k=='est'&&typeof rEstudio=='function')rEstudio();}
+document.querySelectorAll('.tabs2[data-grp] a').forEach(a=>a.onclick=()=>abrirSub(a.parentElement.dataset.grp,a.dataset.sub));
 async function load(){try{S=await api('/api/estado');render()}catch(e){}}
 let SAVES=null;
 async function carregarSaves(){try{const j=await (await fetch('/api/saves')).json();SAVES=j;
@@ -472,6 +529,9 @@ function render(){
     bn+=`<div class="banner"><p><b>Gravando os uniformes no jogo…</b> ${esc(ks.kits_msg||'')}</p><div class="prog"><i style="width:${Math.round(100*p[0]/p[1])}%"></i></div></div>`}
   else if(S.kits_pendentes&&S.kits_pendentes.length) bn+=`<div class="banner"><p><b>Mudanças nos uniformes aguardando sua aprovação:</b> ${S.kits_pendentes.map(esc).join(' · ')}</p>
     <button class="ghost" onclick="go('kits')">Ver prévia</button><button class="lime" onclick="aplicarKits()">Aplicar no jogo</button></div>`;
+  {const b=$('btnAplicarKits'),st=$('kitsStatus');if(b){const prep=S.time&&S.time.prep&&S.time.prep.rodando,trab=ks.kits=='trabalhando';
+    b.disabled=!!(prep||trab);
+    st.textContent=prep?'Aguarde: os uniformes do clube estão sendo preparados.':trab?'Gravando…':(S.kits_pendentes&&S.kits_pendentes.length?'Há mudanças esperando: '+S.kits_pendentes.join(' · '):(ks.kits_msg||'Tudo aplicado. Pode gravar de novo se quiser.'));}}
   const tp=S.time&&S.time.prep;
   if(tp&&tp.rodando) bn+=`<div class="banner"><p><b>Preparando os uniformes do ${esc(S.time.nome)}:</b> o app está tirando os patrocínios originais das ${S.time.n_uniformes} variações e guardando onde eles ficavam. ${esc(tp.msg||'')}</p><div class="prog"><i style="width:${Math.round(100*(tp.i||0)/(tp.n||1))}%"></i></div></div>`;
   else if(tp&&tp.erro) bn+=`<div class="banner err"><p>Preparação dos uniformes: ${esc(tp.msg)}</p></div>`;
@@ -482,14 +542,16 @@ function render(){
   if(S.save&&S.save.lido_em!=lastRead){lastRead=S.save.lido_em;kitStamp=Date.now()}
   if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
   aplicarCores();rTimeline();
-  ({clube:rClube,patro:rPatro,kits:rKits,msgs:rMsgs,emps:rEmps,news:rNews,fin:rFin,elenco:rElenco})[tab]();
+  ({clube:rClube,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
 function rTabela(){
   const T=S.tabela, el=$('tabela');
-  if(!T||!T.linhas||!T.linhas.length){el.innerHTML='<div class="empty">A tabela aparece depois do primeiro jogo do campeonato.</div>';$('tabInfo').textContent='';return}
+  if(!T||!T.linhas||!T.linhas.length){el.innerHTML='<div class="empty">A tabela aparece depois do primeiro jogo do campeonato.</div>';$('tabInfo').textContent='';$('tabMini').innerHTML='<div class="empty">Sem tabela ainda.</div>';return}
   const meu=S.time?S.time.id:null, n=T.linhas.length;
   $('tabInfo').textContent=T.data?'até '+dt(T.data):'';
+  {const i=T.linhas.findIndex(l=>l.id==meu);const ini=Math.max(0,Math.min(i-2,n-5));
+   $('tabMini').innerHTML=i<0?'':`<table class="tabcl">`+T.linhas.slice(ini,ini+5).map(l=>`<tr class="${l.id==meu?'eu':''}"><td>${l.pos}º</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b> pts</td><td>${l.j} j</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`).join('')+'</table>';}
   el.innerHTML=`<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>`+
     T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
 }
@@ -535,22 +597,52 @@ function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
     <p>Patrocínios por temporada: <b style="color:${m.patrocinio_anual>=mt.patrocinio?'var(--green)':'var(--gold)'}">${eurM(m.patrocinio_anual)}</b> (meta ${eurM(mt.patrocinio)})</p></div>`}
 $('dlg').addEventListener('close',()=>$('dOk').classList.remove('hidden'));
 let TOM=null;
-function rosto(tom){const c=S.cores||[];return tecnicoSVG(tom||'neutro',c[0],c[1])}
+function fotoTec(tom,chave){const R=(S.gestao||{}).rostos||{};let l=R[tom]||[];if(!l.length)l=R.neutro||R.feliz||R.irritado||[];
+  if(!l.length)return null;let h=0;for(const ch of String(chave||''))h=(h*31+ch.charCodeAt(0))>>>0;return l[h%l.length]}
+function rosto(tom,chave){const c=S.cores||[];const nome=(S.gestao||{}).tecnico_nome||'Yannes Zola';const f=fotoTec(tom||'neutro',chave);
+  const cor=c[0]||'#1f6b3a',cor2=c[1]||'#ffffff';
+  const filtro={feliz:'brightness(1.07) saturate(1.12)',neutro:'none',irritado:'contrast(1.12) saturate(.88) brightness(.96)'}[tom||'neutro'];
+  const pessoa=f?`<img class="tecfoto" src="/tecnico/${encodeURIComponent(f)}" style="filter:${filtro}">`:
+    `<div class="tecvazio">Envie sua foto em “Fotos do técnico” logo abaixo</div>`;
+  return `${tom=='irritado'?'<div class="flash f1"></div><div class="flash f2"></div>':''}${tom=='feliz'?'<div class="luzq"></div>':''}${pessoa}
+  <svg class="mesa" viewBox="0 0 440 120" preserveAspectRatio="none"><rect x="0" y="40" width="440" height="80" fill="#141821"/><rect x="0" y="34" width="440" height="9" fill="#262c38"/>
+   <rect x="0" y="43" width="440" height="5" fill="${cor}"/>
+   <g transform="translate(96,0)"><rect x="9" y="8" width="5" height="30" fill="#2b2f36"/><rect x="0" y="-8" width="23" height="20" rx="9" fill="#3a3f48"/><rect x="-3" y="10" width="29" height="13" fill="#e23b3b"/><text x="11.5" y="20" font-size="8" fill="#fff" text-anchor="middle" font-family="Arial" font-weight="700">TV</text></g>
+   <g transform="translate(318,2)"><rect x="9" y="8" width="5" height="28" fill="#2b2f36"/><rect x="0" y="-8" width="23" height="20" rx="9" fill="#3a3f48"/><rect x="-3" y="10" width="29" height="13" fill="#2b6fd6"/><text x="11.5" y="20" font-size="7" fill="#fff" text-anchor="middle" font-family="Arial" font-weight="700">RÁDIO</text></g>
+   <rect x="380" y="0" width="18" height="40" rx="4" fill="#9fd3ff" opacity=".55"/>
+   <path d="M150 112 h140 l10 -36 h-160z" fill="#e9ecf1"/><text x="220" y="94" font-size="13" fill="#151a22" text-anchor="middle" font-family="Arial" font-weight="700" letter-spacing="1">${esc(nome.toUpperCase())}</text>
+   <text x="220" y="106" font-size="8" fill="#555" text-anchor="middle" font-family="Arial" letter-spacing="2">TÉCNICO · ${esc((S.clube||'').toUpperCase())}</text></svg>`}
+function rFotosTec(){const R=(S.gestao||{}).rostos||{};const nome=(S.gestao||{}).tecnico_nome||'Yannes Zola';
+  const nomes={feliz:'Feliz (vitórias)',neutro:'Neutro (empates)',irritado:'Irritado (derrotas)'};
+  return `<div class="box" style="margin-top:16px"><h3>Fotos do técnico <small>o fundo sai sozinho; foto de frente, da cintura para cima, numa parede lisa fica melhor</small></h3>
+   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><span>Nome:</span><input id="tecNome" value="${esc(nome)}" style="max-width:220px"><button class="ghost" onclick="api('/api/tecnico/nome',{nome:$('tecNome').value}).then(load)">Salvar nome</button></div>
+   <div class="tecgrid">${['feliz','neutro','irritado'].map(h=>`<div><b>${nomes[h]}</b><div class="tecmini">${(R[h]||[]).map(f=>`<div class="tm"><img src="/tecnico/${encodeURIComponent(f)}"><a onclick="apagarFotoTec('${esc(f)}')">remover</a></div>`).join('')||'<small style="color:var(--mut)">nenhuma ainda</small>'}</div>
+     <label class="ghost btnup">+ Enviar foto<input type="file" accept="image/*" multiple style="display:none" onchange="enviarFotoTec('${h}',this.files)"></label></div>`).join('')}</div>
+   <p style="font-size:12px;color:var(--mut);margin-top:10px">Pode mandar várias fotos para cada humor: a coletiva alterna entre elas. Se faltar foto de um humor, o app usa a neutra.</p></div>`}
+async function enviarFotoTec(h,files){for(const f of files){const d=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+  await api('/api/tecnico/foto',{humor:h,dados:d})}toast('Foto recortada e salva.');load()}
+async function apagarFotoTec(n){await api('/api/tecnico/apagar',{nome:n});load()}
 function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
   const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
   const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
-  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro')}</div></div>
-    <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">O painel atrás do técnico mostra os patrocinadores com contrato.</p></div></div></div>`;return}
+  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro','x')}</div></div>
+    <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">O painel atrás do técnico mostra os patrocinadores com contrato.</p></div></div></div>`+rFotosTec();return}
   const aberta=c.status=='aberta';$('colInfo').textContent=c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada');
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
-  $('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom)}</div></div><div>
+  $('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div><div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
     ${c.perguntas.map((q,qi)=>`<div class="perg"><p>Repórter: ${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
-    ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`}
+    ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`+rFotosTec()}
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
 function rNews(){rSala();const m=S.mundo||{noticias:[],posts:[]};
   $('newsList').innerHTML=m.noticias.length?m.noticias.map(n=>`<div class="news ${n.destaque?'dest':''}"><b>${esc(n.titulo)}</b><small>${esc(n.fonte)} · ${dt(n.data)}</small></div>`).join(''):'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';
-  $('postList').innerHTML=m.posts.length?m.posts.map(p=>`<div class="post"><div class="av">${esc(p.autor[1].toUpperCase())}</div><div><b>${esc(p.autor)}</b><p>${esc(p.texto)}</p><small>${dt(p.data)} · ♥ ${p.curtidas.toLocaleString('pt-BR')}</small></div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>'}
+  const ops=m.opcoes_post||[];
+  $('postList').innerHTML=`<div class="postbox"><div style="display:flex;gap:10px;align-items:center"><div class="av tec">${esc((m.tecnico||'T')[0])}</div><b>${esc(m.tecnico||'Técnico')}</b><small style="color:var(--mut)">publicar como técnico</small></div>
+    <select id="postSel">${ops.map((t,i)=>`<option value="${i}">${esc(t)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`+
+    (m.posts.length?m.posts.map(p=>`<div class="post ${p.tecnico?'ptec':''}"><div class="av ${p.tecnico?'tec':''}">${esc(p.autor[1].toUpperCase())}</div><div style="flex:1"><b>${esc(p.autor)}</b>${p.tecnico?' <span class="verif">✔ técnico</span>':''}<p>${esc(p.texto)}</p>
+      <small>${dt(p.data)} · ♥ ${(p.curtidas||0).toLocaleString('pt-BR')} · ⟳ ${(p.reposts||0).toLocaleString('pt-BR')} · 💬 ${(p.respostas||[]).length}</small>
+      ${(p.respostas||[]).map(r=>`<div class="resp"><b>${esc(r.autor)}</b> ${esc(r.texto)} <small>♥ ${r.curtidas}</small></div>`).join('')}</div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>')}
+async function postarTecnico(){const i=+$('postSel').value;const j=await api('/api/rede/postar',{i});toast(j.bom?'A torcida curtiu o seu post.':'O post dividiu a torcida.');load()}
 function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O gráfico aparece a partir do segundo save lido.</div>';
   const W=560,H=220,P=36;const all=series.flatMap(s=>pts.map(p=>p[s.k]||0));const mx=Math.max(...all)*1.08||1,mn=0;
   const x=i=>P+(W-P-10)*i/(pts.length-1),y=v=>H-P+( -(H-P-14)*(v-mn)/(mx-mn));

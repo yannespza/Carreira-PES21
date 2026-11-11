@@ -33,6 +33,21 @@ Novidades da 2.2:
 - Mensagens separadas em Diretoria e Patrocinadores; gráfico de receitas em Finanças.
 - Revisão anual dos contratos em janeiro, conforme o aproveitamento da temporada.
 
+Novidades da 2.4:
+- Abas organizadas por assunto: Clube (visão geral e classificação), Comercial (propostas, contratos,
+  histórico e empresas), Uniformes (patrocinadores, Estúdio e limpeza), Elenco, Finanças, Mídia
+  (notícias, sala de imprensa e redes sociais) e Mensagens.
+- Estúdio de uniformes: troque as cores do tecido num painel de cores (sombras e textura continuam),
+  use modelos comemorativos (dourado de campeão, preto e dourado, Outubro Rosa, Novembro Azul, retrô...)
+  e coloque estrelas de campeão acima do escudo. Escudo e marca do fornecedor mantêm as cores.
+- Botão "Aplicar no jogo" sempre visível na aba Uniformes.
+- Notícias de verdade além das coletivas: posição na tabela (líder, G4, Z4), sequências, invencibilidade,
+  bastidores da semana, rumores de patrocínio. Banco de textos bem maior para imprensa, torcida e diretoria.
+- Redes sociais com respostas, curtidas e compartilhamentos; o técnico pode publicar posts que mexem
+  com a torcida.
+- Sala de imprensa com a sua foto real: envie fotos em Mídia > Sala de imprensa > Fotos do técnico
+  (feliz, neutro, irritado). O fundo da foto sai sozinho. Nome do técnico: Yannes Zola (pode mudar).
+
 Novidades da 2.3:
 - Classificação do campeonato na aba Clube, lida direto do save (pontos, jogos, vitórias, empates,
   derrotas, gols e saldo; o seu clube aparece destacado).

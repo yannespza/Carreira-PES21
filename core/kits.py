@@ -43,6 +43,9 @@ FAMILIAS = {'verde': 'Verde', 'branco': 'Branco', 'azul': 'Azul',
             'listrado': 'Listrado'}
 
 _base_cache = {}
+ESTUDIO = {}        # família -> configuração do estúdio (cores novas, estrelas)
+PROTEGER = {}       # variação -> caixas que o estúdio não pinta (escudo, marca)
+ESCUDO = {}         # variação -> caixa do escudo (para as estrelas)
 BASE = {'dir': None}     # pasta das bases limpas do clube da carreira atual
 VIEWS_PADRAO = {k: list(v) for k, v in VIEWS.items()}
 
@@ -60,6 +63,20 @@ def usar_time(t):
     if 'gola' in SLOTS or 'acima_peito' in SLOTS:
         VIEWS['frente'] = [(690, 990, 1360, 1860)]
     _base_cache.clear()
+    PROTEGER.clear(); ESCUDO.clear()
+    for fam, d in (t.get('deteccao') or {}).items():
+        fora = set(d.get('desmarcados', []))
+        for v, vv in d.get('variantes', {}).items():
+            caixas = [a['caixa'] for a in vv.get('achados', []) if a.get('escudo') or
+                      (a.get('chave') in fora and not a.get('desenho'))]
+            PROTEGER[v] = caixas
+            esc = [a['caixa'] for a in vv.get('achados', []) if a.get('escudo') and a['caixa'][0] > 1000
+                   and 1000 < a['caixa'][1] < 1400]
+            if esc:
+                ESCUDO[v] = max(esc, key=lambda c: (c[2] - c[0]) * (c[3] - c[1]))
+    if not ESCUDO:          # Palmeiras e clubes sem detecção: lugar de costume do escudo
+        for v in VARIANTS:
+            ESCUDO[v[0]] = [1095, 1150, 1205, 1290]
 
 
 def base_path(app_dir, variant, fname):
@@ -133,9 +150,28 @@ def ajuste(c, familia):
     return {k: a.get(k, c.get(k, d)) for k, d in (('escala', 1.0), ('inclinacao', 0), ('dx', 0), ('dy', 0))}
 
 
-def compose(app_dir, variant, fname, familia, contratos, logo_loader):
+_estudio_cache = {}
+
+
+def base_estudio(app_dir, variant, fname, cfg):
+    """Base limpa já com as cores/estrelas do estúdio (guardada em memória por configuração)."""
+    if not cfg or not cfg.get('ativo'):
+        return base_image(app_dir, variant, fname)
+    from . import estudio
+    import json
+    key = (BASE['dir'], variant, fname, json.dumps(cfg, sort_keys=True))
+    if key not in _estudio_cache:
+        if len(_estudio_cache) > 12:
+            _estudio_cache.clear()
+        esc = ESCUDO.get(variant) or [1085, 1030, 1200, 1140]
+        prot = PROTEGER.get(variant) or [esc, [845, 1045, 955, 1140]]
+        _estudio_cache[key] = estudio.aplicar(base_image(app_dir, variant, fname), cfg, esc, prot)
+    return _estudio_cache[key].copy()
+
+
+def compose(app_dir, variant, fname, familia, contratos, logo_loader, estudio_cfg=None):
     """contratos: lista de dicts com slot, empresa, escala, inclinacao, cores{familia: modo}"""
-    img = base_image(app_dir, variant, fname)
+    img = base_estudio(app_dir, variant, fname, estudio_cfg if estudio_cfg is not None else ESTUDIO.get(familia))
     for c in contratos:
         slot = SLOTS.get(c['slot'])
         if not slot:
