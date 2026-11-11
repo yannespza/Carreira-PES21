@@ -23,7 +23,7 @@ LUA = r'''-- AppCarreiraAoVivo.lua (App de Carreira PES 21)
 -- ponteiros do goleador que o próprio GOGOSZ usa (GolsJogador.lua) e grava arquivos.
 -- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas C, L, S e R gravam uma "foto" da memória
 -- para descobrirmos onde o jogo guarda cartões, lesões e substituições.
-local m = { version = "1.3" }
+local m = { version = "1.4" }
 
 local ARQ, TMP, PASTA_SONDA
 local quadro = 0
@@ -134,15 +134,11 @@ local function gravar(status)
         campos = ult, eventos = eventos, sondas = nsondas,
     }
     local txt = json(dados)
-    local f = io.open(TMP, "w")
+    -- o Sider não tem os.remove/os.rename: grava direto (o app ignora uma leitura pela metade)
+    local f = io.open(ARQ, "w")
     if not f then return end
     f:write(txt)
     f:close()
-    os.remove(ARQ)
-    if not os.rename(TMP, ARQ) then
-        local g = io.open(ARQ, "w")
-        if g then g:write(txt); g:close() end
-    end
 end
 
 local function evento(tipo, extra)

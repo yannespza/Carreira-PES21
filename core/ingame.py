@@ -99,8 +99,8 @@ def _texturas_estadio(est):
 
 def _formato_ok(path):
     try:
-        pf = struct.unpack_from('<H', open(path, 'rb').read(10), 8)[0]
-        return pf in (0, 2, 3, 4)
+        pf, w, h = struct.unpack_from('<HHH', open(path, 'rb').read(14), 8)
+        return pf in (0, 2, 3, 4) and w % 4 == 0 and h % 4 == 0   # compressão em blocos de 4x4
     except OSError:
         return False
 

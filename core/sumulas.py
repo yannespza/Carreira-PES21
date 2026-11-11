@@ -6,7 +6,9 @@ O save guarda a temporada inteira numa tabela de registros de 0x254 bytes (um po
   +0x14 u32 mandante (id << 14)   +0x18 u32 visitante   +0x1C u8 gols mandante   +0x1F u8 gols visitante
   +0x24 mandante e +0x134 visitante: 17 linhas de 16 bytes, uma por jogador que entrou em campo
      +0 u16 (0xFFFF = linha vazia)  +4 u32 id do jogador  +8 u8 gols  +9 u8 assistências
-     +12 u32: bits 0-6 minutos jogados, bits 7-13 nota x10
+     +12 u32: bits 0-6 minutos jogados, bits 7-13 nota x10, bits 14-17 posição,
+              bit 19 cartão amarelo, bit 20 expulsão (bit 18 junto da expulsão), bit 21 titular, bit 22 entrou em campo
+              (titular/amarelo/vermelho só nas partidas que o usuário jogou; nas simuladas todos ficam como titular)
 Liga e copas ficam em sequências separadas de registros, todas com o mesmo formato. Vale para jogos jogados
 e simulados. Conferido em saves reais: a soma dos gols dos jogadores bate com o placar em ~98% dos jogos
 (o resto são gols contra, que não vão para nenhum jogador).
@@ -20,6 +22,7 @@ PALAVRAS = STRIDE // 4
 JOGADA_BIT = 0x40
 LINHAS, LINHA = 17, 16
 LADO = (0x24, 0x134)
+BIT_AMARELO, BIT_VERMELHO, BIT_TITULAR = 1 << 19, 1 << 20, 1 << 21
 
 
 def _candidatos(a: np.ndarray):
@@ -76,7 +79,9 @@ def _jogadores(data, base):
         t = struct.unpack_from('<I', data, e + 12)[0]
         minutos, nota = t & 0x7F, ((t >> 7) & 0x7F) / 10
         out.append({'id': pid, 'gols': data[e + 8], 'assist': data[e + 9], 'min': minutos,
-                    'nota': nota if minutos > 0 and nota > 0 else None})
+                    'nota': nota if minutos > 0 and nota > 0 else None,
+                    'titular': bool(t & BIT_TITULAR), 'amarelo': bool(t & BIT_AMARELO),
+                    'vermelho': bool(t & BIT_VERMELHO)})
     return out
 
 
@@ -119,8 +124,12 @@ def do_clube(data: bytes, team_id: int, nomes=None, ultimas=15):
         for j in meus:
             s = tab.setdefault(j['id'], {'id': j['id'], 'nome': nome(j['id']),
                                          'pos': (nomes.get(j['id']) or {}).get('pos', ''),
-                                         'jogos': 0, 'minutos': 0, 'gols': 0, 'assist': 0, 'notas': []})
+                                         'jogos': 0, 'titular': 0, 'minutos': 0, 'gols': 0, 'assist': 0,
+                                         'amarelos': 0, 'vermelhos': 0, 'notas': []})
             s['jogos'] += 1
+            s['titular'] += j['titular']
+            s['amarelos'] += j['amarelo']
+            s['vermelhos'] += j['vermelho']
             s['minutos'] += j['min']
             s['gols'] += j['gols']
             s['assist'] += j['assist']
@@ -142,5 +151,5 @@ def do_clube(data: bytes, team_id: int, nomes=None, ultimas=15):
                         'visitante': p['visitante'], 'gols_mandante': p['gols_mandante'],
                         'gols_visitante': p['gols_visitante'], 'em_casa': casa,
                         'jogadores': [{**j, 'nome': nome(j['id'])}
-                                      for j in sorted(meus, key=lambda j: (-j['min'], -(j['nota'] or 0)))]})
+                                      for j in sorted(meus, key=lambda j: (not j['titular'], -j['min'], -(j['nota'] or 0)))]})
     return {'jogos': len(jogos), 'jogadores': lista, 'sumulas': sumulas}

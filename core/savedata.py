@@ -13,7 +13,7 @@ def find_finance_block(data: bytes):
     n = len(a) - 40
     i = np.arange(n)
     base = ((a[i] > 0) & (a[i] < 10 ** 8) & (a[i + 1] == 0) & (a[i + 2] == 0) & (a[i + 3] == 0)
-            & ((a[i + 4] == a[i]) | (a[i + 4] == 0)) & (a[i + 5] >= 0) & (a[i + 6] == 0)
+            & (a[i + 4] >= 0) & (a[i + 4] < 10 ** 8) & (a[i + 5] >= 0) & (a[i + 6] == 0)
             & (a[i + 7] >= 0) & (a[i + 7] < 10 ** 7) & (a[i + 8] == 0) & (a[i + 9] == 0) & (a[i + 10] == 0)
             & (a[i + 11] >= 0) & (a[i + 12] >= 0) & (a[i + 13] >= 0) & (a[i + 14] == 0)
             & (((a[i + 11] > 0).astype(int) + (a[i + 12] > 0) + (a[i + 13] > 0)) >= 2) & (a[i + 5] > 0)
@@ -23,8 +23,10 @@ def find_finance_block(data: bytes):
     if not len(hits):
         return None
     # prefere o bloco com o orçamento repetido (carreira em andamento); senão o primeiro
+    # (depois de uma partida a segunda cópia pode diferir da primeira: receitas e despesas já lançadas)
     rep = [h for h in hits if a[h + 4] == a[h] and a[h + 7] > 0]
-    return int((rep or hits)[0]) * 4
+    andamento = [h for h in hits if a[h + 4] > 0 and a[h + 7] > 0]
+    return int((rep or andamento or hits)[0]) * 4
 
 
 # posições dentro do bloco de finanças (a partir do orçamento de transferências)
