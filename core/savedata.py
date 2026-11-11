@@ -351,3 +351,17 @@ def classificacoes(data: bytes):
             tabelas.append(linhas)
             vistos.update(range(o, k, 20))
     return tabelas
+
+
+# ---------------- moral (arquivo "Dados do time" que o jogo grava ao salvar o elenco) ----------------
+def moral_usert(path, ids):
+    """Moral de cada jogador no arquivo USERT (salvar elenco no jogo): byte 279 do bloco do jogador
+    (que começa com o id repetido duas vezes), 3 bits: 4 = seta para cima ... 0 = seta para baixo."""
+    from . import pescrypt
+    d = bytes(pescrypt.decrypt(open(path, 'rb').read()).data)
+    out = {}
+    for pid in ids:
+        o = d.find(struct.pack('<II', pid, pid))
+        if o >= 0 and o + 280 <= len(d):
+            out[pid] = d[o + 279] & 7
+    return out

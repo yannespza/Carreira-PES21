@@ -73,6 +73,7 @@ class App:
         sim.MOEDA['cod'] = CFG.get('moeda', 'EUR')
         self.time = None          # configuração do clube da carreira atual
         self.elenco = []
+        self.moral_data = None
 
     # ----- clube da carreira -----
     def tid(self):
@@ -136,6 +137,19 @@ class App:
             edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
+            # moral: só existe no arquivo "Dados do time" (USERT...) que o jogo grava quando você salva o elenco
+            us = sorted(glob.glob(os.path.join(os.path.dirname(car.path), 'USERT*')), key=os.path.getmtime)
+            self.moral_data = None
+            if us:
+                try:
+                    mor = savedata.moral_usert(us[-1], ids)
+                    if mor:
+                        for j in el:
+                            if j['id'] in mor:
+                                j['moral'] = mor[j['id']]
+                        self.moral_data = time.strftime('%d/%m %H:%M', time.localtime(os.path.getmtime(us[-1])))
+                except Exception:
+                    log(traceback.format_exc())
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
             if self.state is not None:
                 self.state['elenco_nomes'] = [j['nome'] for j in el if not j['nome'].startswith('Jogador ')]
@@ -560,7 +574,7 @@ class App:
             'pronto': self.state is not None, 'versao': VERSAO,
             'clube': self.clube(), 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
-                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),

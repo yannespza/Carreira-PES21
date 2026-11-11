@@ -254,6 +254,8 @@ dialog select,dialog input{width:100%}
 .estcor input[type=color]{width:46px;height:30px;padding:0;border:none;background:none}.estcor a{color:var(--mut);cursor:pointer;font-size:12px}
 .presets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.presets button{display:flex;align-items:center;gap:8px;text-align:left;font-size:12px}
 .presets i{display:inline-block;width:26px;height:16px;border-radius:4px;flex:none}
+.moral{position:absolute;top:30px;right:10px;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-weight:900;color:#111;font-size:15px}
+.moral.m4{background:#39d98a}.moral.m3{background:#a6e04a}.moral.m2{background:#f2c230}.moral.m1{background:#f28a30}.moral.m0{background:#e0574a;color:#fff}
 </style>
 </head>
 <body>
@@ -763,9 +765,9 @@ function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
-  $('elInfo').textContent=el.length?el.length+' jogadores no save':'';
+  $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral de '+S.moral_data+' (Dados do time)':' · para ver a moral, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>${p.moral!=null?`<div class="moral m${p.moral}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][p.moral]}">${['↓','↘','→','↗','↑'][p.moral]}</div>`:''}
       <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rPrancheta();
   if(etab=='transf'){const tr=G.transferencias||[];
