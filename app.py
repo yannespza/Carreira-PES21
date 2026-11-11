@@ -1518,6 +1518,21 @@ class H(BaseHTTPRequestHandler):
                     A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
                     A.persist()
                     return self.send(200, {'ok': True, **novo})
+                if u.path == '/api/empresa/remover_sem_imagem':
+                    st = A.state
+                    rem = st.setdefault('empresas_removidas', [])
+                    vig = {c['empresa'] for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')}
+                    tirar = [n for n in A.logos.sem_imagem(list(st.get('empresas', {}))) if n not in vig]
+                    for nome in tirar:
+                        if nome not in rem:
+                            rem.append(nome)
+                        st['empresas'].pop(nome, None)
+                        for o in st.get('ofertas', []):
+                            if o.get('empresa') == nome and o['status'] in ('aberta', 'aguardando'):
+                                o['status'] = 'cancelada'
+                    A.persist()
+                    return self.send(200, {'removidas': tirar, 'mantidas_por_contrato': sorted(
+                        n for n in A.logos.sem_imagem(list(st.get('empresas', {}))) if n in vig)})
                 if u.path in ('/api/empresa/remover', '/api/empresa/restaurar'):
                     st = A.state
                     nome = body['nome']

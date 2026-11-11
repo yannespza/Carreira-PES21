@@ -492,7 +492,7 @@ dialog select,dialog input{width:100%}
     <div id="p-hi" class="hidden"></div>
     <div id="p-em" class="hidden">
     <div style="display:flex;gap:14px;align-items:flex-start;margin-top:-6px;margin-bottom:12px;flex-wrap:wrap"><p style="color:var(--mut);margin:0;flex:1;min-width:280px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira. Para trocar a imagem de uma empresa, passe o mouse no logo e clique em "trocar imagem": o app tira o fundo sozinho.</p>
-      <button class="ghost" id="btLogos" onclick="atualizarLogos()">Atualizar imagens</button></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="ghost" id="btLogos" onclick="atualizarLogos()">Atualizar imagens</button><button class="ghost" id="btSemImg" onclick="removerSemImagem()" style="display:none"></button></div></div>
     <div id="logosMsg"></div>
     <div class="egrid" id="egrid"></div></div>
   </section>
@@ -1332,6 +1332,7 @@ async function removerEmp(n){if(!confirm('Remover '+n+' da lista de empresas? As
   try{await api('/api/empresa/remover',{nome:n});toast(n+' removida.');load()}catch(e){}}
 async function restaurarEmp(n){await api('/api/empresa/restaurar',{nome:n});load()}
 function rEmps(){
+  {const n=(S.empresas_sem_logo||[]).length,b=$('btSemImg');if(b){b.style.display=n?'':'none';b.textContent=`Remover ${n} sem imagem`}}
   const busy=n=>{const c=S.contratos.find(c=>c.empresa==n&&(c.status=='ativo'||c.status=='assinado'));if(c)return `<span class="pill ok">patrocinador · ${esc(slotName(c.slot))}</span>`;
     const o=S.ofertas.find(o=>o.empresa==n);if(o)return `<span class="pill wait">${o.status=='aguardando'?'negociando':'proposta aberta'}</span>`;return ''};
   $('egrid').innerHTML=S.empresas.map(e=>{const bl=e.bloqueio_ate&&e.bloqueio_ate>S.data;
@@ -1351,6 +1352,10 @@ async function atualizarLogos(){const b=$('btLogos');b.disabled=true;b.textConte
     if(r.sem_imagem.length)p.push(`Ainda sem imagem: ${r.sem_imagem.map(esc).join(', ')}. Passe o mouse no card e clique em "escolher imagem".`);
     $('logosMsg').innerHTML=`<div class="banner" style="margin-bottom:12px"><p>${p.join('<br>')}</p></div>`;await load()}
   catch(x){}finally{b.disabled=false;b.textContent='Atualizar imagens'}}
+async function removerSemImagem(){const L=S.empresas_sem_logo||[];if(!L.length)return;
+  if(!confirm(`Remover estas empresas sem imagem?\n\n${L.join('\n')}\n\nEmpresas com contrato em vigor ficam. Dá para restaurar depois, no fim da lista.`))return;
+  const r=await api('/api/empresa/remover_sem_imagem',{});toast(r.removidas.length?`Removidas: ${r.removidas.join(', ')}`:'Nenhuma empresa removida.');
+  if(r.mantidas_por_contrato.length)toast('Ficaram por causa do contrato: '+r.mantidas_por_contrato.join(', '));await load()}
 async function enviarLogo(nome,inp){const f=inp.files[0];if(!f)return;
   const dados=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f)});
   toast('Tirando o fundo da imagem…');try{await api('/api/logos/enviar',{nome,dados});LOGOV=Date.now();toast('Imagem do '+nome+' atualizada.');await load()}catch(x){}}

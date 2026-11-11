@@ -23,6 +23,10 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.5.2:
+- Comercial > Empresas > "Remover N sem imagem": tira de uma vez as empresas cuja imagem não está mais na
+  pasta de logos (as que têm contrato em vigor ficam). Dá para restaurar no fim da lista.
+
 Novidades da 3.5.1 (prova real):
 - As cópias de segurança do save (uns 21 MB cada) agora ficam só as 10 mais recentes. Antes nunca eram
   apagadas e já passavam de 600 MB.

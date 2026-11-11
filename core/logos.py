@@ -250,8 +250,23 @@ class LogoBank:
         self.save_map()
         return cam
 
+    def ativas(self):
+        """Empresas cuja imagem ainda está na pasta de logos (None se a pasta não existe ou está vazia)."""
+        if not os.path.isdir(self.logos_dir):
+            return None
+        existe = set()
+        for root, _, files in os.walk(self.logos_dir):
+            for f in files:
+                if f.lower().endswith(EXTS):
+                    existe.add(os.path.relpath(os.path.join(root, f), self.logos_dir))
+        if not existe:
+            return None
+        return {n for r, n in self.map.items() if not r.startswith('_') and r in existe}
+
     def sem_imagem(self, nomes):
-        return [n for n in nomes if not os.path.exists(self.path(n))]
+        """Empresas sem imagem: a cópia limpa sumiu ou a imagem foi tirada da pasta de logos."""
+        at = self.ativas()
+        return [n for n in nomes if not os.path.exists(self.path(n)) or (at is not None and n not in at)]
 
     def path(self, nome):
         return os.path.join(self.cache_dir, nome + '.png')
