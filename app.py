@@ -422,7 +422,16 @@ class App:
             self.status['erro'] = 'Não encontrei o save do Master League. Confira a pasta de saves.'
             return
         m = os.path.getmtime(path)
-        if path == self.save_path and m == self.save_mtime:
+        if path == self.save_path and m == self.save_mtime and self.career is not None:
+            # só o elenco foi salvo ("Dados do time"): relê moral e contratos sem esperar o save da carreira
+            us = glob.glob(os.path.join(os.path.dirname(path), 'USERT*'))
+            um = max(map(os.path.getmtime, us)) if us else None
+            if um and um != getattr(self, '_usert_mtime', None):
+                if getattr(self, '_usert_mtime', None) is not None:
+                    with LOCK:
+                        self.ler_elenco(self.career)
+                    log('dados do time relidos (elenco salvo no jogo)')
+                self._usert_mtime = um
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
             if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
                     x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))):
