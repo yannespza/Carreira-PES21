@@ -140,7 +140,7 @@ def faixa(w, h, texto, cor1, cor2, escudo, protesto=False, idx=0):
             letra = (255, 255, 255) if sum(fundo) < 380 else (20, 20, 20)
     img = Image.new('RGB', (w, h), fundo)
     d = ImageDraw.Draw(img)
-    e = max(2, h // 14)
+    e = max(2, h // 26)
     d.rectangle([e, e, w - e - 1, h - e - 1], outline=borda, width=e)
     x0 = e * 3
     if escudo is not None and not protesto and w > h * 1.6:
@@ -150,7 +150,7 @@ def faixa(w, h, texto, cor1, cor2, escudo, protesto=False, idx=0):
         img.paste(lg, (w - x0 - lg.width, (h - lg.height) // 2), lg)
         x0 += lg.width + e
     area = w - 2 * x0
-    f = _texto_cabido(d, texto, area, h)
+    f = _texto_cabido(d, texto, area, h, 0.5)
     tw = d.textlength(texto, font=f)
     bb = d.textbbox((0, 0), texto, font=f)
     d.text((x0 + (area - tw) / 2, (h - (bb[3] - bb[1])) / 2 - bb[1]), texto, font=f, fill=letra)
@@ -163,29 +163,42 @@ def faixa(w, h, texto, cor1, cor2, escudo, protesto=False, idx=0):
 
 
 # ---------------- gramado ----------------
-def gramado(img, nivel, seed=1):
-    """'otimo': verde intenso e uniforme; 'ruim': seco, amarelado, com falhas de terra."""
+# As texturas do gramado do PES não guardam a cor da grama, e sim mapas:
+#  pitch_alp:   R = ruído do gramado, G = desgaste/terra, B = área do campo, A = linhas do campo
+#  pitch_grain: R e G = faixas do corte da grama (vertical e horizontal)
+# Então o gramado "bom" tira o desgaste e reforça o corte; o "ruim" espalha falhas e apaga as faixas.
+def _manchas(W, H, seed, escala=48, blur=2):
+    rng = np.random.default_rng(seed)
+    k = max(4, min(W, H) // escala)
+    n = rng.random((max(2, H // k), max(2, W // k))).astype(np.float32)
+    n = np.array(Image.fromarray((n * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC)
+                 .filter(ImageFilter.GaussianBlur(k / blur))).astype(np.float32) / 255
+    return (n - n.min()) / max(1e-6, n.max() - n.min())
+
+
+def gramado(img, nivel, seed=1, nome='pitch_alp.ftex'):
     a = np.array(img.convert('RGBA')).astype(np.float32)
-    rgb = a[..., :3]
-    H, W = rgb.shape[:2]
-    lum = rgb.mean(2, keepdims=True)
-    if nivel == 'otimo':
-        rgb = lum + (rgb - lum) * 1.25
-        rgb = rgb * np.array([0.96, 1.05, 0.95])
+    H, W = a.shape[:2]
+    if 'grain' in nome.lower():
+        for c in (0, 1):
+            ch = a[..., c]
+            m = ch.mean()
+            if nivel == 'otimo':
+                a[..., c] = m + (ch - m) * 1.45          # faixas de corte bem marcadas
+            else:
+                ruido = (_manchas(W, H, seed + c, 24, 1.5) - 0.5) * 40
+                a[..., c] = m + (ch - m) * 0.35 + ruido  # grama sem corte, irregular
     else:
-        rng = np.random.default_rng(seed)
-        # manchas grandes e suaves (ruído em baixa resolução ampliado)
-        k = max(4, min(W, H) // 64)
-        n = rng.random((max(2, H // k), max(2, W // k))).astype(np.float32)
-        n = np.array(Image.fromarray((n * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC)
-                     .filter(ImageFilter.GaussianBlur(k / 2))).astype(np.float32) / 255
-        seco = np.clip((n - 0.35) * 2.2, 0, 1)[..., None]
-        palha = lum * np.array([1.10, 0.98, 0.62]) + np.array([18, 8, -6])
-        terra = lum * np.array([0.95, 0.78, 0.55]) + np.array([20, 6, -4])
-        rgb = rgb * (1 - seco * 0.75) + palha * seco * 0.75
-        buraco = np.clip((n - 0.78) * 6, 0, 1)[..., None]
-        rgb = rgb * (1 - buraco) + terra * buraco
-    a[..., :3] = np.clip(rgb, 0, 255)
+        campo = (a[..., 2] > 128).astype(np.float32)
+        g = a[..., 1]
+        if nivel == 'otimo':
+            a[..., 1] = g * 0.2                          # quase sem desgaste
+        else:
+            n = _manchas(W, H, seed, 40, 2)
+            falhas = np.clip((n - 0.45) * 3.0, 0, 1)
+            buracos = np.clip((_manchas(W, H, seed + 7, 90, 1.2) - 0.82) * 8, 0, 1)
+            a[..., 1] = np.clip(g * 1.6 + (falhas * 110 + buracos * 230) * campo, 0, 255)
+    a = np.clip(a, 0, 255)
     return Image.fromarray(a.astype(np.uint8), 'RGBA')
 
 
@@ -282,11 +295,10 @@ def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, torcida, nivel_grama
         if nivel_gramado in ('otimo', 'ruim'):
             for a in arqs:
                 al = a.lower()
-                if al in ('pitch_grain.ftex', 'pitch_alp.ftex', 'pitch_alp_grass.ftex', 'pitch_grain_alp.ftex') \
-                        and _formato_ok(os.path.join(d, a)):
+                if al in ('pitch_grain.ftex', 'pitch_alp.ftex') and _formato_ok(os.path.join(d, a)):
                     try:
                         from . import ftex
-                        img = gramado(ftex.read(os.path.join(d, a)), nivel_gramado, team_id)
+                        img = gramado(ftex.read(os.path.join(d, a)), nivel_gramado, team_id, al)
                         nome = f'gramado_{al}'
                         ftex.write(img, os.path.join(d, a), os.path.join(out, nome))
                         regras.append((f'{st}\\sourceimages\\tga\\#windx11\\{a}', nome, 'casa'))
