@@ -29,7 +29,13 @@ MULTAS = (10, 20, 30, 50)
 
 
 # competições conhecidas pelo id do torneio no save e o peso do bônus por título
-COMP_IDS = {17: 'brasileirao', 23: 'serie_b', 4099: 'libertadores'}
+# ids de torneio do GOGOSZ (map_competitions.txt); o save às vezes soma a fase em múltiplos de 1024
+COMP_IDS = {17: 'brasileirao', 79: 'serie_b', 23: 'copa_brasil', 2: 'libertadores', 3: 'libertadores',
+            4: 'libertadores', 1: 'interclubes'}
+
+
+def comp_de(torneio):
+    return COMP_IDS.get(int(torneio) & 1023)
 COMP_NOMES = {'copa_brasil': 'Copa do Brasil', 'brasileirao': 'Brasileirão', 'serie_b': 'Série B',
               'libertadores': 'Libertadores', 'interclubes': 'Interclubes', 'mundial': 'Super Mundial'}
 TITULO_PESO = {'copa_brasil': 1, 'serie_b': 1, 'brasileirao': 2, 'libertadores': 4, 'interclubes': 6, 'mundial': 10}
@@ -359,7 +365,12 @@ class Engine:
         ids = {p['torneio'] for p in self.s.get('partidas', []) if p.get('data', '')[:4] == str(ano)}
         if not ids:       # começo de ano sem jogos: usa o ano anterior
             ids = {p['torneio'] for p in self.s.get('partidas', []) if p.get('data', '')[:4] == str(ano - 1)}
-        return [COMP_IDS[i] for i in sorted(ids) if i in COMP_IDS]
+        cs = []
+        for i in sorted(ids):
+            c = comp_de(i)
+            if c and c not in cs:
+                cs.append(c)
+        return cs
 
     def _clausulas(self, pd, pm, r):
         cl = {'desempenho': pd if r.random() < 0.85 else not pd, 'multa_pct': pm}

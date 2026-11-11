@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
+from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -38,7 +38,9 @@ def jsave(p, obj):
 
 
 CFG = jload(os.path.join(DATA, 'config.json'), {})
-TORNEIOS = {17: 'Brasileirão', 23: 'Série B', 4099: 'Libertadores'}
+TORNEIOS = {17: 'Brasileirão', 79: 'Série B', 81: 'Série C', 80: 'Série D', 23: 'Copa do Brasil',
+            86: 'Supercopa do Brasil', 2: 'Libertadores', 3: 'Libertadores', 4: 'Libertadores (final)',
+            5: 'Sudamericana', 6: 'Sudamericana (final)', 7: 'Recopa', 1: 'Intercontinental'}
 
 
 def team_names():
@@ -279,11 +281,9 @@ class App:
             st['fin_hist'] = fh[-200:]
             if car.fin_off is None:
                 self.status['erro'] = 'Não achei o bloco de finanças nesse save.'
-            # carreira nova (nenhum jogo no save nem no histórico do app): dinheiro inicial definido pelo app
-            ini = CFG.get('dinheiro_inicial_novo', 1_000_000)
-            if (ini and 'orc_inicial' not in st and not car.results and not st.get('partidas')
-                    and car.fin_off is not None):
-                st['orc_inicial'] = {'status': 'pendente', 'valor': int(ini)}
+            # o app não mexe mais no dinheiro de transferências em carreira nova
+            if (st.get('orc_inicial') or {}).get('status') == 'pendente':
+                st['orc_inicial']['status'] = 'cancelado'
             antes = st.get('data')
             novas = self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
             self.engine.avancar(car.date, primeira_leitura=novo)
@@ -297,6 +297,7 @@ class App:
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
+        threading.Thread(target=self.atualizar_ingame, daemon=True).start()
         log('save lido:', car.slot_name, car.date, 'patrocínio', st['dinheiro'].get('rec_patrocinio'))
 
     # ----- imprensa, torcida, diretoria -----
@@ -318,6 +319,7 @@ class App:
                 g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes)
             if car.date:      # campeonato terminou? título, acesso, rebaixamento (antes da revisão de janeiro)
                 g.fim_de_liga(self.engine, mu, st.get('tabela'), car.date)
+                g.copas(self.engine, mu, car.date)
             # eventos da semana e revisão de janeiro, para cada semana que passou desde a última leitura
             if antes and car.date:
                 d = sim.s2d(antes)
@@ -350,6 +352,58 @@ class App:
         except Exception:
             log(traceback.format_exc())
         return el
+
+    def _logos_vigentes(self):
+        from PIL import Image
+        st = self.state or {}
+        ativos = sorted([c for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')],
+                        key=lambda c: -c.get('valor', 0))
+        logos, patro = [], None
+        for c in ativos:
+            lp = self.logos.path(c['empresa'])
+            if os.path.exists(lp) and c['empresa'] not in [n for n, _ in logos]:
+                im = Image.open(lp)
+                logos.append((c['empresa'], im))
+                if c['slot'] == 'peito':
+                    patro = im
+        if patro is None and logos:
+            patro = logos[0][1]
+        return logos, patro
+
+    def atualizar_ingame(self, forcar=False):
+        """Faixas, gramado e bandeirinhas do estádio do clube atual (refeito só quando algo muda)."""
+        if not CFG.get('visuais_jogo', True) or self.state is None or not self.tid():
+            return
+        try:
+            from PIL import Image
+            st = self.state
+            d = st.get('dinheiro') or {}
+            receita = sum(d.get(k) or 0 for k in ('rec_transmissao', 'rec_patrocinio', 'rec_socios', 'rec_bilheteria'))
+            r = (d.get('orc_transf') or 0) / receita if receita else None
+            nivel = None if r is None else 'otimo' if r >= 0.5 else 'ruim' if r < 0.08 else None
+            torc = (st.get('mundo') or {}).get('torcida', 50)
+            modo = 'apoio' if torc >= 75 else 'protesto' if torc <= 30 else None
+            logos, patro = self._logos_vigentes()
+            mestre = next((c['empresa'] for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')
+                           and c['slot'] == 'peito'), None)
+            cores = self.cores_time() or []
+            assin = [self.tid(), cores, mestre, modo, nivel, 1]
+            if not forcar and st.get('ingame_assin') == assin:
+                return
+            ingame.instalar_modulo(CFG['pasta_jogo'], os.path.join(DATA, 'backups_save'), log)
+            eb = self.escudo_png()
+            esc = Image.open(io.BytesIO(eb)) if eb else None
+            idolo = next((n.get('jogador') for n in reversed((st.get('mundo') or {}).get('noticias', []))
+                          if n.get('tipo') == 'jog_elogio' and n.get('jogador')), None)
+            res = ingame.gerar(CFG['pasta_jogo'], self.tid(), self.clube(), cores, esc, patro, torc, nivel,
+                               CFG.get('tecnico_nome') or 'Yannes Zola', idolo, log)
+            res['em'] = st.get('data')
+            st['ingame'] = res
+            st['ingame_assin'] = assin
+            log('visual do estádio atualizado:', res)
+            self.persist()
+        except Exception:
+            log(traceback.format_exc())
 
     def cena_jpg(self, humor):
         """Foto da coletiva com o agasalho nas cores do clube e o painel dos patrocinadores vigentes."""
@@ -633,7 +687,7 @@ class App:
         partidas = []
         for p in st.get('partidas', [])[-10:]:
             partidas.append({**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
-                             'torneio_nome': TORNEIOS.get(p['torneio'], 'Copa')})
+                             'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, 'Copa')})
         empresas = []
         for n, e in sorted(st.get('empresas', {}).items()):
             empresas.append({'nome': n, **e})
@@ -645,14 +699,14 @@ class App:
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
-                             'torneio_nome': TORNEIOS.get(p['torneio'], f"Torneio {p['torneio']}")}
+                             'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, f"Torneio {p['torneio']}")}
                             for p in st.get('partidas', [])[-30:]],
             'gestao': self.gestao_view(), 'cores': self.cores_time(),
             'ofertas': [o for o in st.get('ofertas', []) if o['status'] in ('aberta', 'aguardando')],
             'ofertas_hist': [o for o in st.get('ofertas', []) if o['status'] not in ('aberta', 'aguardando')][-20:][::-1],
             'contratos': st.get('contratos', []),
             'mensagens': st.get('mensagens', [])[-60:][::-1],
-            'empresas': empresas, 'empresas_removidas': st.get('empresas_removidas', []),
+            'ingame': st.get('ingame'), 'empresas': empresas, 'empresas_removidas': st.get('empresas_removidas', []),
             'redistrib': st.get('redistrib', [])[-6:][::-1],
             'slots': [{'id': k, **{kk: vv for kk, vv in kits.SLOTS[k].items() if kk != 'lugares'}} for k in kits.SLOT_ORDER],
             'livres': eng.slots_livres(eng.hoje()) if eng and eng.hoje() else [],
@@ -974,6 +1028,9 @@ class H(BaseHTTPRequestHandler):
                     jsave(os.path.join(DATA, 'config.json'), CFG)
                     A.state['cfg_tecnico'] = CFG['tecnico_nome']
                     return self.send(200, {'ok': True})
+                if u.path == '/api/ingame/atualizar':
+                    A.atualizar_ingame(forcar=True)
+                    return self.send(200, {'ok': True, 'ingame': (A.state or {}).get('ingame')})
                 if u.path == '/api/tecnico/cena_zip':
                     import base64
                     dados = base64.b64decode(body['dados'].split(',', 1)[-1])

@@ -23,6 +23,16 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.7:
+- Estádio do clube atual (achado no map_teams.txt do GOGOSZ, vale para qualquer clube/carreira nova):
+  faixas da torcida de apoio (torcida 75+) ou de protesto invertidas (torcida até 30), gramado impecável
+  com finanças excelentes ou seco e falhado com corte de custos, bandeirinhas de escanteio com as cores
+  do clube e o patrocinador master. Só nos jogos em casa. O app instala o módulo AppCarreira.lua no
+  Sider (com backup do sider.ini) e grava as texturas em GOGOSZ\AppCarreira.
+- Ids de competição do GOGOSZ: Série A 17, Série B 79, Copa do Brasil 23, Libertadores 2/3/4 (4 = final),
+  Intercontinental 1. Títulos de Libertadores (final vencida) e Intercontinental entram no bônus.
+- O app não mexe mais no dinheiro de transferências ao começar uma carreira nova.
+
 Novidades da 2.6.1:
 - Corrigido: listas de seleção (post nas redes, cores etc.) fechavam sozinhas e voltavam para a primeira
   opção. O app agora só redesenha a tela quando algo muda, e espera você terminar de escolher.

@@ -407,6 +407,7 @@ dialog select,dialog input{width:100%}
       </div>
     </div>
     <div class="grid3" id="humor"></div>
+    <div class="box" style="margin:-6px 0 20px"><h3>No estádio <small>faixas, gramado e bandeirinhas nos jogos em casa</small></h3><div id="ingameBox"></div></div>
     <div class="grid2">
       <div class="box">
         <h3>Últimas partidas <small>forma: <span id="forma"></span></small></h3>
@@ -671,7 +672,16 @@ function rTabela(){
   el.innerHTML=`<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>`+
     T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
 }
-function rClube(){rHumor();
+function rIngame(){const g=S.ingame;const el=$('ingameBox');if(!el)return;
+  if(!g){el.innerHTML='<div class="empty">O app prepara o estádio depois de ler o save.</div>';return}
+  const t=(S.mundo||{}).torcida??50;
+  el.innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">
+    <div>🏟️ <b>${esc(g.estadio||'estádio não encontrado no map_teams.txt')}</b></div>
+    <div>🚩 Faixas: <b>${g.faixas=='apoio'?'de apoio':g.faixas=='protesto'?'de protesto':'originais'}</b> <small style="color:var(--mut)">(torcida ${t}/100: apoio a partir de 75, protesto até 30)</small></div>
+    <div>🌱 Gramado: <b>${g.gramado=='otimo'?'impecável (finanças excelentes)':g.gramado=='ruim'?'seco e falhado (corte de custos)':'normal'}</b></div>
+    <div>📐 Bandeirinhas: <b>${g.bandeirinha?'cores do clube + patrocinador master':'originais'}</b></div>
+    <button class="ghost" onclick="api('/api/ingame/atualizar',{}).then(()=>{toast('Estádio atualizado. Vale a partir do próximo jogo em casa.');load()})">Refazer agora</button></div>`}
+function rClube(){rHumor();rIngame();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
   $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
@@ -711,7 +721,7 @@ function rHumor(){const m=S.mundo;if(!m){$('humor').innerHTML='';return}
   $('humor').innerHTML=`<div class="meter"><h4>TORCIDA <b style="color:${cor(t)}">${t}</b></h4><div class="bar"><i style="width:${t}%;background:${cor(t)}"></i></div><p>${tTxt}. Torcida feliz deixa o clube mais atraente para patrocinadores.</p></div>
    <div class="meter"><h4>DIRETORIA <b style="color:${cor(d)}">${d}</b></h4><div class="bar"><i style="width:${d}%;background:${cor(d)}"></i></div><p>${dTxt}.</p></div>
    <div class="meter"><h4>METAS DA TEMPORADA</h4>
-    <p style="margin-top:0">Aproveitamento no Brasileirão: <b style="color:${ap==null?'var(--txt)':ap>=mt.aproveitamento?'var(--green)':'var(--red)'}">${ap==null?'—':ap+'%'}</b> (meta ${mt.aproveitamento}%)</p>
+    <p style="margin-top:0">Aproveitamento no campeonato: <b style="color:${ap==null?'var(--txt)':ap>=mt.aproveitamento?'var(--green)':'var(--red)'}">${ap==null?'—':ap+'%'}</b> (meta ${mt.aproveitamento}%)</p>
     <p>Patrocínios por temporada: <b style="color:${m.patrocinio_anual>=mt.patrocinio?'var(--green)':'var(--gold)'}">${eurM(m.patrocinio_anual)}</b> (meta ${eurM(mt.patrocinio)})</p></div>`}
 $('dlg').addEventListener('close',()=>$('dOk').classList.remove('hidden'));
 let TOM=null;

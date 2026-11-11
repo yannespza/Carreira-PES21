@@ -147,6 +147,9 @@ class Mundo:
         """Campeonato de pontos corridos da carreira: o torneio com mais jogos."""
         from collections import Counter
         c = Counter(p['torneio'] for p in self.s.get('partidas', []))
+        ligas = [t for t, _ in c.most_common() if (int(t) & 1023) in (17, 79, 81, 80)]   # Séries A, B, C, D
+        if ligas:
+            return ligas[0]
         return c.most_common(1)[0][0] if c else TORNEIO_LIGA
 
     def aproveitamento(self):

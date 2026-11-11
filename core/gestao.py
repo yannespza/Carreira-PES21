@@ -1,7 +1,7 @@
 """Gestão do clube além dos patrocínios: coletivas de imprensa, eventos do vestiário, movimentação do
 elenco (chegadas e saídas), revisão anual dos contratos e prancheta. Tudo roda só no app (não mexe no save)."""
 import random, datetime as dt
-from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES
+from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES, comp_de
 
 # ---------------- coletivas de imprensa ----------------
 # cada resposta: texto, tom (para o rosto do técnico) e efeito em torcida e diretoria
@@ -283,6 +283,28 @@ class Gestao:
                                         'titulo': f'Rebaixado: {self.clube} vai disputar a Série B em {ano + 1}'})
             mundo._torcida(-20)
             mundo.m['diretoria'] = max(0, mundo.m['diretoria'] - 25)
+
+    def copas(self, engine, mundo, dia):
+        """Títulos de copa pelos jogos do save: final da Libertadores (torneio 4 do GOGOSZ, jogo único) vencida,
+        ou vitória no último jogo do Intercontinental sem jogo seguinte depois de 20 dias."""
+        ps = sorted(self.s.get('partidas', []), key=lambda p: p['data'])
+        feitos = {(t['comp'], t['data'][:4]) for t in self.g.get('titulos', [])}
+        for i, p in enumerate(ps):
+            base = int(p.get('torneio', 0)) & 1023
+            comp = None
+            if base == 4 and p['res'] == 'V':
+                comp = 'libertadores'
+            elif base == 1 and p['res'] == 'V':
+                depois = [q for q in ps[i + 1:] if (int(q.get('torneio', 0)) & 1023) == 1]
+                if not depois and (dia - s2d(p['data'])).days >= 20:
+                    comp = 'interclubes'
+            if comp and (comp, p['data'][:4]) not in feitos:
+                feitos.add((comp, p['data'][:4]))
+                mundo.m['noticias'].append({'data': p['data'], 'tipo': 'lider', 'destaque': True, 'fonte': 'Globo Esporte',
+                                            'titulo': f"É CAMPEÃO! {self.clube} conquista a {COMP_NOMES[comp]}!"})
+                mundo._torcida(15)
+                mundo.m['diretoria'] = min(100, mundo.m['diretoria'] + 20)
+                self.titulo(engine, comp, s2d(p['data']))
 
     def titulo(self, engine, comp, dia):
         """Título conquistado: cada contrato com cláusula de bônus para essa competição paga
