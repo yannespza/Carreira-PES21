@@ -369,13 +369,21 @@ class App:
         return sorted(out, key=lambda x: -x['mtime'])
 
     def find_save(self):
+        """O save da carreira: o último que o jogo gravou. Um save escolhido na lista vale até o jogo gravar
+        outro save depois da escolha (aí o jogador está jogando aquele e o app passa para ele sozinho)."""
+        cands = [p for p in glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', 'ML*'))
+                 if re.fullmatch(r'ML[0-9A-F]{8}', os.path.basename(p))]
+        novo = max(cands, key=os.path.getmtime) if cands else None
         esc = CFG.get('save_escolhido')
         if esc and os.path.exists(esc):
-            return esc
-        cands = glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', CFG.get('arquivo_save', 'ML00000000')))
-        if not cands:
-            cands = glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', 'ML*'))
-        return max(cands, key=os.path.getmtime) if cands else None
+            desde = max(CFG.get('save_escolhido_em', 0), os.path.getmtime(esc))
+            if not novo or os.path.normcase(novo) == os.path.normcase(esc) or os.path.getmtime(novo) <= desde:
+                return esc
+            log('o jogo gravou outro save depois do escolhido; passando para', novo)
+            CFG.pop('save_escolhido', None)
+            CFG.pop('save_escolhido_em', None)
+            jsave(os.path.join(DATA, 'config.json'), CFG)
+        return novo
 
     def game_running(self):
         if os.name != 'nt':
@@ -1322,6 +1330,7 @@ class H(BaseHTTPRequestHandler):
             with LOCK:
                 A.persist()
                 CFG['save_escolhido'] = caminho
+                CFG['save_escolhido_em'] = time.time()
                 jsave(os.path.join(DATA, 'config.json'), CFG)
                 A.save_path = None; A.save_mtime = None; A.state = None; A.state_path = None
                 A.engine = None; A.career = None
