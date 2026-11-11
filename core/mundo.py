@@ -109,7 +109,7 @@ class Mundo:
     def posts(self, humor, data, rnd, n=3, **v):
         v.setdefault('clube', self.clube)
         for t in rnd.sample(POSTS[humor], min(n, len(POSTS[humor]))):
-            self.m['posts'].append({'data': data, 'autor': rnd.choice(ARROBAS), 'texto': t.format(**v),
+            self.m['posts'].append({'data': data, 'autor': rnd.choice(arrobas(self.clube)), 'texto': t.format(**v),
                                     'humor': humor, 'curtidas': rnd.randint(40, 4000)})
         self.m['posts'] = self.m['posts'][-300:]
 
