@@ -743,6 +743,8 @@ class App:
         if not t:
             return None
         p = os.path.join(DATA, f"escudo3_{t.get('id', self.tid())}.png")
+        if not os.path.exists(p) and not t.get('variantes'):
+            return None                     # uniformes do clube ainda não preparados
         if not os.path.exists(p):
             try:
                 from PIL import Image

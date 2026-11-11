@@ -97,11 +97,19 @@ local function u64(a)
 end
 local function ptr_ok(v) return type(v) == "number" and v > 0x10000 and v < 0x7fffffffffff end
 
+-- o Sider entrega endereços como ponteiro do FFI (cdata); converte para número comum
+local function numero(v)
+    if type(v) == "number" then return v end
+    if type(v) == "cdata" and ffi and ffi.cast then return tonumber(ffi.cast("uint64_t", v)) end
+    return tonumber(v)
+end
+
 local function cadeia()
     if not memory or not memory.get_process_info then return nil end
     local info = memory.get_process_info()
-    if type(info) ~= "table" or not info.base then return nil end
-    local p = u64(info.base + OFS[1]); if not ptr_ok(p) then return nil end
+    local base = type(info) == "table" and numero(info.base)
+    if not base then return nil end
+    local p = u64(base + OFS[1]); if not ptr_ok(p) then return nil end
     local q = u64(p + OFS[2]); if not ptr_ok(q) then return nil end
     local r = u64(q + OFS[3]); if not ptr_ok(r) then return nil end
     return p, q, r

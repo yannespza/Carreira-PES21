@@ -23,6 +23,12 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.4.1 (revisão geral):
+- Partida ao vivo: o módulo do Sider não conseguia ler o autor do gol (o Sider entrega o endereço do
+  jogo num formato que o módulo recusava). Corrigido.
+- Uniformes: a aba travava quando o clube ainda não tinha os uniformes preparados (clube novo ou PC novo).
+  Agora mostra um aviso até a preparação terminar. O mesmo vale para o Estúdio e a Limpeza.
+
 Novidades da 3.4:
 - Carreira do técnico > "Recomeçar do zero": começa outra carreira de técnico (mesmo nome ou outro).
   A anterior fica guardada em data\tecnico e aparece em "Carreiras anteriores".

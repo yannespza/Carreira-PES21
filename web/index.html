@@ -634,7 +634,8 @@ document.querySelectorAll('#ptabs a').forEach(a=>a.onclick=()=>{ptab=a.dataset.p
 
 let EST=null,estFam=null,estCfg=null,estT=null;
 async function rEstudio(){
-  if(!S||!S.familias)return; if(!estFam||!(estFam in S.familias))estFam=Object.keys(S.familias)[0];
+  if(!S||!S.familias)return; if(!Object.keys(S.familias).length){$('estudio').innerHTML=`<div class="box"><div class="empty">O estúdio abre depois que os uniformes do ${esc(S.clube||'clube')} forem preparados.</div></div>`;return}
+  if(!estFam||!(estFam in S.familias))estFam=Object.keys(S.familias)[0];
   EST=await api('/api/estudio?familia='+encodeURIComponent(estFam));
   const salvo=EST.cfg;estCfg=salvo?JSON.parse(JSON.stringify(salvo)):{trocas:[],estrelas:0,cor_estrelas:'#c9a227',retro:false};
   estCfg.paleta=EST.paleta;desenharEstudio(!!salvo)}
@@ -1153,7 +1154,7 @@ function ctrlHTML(v0,fn,slotId,copiar){const v=ajusteDe(v0);const cor=[['auto','
       <span>Posição ↕</span><input type="range" min="-200" max="200" step="5" value="${v.dy||0}" oninput="this.nextElementSibling.textContent=this.value" onchange="${fn}({dy:+this.value})"><span>${v.dy||0}</span>
       <span>Inclinação${slotId=='mangas'?' (espelhada)':''}</span><input type="range" min="-30" max="30" step="1" value="${v.inclinacao}" oninput="this.nextElementSibling.textContent=this.value+'°'" onchange="${fn}({inclinacao:+this.value})"><span>${v.inclinacao}°</span>
       <span>Cor</span><select onchange="${fn}({cores:{${fam}:this.value}})">${cor}</select><span></span></div>
-      <div style="font-size:12px;color:var(--mut);margin-top:6px">Ajuste do uniforme <b style="color:var(--lime)">${(S.familias[fam]||fam).toUpperCase()}</b>${v.proprio?'':' (ainda igual ao padrão)'} · os outros uniformes têm ajuste próprio.</div>
+      <div style="font-size:12px;color:var(--mut);margin-top:6px">Ajuste do uniforme <b style="color:var(--lime)">${(S.familias[fam]||fam||'').toUpperCase()}</b>${v.proprio?'':' (ainda igual ao padrão)'} · os outros uniformes têm ajuste próprio.</div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="ghost" style="padding:5px 9px;font-size:11px" onclick="${copiar}">Copiar este ajuste para todos os uniformes</button>
       <button class="ghost" style="padding:5px 9px;font-size:11px" onclick="${fn}({escala:1,inclinacao:${(S.slots.find(s=>s.id==slotId)||{}).inclinacao_padrao||0},dx:0,dy:0})">Voltar ao padrão</button></div>`}
 async function aceitarCand(){const o=S.ofertas.find(x=>x.id==cand._oferta);if(!o){toast('Essa proposta não está mais aberta.',true);return}
@@ -1166,6 +1167,7 @@ function rLimp(){if(!REV||!REV.itens){return}
   $('limpBox').classList.toggle('hidden',!!REV.legado);if(REV.legado)return;
   const its=REV.itens[fam]||[];const tp=REV.prep||{};
   $('limpInfo').textContent=tp.rodando?('trabalhando… '+(tp.msg||'')):(REV.preparado?REV.nome+' · '+Object.keys(REV.familias).length+' uniformes':'ainda não preparado');
+  if(!fam)return;
   const so='/api/time/imagem?familia='+fam+'&tipo=original&t='+revStamp, sl='/api/time/imagem?familia='+fam+'&tipo=limpa&t='+revStamp;
   if($('limpOrig').dataset.src!=so){$('limpOrig').dataset.src=so;$('limpOrig').src=so}
   if($('limpLimpa').dataset.src!=sl){$('limpLimpa').dataset.src=sl;$('limpLimpa').src=sl}
@@ -1272,6 +1274,8 @@ function rKits(forcar){
   const prep=S.time&&S.time.prep&&S.time.prep.rodando;
   if(!REV||Date.now()-revT>(prep?3000:30000)||(REV._fam!=fam)){if(REV)REV._fam=fam;carregarRev()}
   if(REV&&!prep&&REV.prep&&REV.prep.rodando){revStamp=Date.now()}
+  if(!Object.keys(S.familias||{}).length){$('famSeg').innerHTML='';$('candInfo').innerHTML='';
+    $('slots').innerHTML=`<div class="empty">Os uniformes do ${esc(S.clube||'clube')} ainda não foram preparados. ${(S.status||{}).erro?esc(S.status.erro):'O app prepara sozinho na primeira leitura; isso leva alguns minutos.'}</div>`;return}
   $('famSeg').innerHTML=Object.entries(S.familias).map(([k,v])=>`<button class="${k==fam?'on':''}" onclick="fam='${k}';kitStamp=Date.now();rKits()">${v}</button>`).join('');
   const src='/api/preview?familia='+fam+(cand?'&cand='+encodeURIComponent(JSON.stringify(cand)):'')+'&t='+kitStamp;
   if($('kitImg').dataset.src!=src){$('kitImg').dataset.src=src;$('kitImg').src=src}
