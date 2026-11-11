@@ -525,10 +525,14 @@ dialog select,dialog input{width:100%}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Vestiário</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="cards-el" id="elList"></div>
       <p style="font-size:12px;color:var(--mut);margin-top:14px">Posição, overall, rosto, lesão e suspensão ainda não foram localizados no save. Por enquanto os cartões mostram nome, altura e os afastamentos criados pelo app.</p></div></div>
     <div id="e-dm" class="hidden"><div id="dmBox"></div></div>
+    <div id="e-stats" class="hidden"><div class="cards" id="stCards" style="margin-bottom:14px;flex-wrap:wrap"></div>
+      <div class="box"><h3>Jogadores na temporada <small id="stInfo"></small></h3><div style="overflow-x:auto"><table class="tabcl" id="stTab"></table></div>
+        <p style="font-size:12px;color:var(--mut);margin-top:12px">Números lidos da súmula que o jogo grava no save a cada partida: gols, assistências, minutos e nota. Clique no título de uma coluna para ordenar. Atualiza quando você salva a carreira.</p></div>
+      <div class="box" style="margin-top:14px"><h3>Súmulas <small>últimas partidas do clube · clique para abrir</small></h3><div id="stSum"></div></div></div>
     <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
       <div class="box"><h3>Prancheta <small>arraste os jogadores para o campo</small></h3><div class="campo" id="campo"><div class="area t"></div><div class="area b"></div></div>
         <div style="display:flex;gap:6px;margin-top:10px"><button class="ghost" onclick="limparPrancheta()">Limpar campo</button></div></div>
@@ -1142,7 +1146,7 @@ async function procurarDeNovo(){if(!confirm('Procurar os patrocínios de novo no
 })();
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['cartas','pran','transf','evt','dm'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+  ['cartas','pran','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
@@ -1161,6 +1165,30 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
     $('kOut').innerHTML=outs.length?outs.map(t=>card(t,'out','VENDIDO / DISPENSADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma saída ainda.</div>'}
   if(etab=='evt')rVest();
   if(etab=='dm')rDM();
+  if(etab=='stats')rStats();
+}
+// estatísticas: súmulas lidas do save
+let STORD={k:'jogos',d:-1},STABERTA=null;
+const nota1=v=>v==null?'—':v.toFixed(1).replace('.',',');
+const notaCls=v=>v==null?'':v>=7.5?'color:var(--green);font-weight:700':v<5.5?'color:var(--red)':'';
+function ordStats(k){STORD=STORD.k==k?{k,d:-STORD.d}:{k,d:k=='nome'?1:-1};rStats()}
+function rStats(){const E=S.estatisticas;
+  if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
+    $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
+  const J=E.jogadores,top=(f,min)=>J.filter(x=>(min?x.jogos>=min:true)&&f(x)!=null&&f(x)>0).sort((a,b)=>f(b)-f(a))[0];
+  const art=top(x=>x.gols),gar=top(x=>x.assist),nt=top(x=>x.nota_media,Math.max(2,Math.ceil(E.jogos/3))),mm=top(x=>x.minutos);
+  const card=(p,v,l)=>`<div class="card"><b>${p?v(p):'—'}</b><span>${l}${p?'<br><small style="color:var(--txt)">'+esc(p.nome)+'</small>':''}</span></div>`;
+  $('stCards').innerHTML=card(art,p=>p.gols,'Artilheiro')+card(gar,p=>p.assist,'Assistências')+card(nt,p=>nota1(p.nota_media),'Melhor nota média')+card(mm,p=>p.minutos+'′','Mais minutos');
+  $('stInfo').textContent=E.jogos+(E.jogos==1?' partida':' partidas')+' · '+J.length+' jogadores usados';
+  const k=STORD.k,L=[...J].sort((a,b)=>{const x=a[k],y=b[k];if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*STORD.d});
+  const th=(c,t,al)=>`<th style="cursor:pointer${al?';text-align:left':''}" onclick="ordStats('${c}')">${t}${k==c?(STORD.d<0?' ▾':' ▴'):''}</th>`;
+  $('stTab').innerHTML='<tr>'+th('nome','Jogador',1)+th('jogos','J')+th('minutos','Min')+th('gols','Gols')+th('assist','Assist.')+th('nota_media','Nota média')+th('nota_max','Melhor nota')+'<th>Últimas notas</th></tr>'+
+    L.map(p=>`<tr><td style="text-align:left">${p.pos?'<small style="color:var(--mut)">'+esc(p.pos)+'</small> ':''}${esc(p.nome)}</td><td>${p.jogos}</td><td>${p.minutos}</td><td>${p.gols||''}</td><td>${p.assist||''}</td><td style="${notaCls(p.nota_media)}">${nota1(p.nota_media)}</td><td>${nota1(p.nota_max)}</td><td>${p.ultimas_notas.map(v=>`<span style="${notaCls(v)}">${nota1(v)}</span>`).join(' · ')}</td></tr>`).join('');
+  $('stSum').innerHTML=E.sumulas.map((p,i)=>{const meu=p.em_casa?p.gols_mandante:p.gols_visitante,dele=p.em_casa?p.gols_visitante:p.gols_mandante,r=meu>dele?'V':meu<dele?'D':'E';
+    return `<div style="border-bottom:1px solid var(--line);padding:8px 2px"><div style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="STABERTA=STABERTA===${i}?null:${i};rStats()">
+      <b style="width:22px;text-align:center;color:${r=='V'?'var(--green)':r=='D'?'var(--red)':'var(--mut)'}">${r}</b><span style="color:var(--mut);width:80px">${dt(p.data)}</span>
+      <span style="flex:1">${esc(p.mandante_nome)} <b>${p.gols_mandante} x ${p.gols_visitante}</b> ${esc(p.visitante_nome)}</span><small style="color:var(--mut)">${esc(p.torneio_nome)}</small><span>${STABERTA===i?'▴':'▾'}</span></div>
+      ${STABERTA===i?`<table class="tabcl" style="margin-top:8px"><tr><th style="text-align:left">Jogador</th><th>Min</th><th>Gols</th><th>Assist.</th><th>Nota</th></tr>${p.jogadores.map(j=>`<tr><td style="text-align:left">${esc(j.nome)}${j.min<90?` <small style="color:var(--mut)">${j.min}′</small>`:''}</td><td>${j.min}</td><td>${j.gols?'⚽'.repeat(Math.min(j.gols,4)):''}</td><td>${j.assist||''}</td><td style="${notaCls(j.nota)}">${nota1(j.nota)}</td></tr>`).join('')}</table>`:''}</div>`}).join('')||'<div class="empty">Nenhuma partida ainda.</div>';
 }
 // prancheta: posições em % do campo, guardadas no app
 let PR=null,arr=null;

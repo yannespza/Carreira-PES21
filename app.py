@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
-from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo
+from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core.logos import LogoBank
 
 PORT = 8765
@@ -129,6 +129,7 @@ class App:
                 log(traceback.format_exc())
         self.elenco = []
         self.moral_data = None
+        self.estatisticas = None   # súmulas da temporada lidas do save (gols, assistências, minutos, notas)
 
     # ----- clube da carreira -----
     def tid(self):
@@ -207,6 +208,11 @@ class App:
                 except Exception:
                     log(traceback.format_exc())
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
+            try:
+                self.estatisticas = sumulas.do_clube(bytes(car.sf.data), car.team_id, nomes)
+            except Exception:
+                log(traceback.format_exc())
+                self.estatisticas = None
             if self.state is not None:
                 self.state['elenco_nomes'] = [j['nome'] for j in el if not j['nome'].startswith('Jogador ')]
         except Exception:
@@ -847,6 +853,15 @@ class App:
                 'prep': self.times.prep.get(t['id']), 'n_uniformes': len(t['variantes']),
                 'aprendidos': [k for k, v in t['slots'].items() if v.get('aprendido')]}
 
+    def estatisticas_view(self):
+        e = self.estatisticas
+        if not e:
+            return None
+        nm = lambda i: self.names.get(i, f'Time {i}')
+        return {**e, 'sumulas': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
+                                  'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, f"Torneio {p['torneio']}")}
+                                 for p in e['sumulas']]}
+
     # ----- visão para a interface -----
     def view(self):
         st = self.state or {}
@@ -885,6 +900,7 @@ class App:
             'fin_hist': st.get('fin_hist', [])[-60:],
             'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
             'zerar_pat': st.get('zerar_pat'),
+            'estatisticas': self.estatisticas_view(),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
         }

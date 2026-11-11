@@ -23,6 +23,12 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.2:
+- Elenco > Estatísticas: gols, assistências, minutos e nota de cada jogador na temporada, lidos da súmula
+  que o próprio jogo grava no save a cada partida. Destaques (artilheiro, assistências, melhor nota média,
+  mais minutos), tabela que ordena por qualquer coluna e a súmula das últimas partidas do clube.
+- Substituições aparecem pelos minutos (quem entrou ou saiu mostra menos de 90'). Cartões ainda não.
+
 Novidades da 3.1.2:
 - Correção: o Sider do patch não tem as funções pcall e next do Lua; o módulo da partida ao vivo usava as duas
   e não iniciava no jogo. Agora ele funciona sem elas.
