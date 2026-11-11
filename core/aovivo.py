@@ -23,7 +23,7 @@ LUA = r'''-- AppCarreiraAoVivo.lua (App de Carreira PES 21)
 -- ponteiros do goleador que o próprio GOGOSZ usa (GolsJogador.lua) e grava arquivos.
 -- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas C, L, S e R gravam uma "foto" da memória
 -- para descobrirmos onde o jogo guarda cartões, lesões e substituições.
-local m = { version = "1.2" }
+local m = { version = "1.3" }
 
 local ARQ, TMP, PASTA_SONDA
 local quadro = 0
@@ -54,7 +54,9 @@ local function json(v)
     elseif t == "boolean" then return v and "true" or "false"
     elseif t == "string" then return '"' .. esc(v) .. '"'
     elseif t == "table" then
-        if #v > 0 or next(v) == nil then
+        local vazio = true
+        for _ in pairs(v) do vazio = false; break end
+        if #v > 0 or vazio then
             local p = {}
             for i = 1, #v do p[#p + 1] = json(v[i]) end
             return "[" .. table.concat(p, ",") .. "]"
@@ -71,37 +73,34 @@ local function json(v)
     return "null"
 end
 
--- ---------- leitura de memória (só leitura, sempre protegida) ----------
+-- ---------- leitura de memória (só leitura) ----------
+-- O Sider do patch não oferece pcall: só lemos endereços que vieram de ponteiros conferidos.
 local function bytes(addr, n)
-    if not memory or not memory.read then return nil end
-    local ok, b = pcall(memory.read, addr, n)
-    if ok and type(b) == "string" and #b >= n then return b end
+    if not memory or not memory.read or type(addr) ~= "number" then return nil end
+    local b = memory.read(addr, n)
+    if type(b) == "string" and #b >= n then return b end
     return nil
 end
 
-local function num(b, tipo, n)
+local function le_u32(s, i)
+    local a, b, c, d = s:byte(i, i + 3)
+    if not d then return nil end
+    return a + b * 256 + c * 65536 + d * 16777216
+end
+
+local function u32(a) local b = bytes(a, 4); return b and le_u32(b, 1) end
+local function u64(a)
+    local b = bytes(a, 8)
     if not b then return nil end
-    if ffi then
-        local ok, v = pcall(function()
-            local p = ffi.new(tipo .. "[1]")
-            ffi.copy(p, b, n)
-            return tonumber(p[0])
-        end)
-        if ok then return v end
-    end
-    local ok, v = pcall(memory.unpack, n == 8 and "u64" or "u32", b)
-    if ok then return v end
-    return nil
+    local lo, hi = le_u32(b, 1), le_u32(b, 5)
+    return lo and hi and (lo + hi * 4294967296)
 end
-
-local function u64(a) return num(bytes(a, 8), "uint64_t", 8) end
-local function u32(a) return num(bytes(a, 4), "uint32_t", 4) end
 local function ptr_ok(v) return type(v) == "number" and v > 0x10000 and v < 0x7fffffffffff end
 
 local function cadeia()
     if not memory or not memory.get_process_info then return nil end
-    local ok, info = pcall(memory.get_process_info)
-    if not ok or not info or not info.base then return nil end
+    local info = memory.get_process_info()
+    if type(info) ~= "table" or not info.base then return nil end
     local p = u64(info.base + OFS[1]); if not ptr_ok(p) then return nil end
     local q = u64(p + OFS[2]); if not ptr_ok(q) then return nil end
     local r = u64(q + OFS[3]); if not ptr_ok(r) then return nil end
@@ -131,11 +130,8 @@ local function gravar(status)
     if not f then return end
     f:write(txt)
     f:close()
-    local ok = pcall(function()
-        os.remove(ARQ)
-        assert(os.rename(TMP, ARQ))
-    end)
-    if not ok then
+    os.remove(ARQ)
+    if not os.rename(TMP, ARQ) then
         local g = io.open(ARQ, "w")
         if g then g:write(txt); g:close() end
     end
@@ -212,8 +208,8 @@ function m.display_frame(ctx)
         gravar("ao_vivo")
     end
     if not (match and match.stats) then return end
-    local ok, st = pcall(match.stats)
-    if not ok or type(st) ~= "table" then
+    local st = match.stats()
+    if type(st) ~= "table" then
         if ativo then
             ativo = false
             evento("fim")
