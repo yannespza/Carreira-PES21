@@ -323,12 +323,13 @@ def bandeirinha(w, h, cor1, cor2, patro):
 
 
 # ---------------- instalação no Sider ----------------
-def instalar_modulo(pasta_jogo, backup_dir, log=print):
-    """Grava o AppCarreira.lua em modules e põe na lista do sider.ini antes dos servidores de estádio."""
-    mod = os.path.join(pasta_jogo, 'modules', MODULO)
+def instalar_modulo(pasta_jogo, backup_dir, log=print, nome=None, conteudo=None):
+    """Grava o módulo Lua em modules e põe na lista do sider.ini antes dos servidores de estádio."""
+    MODULO_, LUA_ = nome or MODULO, conteudo or LUA
+    mod = os.path.join(pasta_jogo, 'modules', MODULO_)
     try:
-        if not os.path.exists(mod) or open(mod, encoding='utf-8', errors='replace').read() != LUA:
-            open(mod, 'w', encoding='utf-8').write(LUA)
+        if not os.path.exists(mod) or open(mod, encoding='utf-8', errors='replace').read() != LUA_:
+            open(mod, 'w', encoding='utf-8').write(LUA_)
     except OSError as e:
         log('não gravou o módulo do Sider:', e)
         return False
@@ -337,7 +338,7 @@ def instalar_modulo(pasta_jogo, backup_dir, log=print):
         txt = open(ini, encoding='utf-8', errors='replace').read()
     except OSError:
         return False
-    if MODULO.lower() in txt.lower():
+    if MODULO_.lower() in txt.lower():
         return True
     os.makedirs(backup_dir, exist_ok=True)
     shutil.copy2(ini, os.path.join(backup_dir, 'sider.ini.%d.bak' % int(time.time())))
@@ -351,9 +352,9 @@ def instalar_modulo(pasta_jogo, backup_dir, log=print):
     if pos is None:
         pos = max([i for i, ln in enumerate(linhas) if ln.strip().lower().startswith('lua.module')] or [len(linhas) - 1]) + 1
     nl = '\r\n' if '\r\n' in txt else '\n'
-    linhas.insert(pos, f'lua.module = "{MODULO}"{nl}')
+    linhas.insert(pos, f'lua.module = "{MODULO_}"{nl}')
     open(ini, 'w', encoding='utf-8').write(''.join(linhas))
-    log('módulo AppCarreira.lua adicionado ao sider.ini')
+    log(f'módulo {MODULO_} adicionado ao sider.ini')
     return True
 
 

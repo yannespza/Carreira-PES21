@@ -160,6 +160,12 @@ dialog select,dialog input{width:100%}
 .foot{color:var(--dim);font-size:11px;margin-top:30px}
 .hidden{display:none}
 /* tema claro */
+.live{display:flex;align-items:center;gap:18px;background:linear-gradient(90deg,#3a0d12,var(--panel) 60%);border:1px solid #7a1f28;border-radius:4px;padding:12px 16px;margin-bottom:12px}
+.live .pt{width:10px;height:10px;border-radius:50%;background:#ff3b4a;box-shadow:0 0 0 0 #ff3b4a;animation:pul 1.4s infinite}
+@keyframes pul{0%{box-shadow:0 0 0 0 rgba(255,59,74,.7)}70%{box-shadow:0 0 0 10px rgba(255,59,74,0)}100%{box-shadow:0 0 0 0 rgba(255,59,74,0)}}
+.live .pl{font-family:var(--head);font-size:24px;letter-spacing:.04em}.live .mn{font-family:var(--head);color:#ff8b94;font-size:15px}
+.live .evs{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;font-size:12px}.live .evs span{background:rgba(255,255,255,.07);padding:3px 8px;border-radius:3px}
+.live.pausa{background:var(--panel);border-color:var(--line)}.live.pausa .pt{background:#8a93a3;animation:none}
 .deps{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .dep p{margin:6px 0;font-size:13px;line-height:1.45}.dep .obra{color:var(--gold)}.dep button{margin-top:8px}
 .niv{display:flex;gap:3px}.niv i{width:14px;height:8px;background:#2b313b;border-radius:1px}.niv i.f{background:var(--lime)}
@@ -421,6 +427,7 @@ dialog select,dialog input{width:100%}
 <div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span></div>
 
 <main>
+  <div id="live"></div>
   <div id="banners"></div>
 
   <!-- CLUBE -->
@@ -754,6 +761,16 @@ function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();rRank(
   $('clubOffers').innerHTML=of.length?of.map(o=>`<div class="row" style="cursor:pointer" onclick="go('patro')">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${anos(o.anos)}</small></div><div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div></div>`).join(''):'<div class="empty">Sem propostas no momento.</div>';
 }
 
+let LIVEK='';
+async function liveTick(){let d;try{d=await (await fetch('/api/aovivo')).json()}catch(e){return}
+  const k=JSON.stringify([d.ativo,d.pausado,d.placar,d.minuto,(d.eventos||[]).length,d.status]);if(k==LIVEK)return;LIVEK=k;
+  const el=$('live');if(!el)return;
+  if(!d.placar||(!d.ativo&&!d.pausado)){el.innerHTML='';return}
+  const per={1:'1º tempo',2:'2º tempo',3:'prorrogação',4:'prorrogação'};
+  const evs=(d.eventos||[]).filter(e=>e.tipo=='gol').map(e=>`<span>⚽ ${e.minuto??'?'}' ${esc(e.lado=='casa'?d.casa_nome:d.fora_nome)}</span>`).join('');
+  el.innerHTML=`<div class="live ${d.ativo?'':'pausa'}"><div class="pt"></div><div><div style="font-size:11px;letter-spacing:.1em;color:#ff8b94">${d.ativo?'AO VIVO':'PARTIDA PAUSADA'} ${d.periodo&&per[d.periodo]?'· '+per[d.periodo]:''}</div>
+    <div class="pl">${esc(d.casa_nome)} ${d.placar[0]} x ${d.placar[1]} ${esc(d.fora_nome)}</div></div><div class="mn">${d.minuto??''}'</div><div class="evs">${evs}</div></div>`}
+setInterval(liveTick,1000);
 function spark(h){if(!h||h.length<2)return '<p>O gráfico aparece a partir da segunda leitura do save.</p>';const W=400,H=70,vs=h.map(x=>x[1]),mn=Math.min(...vs)-3,mx=Math.max(...vs)+3;
   const pts=vs.map((v,i)=>`${(i/(vs.length-1)*W).toFixed(1)},${(H-(v-mn)/(mx-mn)*H).toFixed(1)}`).join(' ');
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--lime)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><p>${dt(h[0][0])} → ${dt(h[h.length-1][0])}</p>`}

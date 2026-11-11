@@ -23,6 +23,16 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.0 (partida ao vivo, em teste):
+- O app instala o módulo AppCarreiraAoVivo.lua no Sider (com backup do sider.ini). Durante a partida ele
+  lê o placar, o período e o relógio pelo match.stats() do Sider (o mesmo que o placar do GOGOSZ usa) e
+  grava live_match_data.json na pasta do jogo. Não desenha nada na tela e não mexe na memória do jogo.
+- O app lê esse arquivo em segundo plano e mostra no topo: AO VIVO, placar, minuto e os gols com o minuto.
+  Gol a favor ou contra vira post da torcida nas redes na hora.
+- Ainda não vem pelo Sider: quem fez o gol, cartões e lesões. O arquivo grava todos os campos que o
+  match.stats() da sua versão entregar, para descobrirmos se há mais informação disponível.
+- Para desligar: "ao_vivo": false no data\config.json e tirar a linha do AppCarreiraAoVivo.lua do sider.ini.
+
 Novidades da 2.9:
 - Ranking real dos clubes (Clube > Ranking): Série A e B do Brasil e os principais sul-americanos do jogo.
   Nota = 45% valor do elenco + 30% torcida + 25% prestígio. Fontes: Transfermarkt (Lance! Biz, jan/2026)

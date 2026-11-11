@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
-from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico
+from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo
 from core.logos import LogoBank
 
 PORT = 8765
@@ -119,6 +119,14 @@ class App:
                            if k in sim.MOEDAS})
         sim.MOEDA['cod'] = CFG.get('moeda', 'EUR')
         self.time = None          # configuração do clube da carreira atual
+        # partida ao vivo: o módulo Lua grava live_match_data.json; esta thread lê sem travar nada
+        self.aovivo = aovivo.Monitor(lambda: CFG.get('pasta_jogo'), self.ao_vivo_evento, log=log)
+        self.aovivo.start()
+        if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG['pasta_jogo']):
+            try:
+                aovivo.instalar(CFG['pasta_jogo'], os.path.join(DATA, 'backups_save'), log)
+            except Exception:
+                log(traceback.format_exc())
         self.elenco = []
         self.moral_data = None
 
@@ -386,6 +394,30 @@ class App:
             g.elenco_mudou(self.elenco, car.money(), st.get('data'))
         except Exception:
             log(traceback.format_exc())
+
+    def ao_vivo_evento(self, novos, dados):
+        """Chamado pela thread do monitor quando o jogo grava eventos novos (gol, intervalo, fim)."""
+        meu = self.tid()
+        if meu not in (dados.get('casa'), dados.get('fora')):
+            return
+        lado_meu = 'casa' if dados.get('casa') == meu else 'fora'
+        with LOCK:
+            st = self.state
+            if not st:
+                return
+            m = st.setdefault('mundo', {})
+            for e in novos:
+                if e.get('tipo') != 'gol':
+                    continue
+                nosso = e.get('lado') == lado_meu
+                pl = e.get('placar') or dados.get('placar') or [0, 0]
+                gp, gc = (pl[0], pl[1]) if lado_meu == 'casa' else (pl[1], pl[0])
+                txt = (f"GOOOOL! {gp} x {gc} aos {e.get('minuto', '?')}'! VAMOOOS {self.clube().upper()}! 🔥" if nosso else
+                       f"Tomamos o gol aos {e.get('minuto', '?')}'. {gp} x {gc}. Acorda, time!")
+                m.setdefault('posts', []).append({'data': st.get('data'), 'autor': '@torcida_aovivo', 'texto': txt,
+                                                  'humor': 'euforia' if nosso else 'revolta', 'aovivo': True,
+                                                  'curtidas': 0, 'reposts': 0, 'respostas': []})
+            self.persist()
 
     def rivais_ids(self):
         st = self.state or {}
@@ -926,6 +958,8 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
+            if u.path == '/api/aovivo':
+                return self.send(200, {**A.aovivo.estado(A.names), 'meu': A.tid()})
             if u.path == '/api/estado':
                 with LOCK:
                     return self.send(200, A.view())
