@@ -387,10 +387,21 @@ class App:
         except Exception:
             return False
 
-    def career_state_path(self, slot_name):
+    def career_state_path(self, slot_name, team_id=None):
+        """Arquivo do app para esta carreira. O nome vem do save ("Liga Master 03"), mas o jogo pode ter dois
+        saves com o mesmo nome e clubes diferentes: nesse caso o clube entra no nome do arquivo."""
         safe = re.sub(r'[^\w\- ]', '_', slot_name).strip() or 'carreira'
         os.makedirs(os.path.join(DATA, 'carreiras'), exist_ok=True)
-        return os.path.join(DATA, 'carreiras', safe + '.json')
+        base = os.path.join(DATA, 'carreiras', safe + '.json')
+        if not team_id:
+            return base
+        alt = os.path.join(DATA, 'carreiras', f'{safe} - {team_id}.json')
+        if os.path.exists(alt):
+            return alt
+        if not os.path.exists(base):
+            return base
+        dono = (self.state or {}).get('time_id') if self.state_path == base else jload(base, {}).get('time_id')
+        return base if not dono or dono == team_id else alt
 
     def persist(self):
         if self.state is not None:
@@ -426,7 +437,7 @@ class App:
         with LOCK:
             self.usar_time(car.team_id or CFG.get('time_id'))
             self.save_path, self.save_mtime, self.career = path, m, car
-            sp = self.career_state_path(car.slot_name)
+            sp = self.career_state_path(car.slot_name, car.team_id)
             novo = False
             if sp != self.state_path or self.state is None:
                 self.state_path = sp
@@ -1599,7 +1610,9 @@ class H(BaseHTTPRequestHandler):
                     A.aplicar_creditos(); A.mundo_processar(); A.persist()
                     return self.send(200, {'ok': True, 'multa': multa})
                 if u.path == '/api/empresa':
-                    e = A.state['empresas'][body['nome']]
+                    e = A.state['empresas'].get(body.get('nome'))
+                    if not e:
+                        raise ValueError('Essa empresa não está na lista.')
                     if body.get('porte') in sim.PORTE_FATOR:
                         e['porte'] = body['porte']
                     A.persist(); return self.send(200, {'ok': True})

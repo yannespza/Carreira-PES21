@@ -100,6 +100,14 @@ def _seed(*parts):
     return int(hashlib.md5('|'.join(map(str, parts)).encode()).hexdigest()[:8], 16)
 
 
+def _mais_anos(d, n):
+    """Mesma data n anos depois (29/02 vira 28/02 quando o ano não é bissexto)."""
+    try:
+        return d.replace(year=d.year + n)
+    except ValueError:
+        return d.replace(year=d.year + n, day=28)
+
+
 class Engine:
     def __init__(self, state, clube='Palmeiras', base_atr=68):
         self.s = state
@@ -543,8 +551,8 @@ class Engine:
         o['status'] = 'aceita'
         hoje = self.hoje()
         inicio = max(s2d(o['inicio']), hoje)
-        fim = inicio.replace(year=inicio.year + o['anos'])
-        pags = [{'data': d2s(inicio.replace(year=inicio.year + i)), 'valor': o['valor'], 'status': 'agendado'}
+        fim = _mais_anos(inicio, o['anos'])
+        pags = [{'data': d2s(_mais_anos(inicio, i)), 'valor': o['valor'], 'status': 'agendado'}
                 for i in range(o['anos'])]
         c = {'id': self._id(), 'empresa': o['empresa'], 'slot': o['slot'], 'valor': o['valor'], 'anos': o['anos'],
              'inicio': d2s(inicio), 'fim': d2s(fim), 'status': 'assinado', 'pagamentos': pags,
