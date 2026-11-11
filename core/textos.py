@@ -194,3 +194,56 @@ MANCHETES.update({
         "Reforço interno: {jogador} está liberado e volta a ser opção no {clube}",
     ],
 })
+
+# vestiário, clássicos, diretoria e emprego do técnico
+MANCHETES.update({
+    'vestiario_racha': [
+        "Clima pesado: vestiário do {clube} rachado após sequência ruim",
+        "Bastidores: discussões no treino expõem racha no elenco do {clube}",
+        "Grupo dividido no {clube}; {tecnico} tenta apagar o incêndio",
+    ],
+    'vestiario_unido': [
+        "Elenco do {clube} vive clima de união nos bastidores",
+        "Grupo fechado: jogadores do {clube} celebram boa fase fora de campo",
+        "Clima leve no CT do {clube} anima a comissão de {tecnico}",
+    ],
+    'jog_reclama': [
+        "{jogador} solta indireta nas redes e expõe insatisfação no {clube}",
+        "Barrado, {jogador} reclama de falta de espaço no {clube}",
+        "Post de {jogador} repercute e gera mal-estar no {clube}",
+    ],
+    'classico_v': [
+        "É DO {CLUBE}! Vitória por {placar} no {classico} e festa da torcida",
+        "{clube} vence o {classico}, {placar}, e ganha a semana",
+        "Dono do {classico}: {clube} bate o {adv} por {placar}",
+    ],
+    'classico_e': [
+        "{classico} termina empatado: {placar} entre {clube} e {adv}",
+        "Ninguém sorri no {classico}: {clube} e {adv} ficam no {placar}",
+    ],
+    'classico_d': [
+        "Derrota no {classico}: {clube} perde para o {adv} por {placar} e a cobrança aumenta",
+        "{adv} leva a melhor no {classico} e a semana é amarga para o {clube}",
+        "{clube} cai no {classico} e torcida pede explicações",
+    ],
+    'tecnico_demitido': [
+        "{clube} demite {tecnico} após sequência ruim",
+        "Fim da linha: {tecnico} não é mais técnico do {clube}",
+    ],
+    'tecnico_sondado': [
+        "{adv} sonda {tecnico}, do {clube}",
+        "Bastidores: {tecnico} entra na mira do {adv}",
+    ],
+    'tecnico_fica': [
+        "{tecnico} recusa o {adv} e renova com o {clube}",
+        "Fica! {tecnico} diz não ao {adv} e segue no {clube}",
+    ],
+    'tecnico_renova': [
+        "{clube} renova com {tecnico} para a próxima temporada",
+        "Diretoria do {clube} estende o contrato de {tecnico}",
+    ],
+    'tecnico_ultimato': [
+        "Pressão máxima: {tecnico} tem poucos jogos para salvar o emprego no {clube}",
+        "Diretoria do {clube} dá ultimato a {tecnico}",
+    ],
+})

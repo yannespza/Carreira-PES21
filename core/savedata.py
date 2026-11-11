@@ -229,6 +229,15 @@ class Career:
         put('orc_salario', max(0, sal + u))
         return {k: g(k) * UNIT for k in ('orc_transf', 'teto_salario', 'orc_salario')}
 
+    def debitar(self, euros: int):
+        """Tira 'euros' do orçamento de transferências (obras de estrutura). Valor negativo devolve."""
+        u = int(round(euros / UNIT))
+        o1, o2 = (self.fin_off + FIN[k] for k in ('orc_transf', 'orc_transf_2'))
+        t1, t2 = struct.unpack_from('<i', self.sf.data, o1)[0], struct.unpack_from('<i', self.sf.data, o2)[0]
+        struct.pack_into('<i', self.sf.data, o1, t1 - u)
+        if t2 == t1:
+            struct.pack_into('<i', self.sf.data, o2, t2 - u)
+
     def zerar_patrocinio(self):
         """Zera só a receita de patrocínio que veio com a carreira. O orçamento de transferências não é mexido."""
         o = self.fin_off + FIN['rec_patrocinio']

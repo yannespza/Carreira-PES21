@@ -23,6 +23,37 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.8:
+- Carreira do técnico (Clube > Carreira do técnico): fica guardada fora dos saves e continua quando você
+  começa uma carreira nova com outro clube. Junta clubes, jogos, títulos, acessos, quedas e demissões e
+  calcula o prestígio (0 a 100). O prestígio soma ou tira atratividade para patrocinadores em qualquer
+  clube, define a confiança da diretoria quando você chega e deixa as metas mais exigentes.
+- Diretoria (Clube > Diretoria): meta da temporada conforme a divisão e o tamanho do clube (G4, metade
+  de cima, fugir da queda, acesso na Série B, fase de grupos da Libertadores). Confiança abaixo de 25 gera
+  ultimato de 4 jogos (7 pontos para escapar). Fim de temporada: meta cumprida renova o contrato; queda,
+  ou meta perdida com confiança baixa, demite. Demitido, chegam propostas de outros clubes (para aceitar,
+  comece a carreira nova no jogo) ou você pode continuar no clube. Em alta, outros clubes sondam você.
+  Dá para desligar a demissão.
+- Coletiva: cada resposta tem um estilo (humilde, provocar, assumir a culpa, expor jogadores, proteger o
+  grupo, reclamar da arbitragem, cobrar reforços). O jornalista que perguntou reage na hora e a relação
+  com a imprensa muda as matérias sobre os jogadores. Perguntas de clássico, de pressão no cargo, de
+  lesão e de vestiário aparecem quando o momento pede.
+- Vestiário (Elenco > Vestiário): clima do grupo, capitão (você escolhe), ídolo da torcida, panelinhas,
+  jogador barrado reclamando nas redes, racha e o capitão reunindo o elenco.
+- Clássicos (Clube > Clássicos): rivais reconhecidos pelo nome (Dérbi, Fla-Flu, Gre-Nal…), mais rivais
+  à sua escolha. Clássico pesa mais, tem manchete e pergunta próprias, provocação entre torcidas e
+  retrospecto. Ainda não dá para anunciar o clássico antes do jogo: o app não lê o calendário do save.
+- Estrutura e marca (Clube > Estrutura e marca): departamento médico, CT, manutenção do gramado e
+  marketing, do nível 1 ao 5. A obra é paga com o orçamento de transferências do save (recarregue a
+  carreira depois) e fica pronta após alguns dias da carreira. O valor da marca entra na atratividade;
+  com marca alta, empresas concorrentes oferecem mais para tomar o espaço de um patrocinador atual.
+- Temporadas (Clube > Temporadas): retrospectiva de cada temporada, sala de troféus e a capa de jornal
+  da temporada para baixar.
+- Estádio: o gramado agora tem condição (desgasta a cada jogo em casa, mais no verão chuvoso, e se
+  recupera nos dias de folga). As faixas seguem o momento: título recente, aniversário do clube,
+  vitória no clássico, apoio (com faixa do ídolo) ou protesto (com "Fora técnico" se o cargo estiver
+  ameaçado). Quanto mais forte o momento, mais faixas a torcida leva.
+
 Novidades da 2.7:
 - Estádio do clube atual (achado no map_teams.txt do GOGOSZ, vale para qualquer clube/carreira nova):
   faixas da torcida de apoio (torcida 75+) ou de protesto invertidas (torcida até 30), gramado impecável

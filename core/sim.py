@@ -158,6 +158,15 @@ class Engine:
         pts += 2.0 * max(0, seq - 2)
         # humor da torcida também pesa (torcida feliz = marca mais exposta)
         pts += (self.s.get('mundo', {}).get('torcida', 60) - 60) / 5
+        # valor da marca e marketing (estrutura do clube)
+        try:
+            from . import estrutura
+            pts += estrutura.bonus_atratividade(self.s)
+            # prestígio do técnico (carreira dele em todos os clubes)
+            from .tecnico_carreira import bonus_atratividade
+            pts += bonus_atratividade(self.s.get('prestigio_tecnico'))
+        except Exception:
+            pass
         return int(max(15, min(100, self.base_atr + pts)))
 
     def msg(self, tipo, empresa, data, oferta_id=None, **v):
@@ -280,6 +289,7 @@ class Engine:
             self._gerar_ofertas(dia)
             self._humor_patrocinadores(dia)
             self._corte_de_verba(dia)
+            self._investida(dia)
 
     def ofertas_iniciais(self, dia, por_posicao=2, slots=None):
         """Começo de carreira: pelo menos duas propostas para cada posição do uniforme."""
@@ -426,6 +436,44 @@ class Engine:
         pct = (c.get('clausulas') or {}).get('multa_pct', 30) / 100
         return int(round(pct * restante / 50_000) * 50_000)
 
+    def _investida(self, dia):
+        """Marca forte atrai concorrência: uma empresa do mesmo ramo de um patrocinador atual oferece mais para
+        tomar a posição dele. Se você aceitar, a nova empresa paga a multa e o contrato antigo sai."""
+        from . import estrutura
+        if estrutura.marca(self.s) < 60:
+            return
+        ds = d2s(dia)
+        r = random.Random(_seed('investida', ds, self.clube))
+        if r.random() > 0.06 or any(o.get('substitui') and o['status'] in ('aberta', 'aguardando') for o in self.s['ofertas']):
+            return
+        alvos = [c for c in self.contratos_ativos() if self._grande(c['slot']) and (dia - s2d(c['inicio'])).days >= 90]
+        if not alvos:
+            return
+        c = r.choice(alvos)
+        setor = self.s['empresas'].get(c['empresa'], {}).get('setor')
+        atr = self.atratividade()
+        cands = [n for n, e in self.s['empresas'].items() if e.get('setor') == setor and n != c['empresa']
+                 and atr >= PORTE_MIN_ATR[e['porte']] and not (e.get('bloqueio_ate') and s2d(e['bloqueio_ate']) > dia)
+                 and not any(x['empresa'] == n and x['status'] in ('assinado', 'ativo') for x in self.s['contratos'])]
+        if not cands:
+            return
+        nome = r.choice(cands)
+        valor = int(round(c['valor'] * r.uniform(1.25, 1.55) / 50_000) * 50_000)
+        anos = r.choice([2, 2, 3])
+        pd, pm = PREF_CLAUSULAS[self.s['empresas'][nome]['personalidade']]
+        cl = self._clausulas(pd, pm, r)
+        o = {'id': self._id(), 'empresa': nome, 'slot': c['slot'], 'valor': valor, 'anos': anos, 'inicio': ds,
+             'validade': d2s(dia + dt.timedelta(days=14)), 'status': 'aberta', 'origem': 'investida', 'criada': ds,
+             'rodadas': 0, 'clausulas': cl, 'substitui': c['id'], 'substitui_empresa': c['empresa']}
+        self.s['ofertas'].append(o)
+        self.s['mensagens'].append({
+            'id': self._id(), 'data': ds, 'empresa': nome, 'de': f'{nome} · Diretoria comercial', 'tipo': 'oferta',
+            'oferta_id': o['id'], 'lida': False,
+            'assunto': f'Queremos o {pos_txt(c["slot"])} do {self.clube}',
+            'texto': (f'A marca do {self.clube} cresceu e queremos estar nela. Sabemos que o {pos_txt(c["slot"])} hoje é da '
+                      f'{c["empresa"]}, nossa concorrente. Oferecemos {fmt_eur(valor)} por temporada, durante {anos_txt(anos)}, '
+                      f'e pagamos nós mesmos a multa de rescisão do contrato atual. A proposta vale por 14 dias.')})
+
     def _corte_de_verba(self, dia):
         """De vez em quando uma empresa corta a verba e sai — paga multa ao clube."""
         ds = d2s(dia)
@@ -462,6 +510,13 @@ class Engine:
         o = self._oferta(oferta_id)
         if o['status'] != 'aberta':
             raise ValueError('Essa proposta não está mais aberta.')
+        velho = None
+        if o.get('substitui'):
+            velho = next((c for c in self.s['contratos'] if c['id'] == o['substitui'] and c['status'] in ('ativo', 'assinado')), None)
+            if velho:
+                # a empresa nova paga a multa: o contrato antigo sai sem custo para o clube
+                self._encerrar(velho, d2s(self.hoje()), 'clube (troca de patrocinador; a nova empresa pagou a multa)')
+                self.msg('rescisao_clube', velho['empresa'], d2s(self.hoje()), posicao=pos_txt(velho['slot']), valor=fmt_eur(0))
         if o['slot'] not in self.slots_livres(self.hoje()):
             raise ValueError('Essa posição já está ocupada por outro contrato.')
         if self.s['empresas'][o['empresa']]['setor'] in self.setores_ocupados(o['slot']):

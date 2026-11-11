@@ -1,7 +1,8 @@
 """Mudanças visuais dentro do jogo, sempre para o clube da carreira atual (o estádio vem do map_teams.txt do
 StadiumServer do GOGOSZ):
-- faixas da torcida no estádio (apoio com aprovação alta, protesto com aprovação baixa);
-- gramado conforme as finanças (impecável com finanças excelentes, seco e falhado com corte de custos);
+- faixas da torcida no estádio conforme o momento (título, aniversário, clássico, apoio, protesto), em
+  quantidade proporcional à força do momento;
+- gramado conforme a condição (desgasta a cada jogo em casa, recupera com folga e manutenção);
 - bandeirinhas de escanteio com as cores do clube e a marca do patrocinador master.
 O app grava as texturas em GOGOSZ\\AppCarreira e o módulo AppCarreira.lua do Sider entrega esses arquivos ao
 jogo só nos jogos em casa do clube."""
@@ -176,30 +177,124 @@ def _manchas(W, H, seed, escala=48, blur=2):
     return (n - n.min()) / max(1e-6, n.max() - n.min())
 
 
-def gramado(img, nivel, seed=1, nome='pitch_alp.ftex'):
+def gramado(img, nivel, seed=1, nome='pitch_alp.ftex', forca=1.0):
+    """forca de 0 a 1: o quanto o gramado está impecável (otimo) ou castigado (ruim)."""
     a = np.array(img.convert('RGBA')).astype(np.float32)
     H, W = a.shape[:2]
+    f = max(0.2, min(1.0, forca))
     if 'grain' in nome.lower():
         for c in (0, 1):
             ch = a[..., c]
             m = ch.mean()
             if nivel == 'otimo':
-                a[..., c] = m + (ch - m) * 1.45          # faixas de corte bem marcadas
+                a[..., c] = m + (ch - m) * (1 + 0.45 * f)          # faixas de corte bem marcadas
             else:
-                ruido = (_manchas(W, H, seed + c, 24, 1.5) - 0.5) * 40
-                a[..., c] = m + (ch - m) * 0.35 + ruido  # grama sem corte, irregular
+                ruido = (_manchas(W, H, seed + c, 24, 1.5) - 0.5) * 40 * f
+                a[..., c] = m + (ch - m) * (1 - 0.65 * f) + ruido  # grama sem corte, irregular
     else:
         campo = (a[..., 2] > 128).astype(np.float32)
         g = a[..., 1]
         if nivel == 'otimo':
-            a[..., 1] = g * 0.2                          # quase sem desgaste
+            a[..., 1] = g * (1 - 0.8 * f)                          # quase sem desgaste
         else:
             n = _manchas(W, H, seed, 40, 2)
             falhas = np.clip((n - 0.45) * 3.0, 0, 1)
             buracos = np.clip((_manchas(W, H, seed + 7, 90, 1.2) - 0.82) * 8, 0, 1)
-            a[..., 1] = np.clip(g * 1.6 + (falhas * 110 + buracos * 230) * campo, 0, 255)
+            a[..., 1] = np.clip(g * (1 + 0.6 * f) + (falhas * 110 + buracos * 230 * f) * f * campo, 0, 255)
     a = np.clip(a, 0, 255)
     return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
+# ---------------- condição do gramado (0 a 100) ----------------
+# Cada jogo em casa castiga o gramado; os dias sem jogo recuperam. Verão chuvoso (dez a mar) castiga mais,
+# inverno seco (jun a ago) recupera menos. A manutenção do gramado (estrutura) acelera a recuperação.
+def condicao_gramado(state, hoje, team_id):
+    from . import estrutura
+    from .sim import d2s, s2d
+    gr = state.setdefault('gramado', {'cond': 75.0, 'data': None, 'vistos': []})
+    if not hoje:
+        return gr
+    if gr.get('data'):
+        dias = (hoje - s2d(gr['data'])).days
+        if dias > 0:
+            est = 0.7 if hoje.month in (6, 7, 8) else 1.0
+            gr['cond'] = min(100.0, gr['cond'] + dias * 1.1 * est * estrutura.recup_gramado(state))
+    vistos = set(gr.get('vistos', []))
+    if not gr.get('data'):         # primeira leitura: jogos antigos não desgastam
+        vistos |= {p['chave'] for p in state.get('partidas', [])}
+    casa = sorted([p for p in state.get('partidas', []) if p['mandante'] == team_id and p['chave'] not in vistos],
+                  key=lambda p: p['data'])
+    ult = None
+    for p in casa:
+        d = s2d(p['data'])
+        chuva = 1.35 if d.month in (12, 1, 2, 3) else 1.0
+        gr['cond'] -= 9 * chuva + (3 if ult and (d - ult).days <= 4 else 0)
+        ult = d
+        vistos.add(p['chave'])
+    gr['cond'] = round(max(0.0, min(100.0, gr['cond'])), 1)
+    gr['vistos'] = sorted(vistos)[-200:]
+    gr['data'] = d2s(hoje)
+    h = gr.setdefault('hist', [])
+    if not h or h[-1][0] != gr['data']:
+        h.append([gr['data'], gr['cond']])
+    else:
+        h[-1][1] = gr['cond']
+    gr['hist'] = h[-40:]
+    return gr
+
+
+def nivel_gramado(cond):
+    """(nivel, forca) para a textura: impecável a partir de 82, castigado até 45, normal entre os dois."""
+    if cond >= 82:
+        return 'otimo', round(0.5 + (cond - 82) / 36, 1)
+    if cond <= 45:
+        return 'ruim', round(max(0.35, (45 - cond) / 45 + 0.2), 1)
+    return None, 0
+
+
+# ---------------- faixas conforme o momento ----------------
+TITULO = ['É CAMPEÃO!', 'OBRIGADO, CAMPEÕES!', '{CLUBE} CAMPEÃO {ANO}', '{COMP} É NOSSA!', 'ORGULHO DE SER {CLUBE}']
+ANIVERSARIO = ['PARABÉNS {CLUBE}! {N} ANOS', '{N} ANOS DE GLÓRIA', 'FELIZ ANIVERSÁRIO, {CLUBE}', 'DESDE {FUND} COM VOCÊ']
+CLASSICO = ['{RIVAL}, FREGUÊS!', 'O {CLASSICO} É NOSSO', 'A CIDADE TEM DONO']
+
+
+def plano_faixas(state, clube, hoje, tecnico, idolo, rivais_nomes):
+    """Qual faixa a torcida leva para o próximo jogo em casa: modo, frases, parte das faixas trocadas e motivo."""
+    from . import rivais
+    from .sim import s2d, COMP_NOMES
+    from .diretoria import situacao
+    m = state.get('mundo') or {}
+    t = m.get('torcida', 50)
+    g = state.get('gestao') or {}
+    v = {'CLUBE': (clube or '').upper(), 'TECNICO': (tecnico or '').upper().split(' ')[0],
+         'IDOLO': (idolo or '').upper(), 'ANO': '', 'COMP': '', 'N': '', 'FUND': '', 'RIVAL': '', 'CLASSICO': ''}
+    if hoje:
+        tit = [x for x in g.get('titulos', []) if 0 <= (hoje - s2d(x['data'])).days <= 30]
+        if tit:
+            v.update(ANO=str(s2d(tit[-1]['data']).year), COMP=COMP_NOMES.get(tit[-1]['comp'], '').upper())
+            return {'modo': 'apoio', 'frases': TITULO, 'fracao': 1.0, 'vars': v, 'motivo': 'título recente'}
+        an = rivais.aniversario(clube, hoje)
+        if an:
+            v.update(N=str(an[0]), FUND=str(an[1].year - an[0]))
+            return {'modo': 'apoio', 'frases': ANIVERSARIO + APOIO[:3], 'fracao': 1.0, 'vars': v,
+                    'motivo': f'aniversário de {an[0]} anos do clube'}
+        cl = next((n for n in reversed(m.get('noticias', [])) if n.get('tipo') == 'classico_v'
+                   and 0 <= (hoje - s2d(n['data'])).days <= 12), None)
+        if cl and t >= 45:
+            v.update(RIVAL=(cl.get('adv') or '').upper(), CLASSICO=(cl.get('classico') or 'CLÁSSICO').upper())
+            return {'modo': 'apoio', 'frases': CLASSICO + APOIO[:4], 'fracao': 0.8, 'vars': v,
+                    'motivo': 'vitória no clássico'}
+    conf = m.get('diretoria', 60)
+    ameacado = situacao(conf) == 'ameacado'
+    if t >= 75:
+        frases = APOIO + (['{IDOLO}, ÍDOLO!', 'É {IDOLO} QUE A GENTE QUER'] if idolo else [])
+        return {'modo': 'apoio', 'frases': frases, 'fracao': round(min(1.0, 0.5 + (t - 75) / 30), 2), 'vars': v,
+                'motivo': f'torcida em alta ({t}/100)'}
+    if t <= 30 or (ameacado and t <= 45):
+        frases = PROTESTO + (['FORA {TECNICO}!', '{TECNICO}, PEDE PRA SAIR'] if ameacado else [])
+        return {'modo': 'protesto', 'frases': frases, 'fracao': round(min(1.0, 0.5 + (30 - min(t, 30)) / 30), 2),
+                'vars': v, 'motivo': f'torcida revoltada ({t}/100)' + (' e técnico ameaçado' if ameacado else '')}
+    return {'modo': None, 'frases': [], 'fracao': 0, 'vars': v, 'motivo': f'torcida neutra ({t}/100)'}
 
 
 # ---------------- bandeirinha ----------------
@@ -256,7 +351,8 @@ def instalar_modulo(pasta_jogo, backup_dir, log=print):
     return True
 
 
-def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, torcida, nivel_gramado, tecnico, idolo, log=print):
+def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, plano, gram, log=print):
+    """plano: resultado de plano_faixas; gram: (nivel, forca) de nivel_gramado."""
     """Monta as texturas do clube atual e o mapa.txt que o módulo do Sider lê. Devolve um resumo."""
     out = os.path.join(pasta_jogo, 'GOGOSZ', PASTA)
     os.makedirs(out, exist_ok=True)
@@ -264,24 +360,32 @@ def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, torcida, nivel_grama
     cor1 = cores[0] if cores else '#1f6b3a'
     cor2 = cores[1] if cores and len(cores) > 1 else '#ffffff'
     est = estadio_do_time(pasta_jogo, team_id)
-    v = {'CLUBE': (clube or '').upper(), 'TECNICO': (tecnico or '').upper().split(' ')[0], 'IDOLO': (idolo or '').upper()}
+    v = plano.get('vars') or {'CLUBE': (clube or '').upper()}
+    nivel_gramado, forca = gram
     if est:
         resumo['estadio'] = est['nome']
         d, arqs = _texturas_estadio(est)
         st = 'st%03d' % est['id']
         # faixas da torcida: texturas de bandeira/faixa do próprio estádio
-        modo = 'apoio' if torcida >= 75 else 'protesto' if torcida <= 30 else None
+        modo = plano.get('modo')
         alvo = [a for a in arqs if a.lower().endswith('.ftex') and not re.search(r'_(nrm|srm|bsm|lym|lbm|alp)', a.lower())
                 and re.match(r'(flag|novo banner|banner|faixa)', a.lower()) and _formato_ok(os.path.join(d, a))]
         if modo and alvo:
-            frases = PROTESTO if modo == 'protesto' else APOIO
-            r = random.Random(f'{team_id}{modo}')
+            frases = [f for f in plano['frases'] if not any('{%s}' % k in f and not v.get(k) for k in v)] or ['VAMOS {CLUBE}']
+            r = random.Random(f'{team_id}{modo}{plano.get("motivo")}')
+            # quanto mais forte o momento, mais faixas a torcida leva (o resto fica com as originais)
+            r.shuffle(alvo)
+            alvo = alvo[:max(1, int(round(len(alvo) * plano.get('fracao', 1))))]
+            fila = []
             for i, a in enumerate(alvo):
                 src = os.path.join(d, a)
                 try:
                     from . import ftex
                     base = ftex.read(src)
-                    t = r.choice(frases).format(**v).replace('  ', ' ').strip()
+                    if not fila:
+                        fila = frases[:]
+                        r.shuffle(fila)
+                    t = fila.pop().format(**v).replace('  ', ' ').strip()
                     if '{' in t or not t.strip('! '):
                         t = 'VAMOS ' + v['CLUBE']
                     img = faixa(base.width, base.height, t, cor1, cor2, escudo, modo == 'protesto', i)
@@ -291,6 +395,8 @@ def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, torcida, nivel_grama
                 except Exception as e:
                     log('faixa não gerada', a, e)
             resumo['faixas'] = modo
+            resumo['faixas_n'] = len(alvo)
+        resumo['faixas_motivo'] = plano.get('motivo')
         # gramado
         if nivel_gramado in ('otimo', 'ruim'):
             for a in arqs:
@@ -298,7 +404,7 @@ def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, torcida, nivel_grama
                 if al in ('pitch_grain.ftex', 'pitch_alp.ftex') and _formato_ok(os.path.join(d, a)):
                     try:
                         from . import ftex
-                        img = gramado(ftex.read(os.path.join(d, a)), nivel_gramado, team_id, al)
+                        img = gramado(ftex.read(os.path.join(d, a)), nivel_gramado, team_id, al, forca)
                         nome = f'gramado_{al}'
                         ftex.write(img, os.path.join(d, a), os.path.join(out, nome))
                         regras.append((f'{st}\\sourceimages\\tga\\#windx11\\{a}', nome, 'casa'))

@@ -6,6 +6,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
+from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira
 from core.logos import LogoBank
 
 PORT = 8765
@@ -220,7 +221,7 @@ class App:
         if path == self.save_path and m == self.save_mtime:
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
             if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
-                    x['status'] == 'pendente' for x in (self.state or {}).get('multas', []))):
+                    x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))):
                 with LOCK:
                     self.aplicar_creditos()
                     self.persist()
@@ -255,8 +256,13 @@ class App:
                 self.state = st = {}
                 novo = True
                 log('carreira nova detectada; estado anterior arquivado em', arq)
+            st['time_id'] = self.tid()
+            prest = tecnico_carreira.carregar(DATA).get('prestigio')
+            if prest is not None:
+                st['prestigio_tecnico'] = prest
             if novo:
-                st['time_id'] = self.tid()
+                # diretoria do clube novo recebe o técnico conforme o prestígio dele
+                st.setdefault('mundo', {})['diretoria'] = tecnico_carreira.confianca_inicial(prest)
                 # carreira começando agora (nenhum jogo no save): a receita de patrocínio do jogo volta a zero
                 if not car.results and CFG.get('zerar_patrocinio_novo', False):
                     st['zerar_pat'] = {'status': 'pendente'}
@@ -294,6 +300,7 @@ class App:
             self.aplicar_creditos()
             self.mundo_processar()
             self.gestao_processar(car, novas, None if novo else antes)
+            self.carreira_processar(car, novo)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
@@ -304,8 +311,9 @@ class App:
     def mundo_processar(self):
         try:
             self.state['cfg_tecnico'] = CFG.get('tecnico_nome') or 'Yannes Zola'
-            mundo.Mundo(self.state, self.clube(), self.tid()).processar(
-                self.engine, lambda i: self.names.get(i, f'Time {i}'))
+            mu = mundo.Mundo(self.state, self.clube(), self.tid())
+            mu.rivais = set(self.rivais_ids())
+            mu.processar(self.engine, lambda i: self.names.get(i, f'Time {i}'))
         except Exception:
             log(traceback.format_exc())
 
@@ -316,7 +324,7 @@ class App:
             g = gestao.Gestao(st, self.clube(), self.tid())
             nomes = lambda i: self.names.get(i, f'Time {i}')
             if novas and antes:
-                g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes)
+                g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes, self.rivais_ids())
             if car.date:      # campeonato terminou? título, acesso, rebaixamento (antes da revisão de janeiro)
                 g.fim_de_liga(self.engine, mu, st.get('tabela'), car.date)
                 g.copas(self.engine, mu, car.date)
@@ -326,10 +334,67 @@ class App:
                 while d < car.date:
                     d = min(car.date, d + dt.timedelta(days=7))
                     g.semana(d, self.elenco, mu)
+                    vestiario.semana(st, d, self.elenco, mu)
                     g.revisao_anual(self.engine, mu, d)
             g.elenco_mudou(self.elenco, car.money(), st.get('data'))
         except Exception:
             log(traceback.format_exc())
+
+    def rivais_ids(self):
+        st = self.state or {}
+        return rivais.rivais(self.clube(), self.names, (st.get('gestao') or {}).get('rivais_manual'))
+
+    def carreira_processar(self, car, novo):
+        """Estrutura (obras), emprego do técnico, marca, gramado e a carreira do técnico entre clubes."""
+        st = self.state
+        try:
+            mu = mundo.Mundo(st, self.clube(), self.tid())
+            estrutura.avancar(st, car.date, mu)
+            diretoria.processar(st, self.engine, mu, car.date, self.names)
+            estrutura.registrar_marca(st, car.date)
+            ingame.condicao_gramado(st, car.date, self.tid())
+            chave = os.path.basename(self.state_path or 'carreira') + '|' + str(self.tid())
+            c, nova = tecnico_carreira.registrar(DATA, chave, st, self.clube(), car.date)
+            st['prestigio_tecnico'] = c['prestigio']
+            if nova and len(c['passagens']) > 1 and car.date:
+                ant = [p for p in c['passagens'] if p['chave'] != chave]
+                tits = sum(len(p.get('titulos', [])) for p in ant)
+                nv = tecnico_carreira.nivel(c['prestigio'])
+                mu.m['noticias'].append({'data': sim.d2s(car.date), 'tipo': 'tecnico_chega', 'destaque': True,
+                                         'fonte': 'Globo Esporte', 'titulo': f"{mu.tecnico()} é o novo técnico do {self.clube()}: "
+                                         f"{len(ant)} clube(s) na carreira, {tits} título(s) e prestígio de {nv.lower()}"})
+        except Exception:
+            log(traceback.format_exc())
+
+    def carreira_view(self):
+        st = self.state or {}
+        hoje = sim.s2d(st['data']) if st.get('data') else None
+        mu = mundo.Mundo(st, self.clube(), self.tid()) if st else None
+        nm = lambda i: self.names.get(i, f'Time {i}')
+        ids = self.rivais_ids()
+        rr = rivais.retrospecto(st.get('partidas', []), self.tid(), set(ids))
+        manual = (st.get('gestao') or {}).get('rivais_manual') or []
+        auto = rivais.rivais(self.clube(), self.names, [])
+        times = sorted({l['id']: l.get('nome') or nm(l['id']) for l in (st.get('tabela') or {}).get('linhas', [])
+                        if l['id'] != self.tid()}.items(), key=lambda x: x[1])
+        gr = st.get('gramado') or {}
+        cond = gr.get('cond')
+        try:
+            ret = retro.resumo(st, self.tid(), self.names, set(ids))
+        except Exception:
+            log(traceback.format_exc()); ret = []
+        return {
+            'diretoria': diretoria.view(st, mu, hoje) if mu else None,
+            'vestiario': vestiario.view(st), 'estrutura': estrutura.view(st, hoje),
+            'imprensa': (st.get('gestao') or {}).get('imprensa', 55),
+            'rivais': [{'id': i, 'nome': nm(i), 'auto': i in auto, 'classico': rivais.nome_classico(self.clube(), nm(i)),
+                        **{k: (rr.get(i) or {}).get(k, 0) for k in ('V', 'E', 'D')}, 'jogos': (rr.get(i) or {}).get('jogos', [])}
+                       for i in ids],
+            'rivais_manual': manual, 'times_tabela': [{'id': i, 'nome': n} for i, n in times],
+            'gramado': {'cond': cond, 'nivel': ingame.nivel_gramado(cond)[0] if cond is not None else None,
+                        'hist': gr.get('hist', [])[-30:]},
+            'retro': ret, 'tecnico': tecnico_carreira.view(tecnico_carreira.carregar(DATA)),
+        }
 
     def cores_time(self):
         t = self.time
@@ -377,26 +442,25 @@ class App:
         try:
             from PIL import Image
             st = self.state
-            d = st.get('dinheiro') or {}
-            receita = sum(d.get(k) or 0 for k in ('rec_transmissao', 'rec_patrocinio', 'rec_socios', 'rec_bilheteria'))
-            r = (d.get('orc_transf') or 0) / receita if receita else None
-            nivel = None if r is None else 'otimo' if r >= 0.5 else 'ruim' if r < 0.08 else None
-            torc = (st.get('mundo') or {}).get('torcida', 50)
-            modo = 'apoio' if torc >= 75 else 'protesto' if torc <= 30 else None
+            cond = (st.get('gramado') or {}).get('cond', 75)
+            gram = ingame.nivel_gramado(cond)
+            hoje = sim.s2d(st['data']) if st.get('data') else None
+            ids = set(self.rivais_ids())
+            plano = ingame.plano_faixas(st, self.clube(), hoje, CFG.get('tecnico_nome') or 'Yannes Zola',
+                                        vestiario.idolo(st), [self.names.get(i) for i in ids])
             logos, patro = self._logos_vigentes()
             mestre = next((c['empresa'] for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')
                            and c['slot'] == 'peito'), None)
             cores = self.cores_time() or []
-            assin = [self.tid(), cores, mestre, modo, nivel, 1]
+            assin = [self.tid(), cores, mestre, plano['modo'], plano['motivo'].split(' (')[0], plano['fracao'],
+                     sorted(plano['vars'].items()), list(gram), 2]
             if not forcar and st.get('ingame_assin') == assin:
                 return
             ingame.instalar_modulo(CFG['pasta_jogo'], os.path.join(DATA, 'backups_save'), log)
             eb = self.escudo_png()
             esc = Image.open(io.BytesIO(eb)) if eb else None
-            idolo = next((n.get('jogador') for n in reversed((st.get('mundo') or {}).get('noticias', []))
-                          if n.get('tipo') == 'jog_elogio' and n.get('jogador')), None)
-            res = ingame.gerar(CFG['pasta_jogo'], self.tid(), self.clube(), cores, esc, patro, torc, nivel,
-                               CFG.get('tecnico_nome') or 'Yannes Zola', idolo, log)
+            res = ingame.gerar(CFG['pasta_jogo'], self.tid(), self.clube(), cores, esc, patro, plano, gram, log)
+            res['gramado_cond'] = cond
             res['em'] = st.get('data')
             st['ingame'] = res
             st['ingame_assin'] = assin
@@ -515,7 +579,8 @@ class App:
         zerar = bool(z and z.get('status') == 'pendente')
         oi = self.state.get('orc_inicial')
         definir = bool(oi and oi.get('status') == 'pendente')
-        if (not pend and not multas and not zerar and not definir) or self.career is None or self.career.fin_off is None:
+        debs = [x for x in self.state.get('debitos', []) if x['status'] == 'pendente']
+        if (not pend and not multas and not zerar and not definir and not debs) or self.career is None or self.career.fin_off is None:
             return
         car = self.career
         total = 0; total_multa = 0
@@ -523,13 +588,13 @@ class App:
         if definir and orc_antes == oi['valor']:
             oi.update(status='confirmado', antes=orc_antes, em=self.state['data'])
             definir = False
-            if not pend and not multas and not zerar:
+            if not pend and not multas and not zerar and not debs:
                 return
         if definir:
             antes2 = car.money().get('orc_transf_2', 0)
             car.definir_orcamento(oi['valor'])
         zerado = car.zerar_patrocinio() if zerar else 0
-        if zerar and not zerado and not pend and not multas:
+        if zerar and not zerado and not pend and not multas and not debs:
             z.update(status='confirmado', valor=0)       # já estava zerado: nada a gravar
             return
         for c, pg in pend:
@@ -538,6 +603,10 @@ class App:
         for m in multas:
             car.credit_sponsor(-m['valor'])
             total_multa += m['valor']
+        total_deb = 0
+        for x in debs:
+            car.debitar(x['valor'])
+            total_deb += x['valor']
         try:
             bk = car.write(os.path.join(DATA, 'backups_save'), log)
         except Exception as e:
@@ -552,6 +621,8 @@ class App:
                 car.credit_sponsor(-pg['valor'])
             for m in multas:
                 car.credit_sponsor(m['valor'])
+            for x in debs:
+                car.debitar(-x['valor'])
             if zerado:
                 car.desfazer_zerar(zerado, orc_antes)
             if definir:
@@ -574,6 +645,8 @@ class App:
                             valor=sim.fmt_eur(pg['valor']))
         for m in multas:
             m['status'] = 'aplicada'; m['aplicada_em'] = hoje
+        for x in debs:
+            x['status'] = 'aplicado'; x['aplicado_em'] = hoje
         if zerar:
             z.update(status='aplicado' if zerado else 'confirmado', valor=zerado, em=hoje)
         self.state['dinheiro'] = money
@@ -589,6 +662,8 @@ class App:
             partes.append(f'{sim.fmt_eur(total)} de patrocínio foram colocados no save')
         if total_multa:
             partes.append(f'{sim.fmt_eur(total_multa)} de multa de rescisão foram descontados')
+        if total_deb:
+            partes.append(f'{sim.fmt_eur(total_deb)} das obras de estrutura saíram do orçamento de transferências')
         if not partes:
             return
         partes[0] = partes[0][0].upper() + partes[0][1:]
@@ -701,7 +776,7 @@ class App:
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
                              'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, f"Torneio {p['torneio']}")}
                             for p in st.get('partidas', [])[-30:]],
-            'gestao': self.gestao_view(), 'cores': self.cores_time(),
+            'gestao': self.gestao_view(), 'cores': self.cores_time(), 'carreira': self.carreira_view(),
             'ofertas': [o for o in st.get('ofertas', []) if o['status'] in ('aberta', 'aguardando')],
             'ofertas_hist': [o for o in st.get('ofertas', []) if o['status'] not in ('aberta', 'aguardando')][-20:][::-1],
             'contratos': st.get('contratos', []),
@@ -795,6 +870,18 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/estado':
                 with LOCK:
                     return self.send(200, A.view())
+            if u.path.startswith('/retro/') and u.path.endswith('.png'):
+                with LOCK:
+                    st = A.state or {}
+                    ano = int(os.path.basename(u.path)[:-4])
+                    s_ = next((x for x in retro.resumo(st, A.tid(), A.names, set(A.rivais_ids())) if x['ano'] == ano), None)
+                if not s_:
+                    return self.send(404, {'erro': 'temporada não encontrada'})
+                from PIL import Image as _I
+                eb = A.escudo_png()
+                png = retro.capa(s_, A.clube(), _I.open(io.BytesIO(eb)) if eb else None, A.cores_time(),
+                                 CFG.get('tecnico_nome') or 'Yannes Zola')
+                return self.send(200, png, 'image/png')
             if u.path.startswith('/tecnico/cena/'):
                 humor = os.path.basename(unquote(u.path))[:-4]
                 b = A.cena_jpg(humor)
@@ -1092,6 +1179,28 @@ class H(BaseHTTPRequestHandler):
                         body['id'], int(body['pergunta']), int(body['resposta']), mu)
                     A.persist()
                     return self.send(200, {'ok': True, 'tom': tom})
+                if u.path == '/api/diretoria/sondagem':
+                    mu = mundo.Mundo(A.state, A.clube(), A.tid())
+                    diretoria.responder_sondagem(A.state, eng, mu, bool(body.get('aceitar')))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/diretoria/continuar':
+                    diretoria.continuar(A.state, mundo.Mundo(A.state, A.clube(), A.tid()))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/diretoria/demissao_ativa':
+                    diretoria._e(A.state)['demissao_ativa'] = bool(body.get('ativo'))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/estrutura/investir':
+                    if not A.state.get('data'):
+                        raise ValueError('O app ainda não leu a data da carreira.')
+                    o = estrutura.investir(A.state, body.get('depto'), sim.s2d(A.state['data']))
+                    A.aplicar_creditos(); A.persist()
+                    return self.send(200, {'ok': True, 'obra': o})
+                if u.path == '/api/vestiario/capitao':
+                    vestiario.definir_capitao(A.state, body.get('nome') or None, A.state.get('data'))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/rivais':
+                    A.state.setdefault('gestao', {})['rivais_manual'] = [int(x) for x in body.get('ids') or []]
+                    A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/prancheta':
                     g = gestao.Gestao(A.state, A.clube(), A.tid())
                     pos = {str(k): [round(float(v[0]), 1), round(float(v[1]), 1)] for k, v in (body.get('pos') or {}).items()}

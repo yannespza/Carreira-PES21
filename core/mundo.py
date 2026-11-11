@@ -46,6 +46,8 @@ class Mundo:
         m.setdefault('historico', [])     # evolução (data, torcida, diretoria)
         m.setdefault('alertas_dir', {})
         self.m = m
+        self.rivais = set()       # ids dos rivais (o app preenche antes de processar)
+        self.nomes = None
 
     # ---------- utilidades ----------
     def _hoje(self):
@@ -63,12 +65,13 @@ class Mundo:
             cs = [c['empresa'] for c in self.s.get('contratos', []) if c['status'] in ('ativo', 'assinado')]
             v['empresa'] = rnd.choice(cs) if cs else 'o novo patrocinador'
         v.setdefault('setor', 'marca')
-        for k in ('adv', 'placar', 'n', 'pos', 'pts', 'lider', 'valor', 'posicao', 'frase', 'meta'):
+        for k in ('adv', 'placar', 'n', 'pos', 'pts', 'lider', 'valor', 'posicao', 'frase', 'meta', 'classico'):
             v.setdefault(k, '')
+        v.setdefault('CLUBE', str(v['clube']).upper())
         return v
 
     def noticia(self, tipo, data, rnd, destaque=False, **v):
-        extra = {k: v[k] for k in ('placar', 'adv', 'empresa', 'n', 'pos') if v.get(k) not in (None, '')}
+        extra = {k: v[k] for k in ('placar', 'adv', 'empresa', 'n', 'pos', 'classico') if v.get(k) not in (None, '')}
         self._vars(v, rnd)
         txt = rnd.choice(MANCHETES[tipo]).format(**v)
         self.m['noticias'].append({'data': data, 'titulo': txt, 'tipo': tipo, 'fonte': rnd.choice(FONTES),
@@ -268,7 +271,8 @@ class Mundo:
         if el and r.random() < 0.55:
             from .gestao import moral_ajuste
             jog = r.choice(el)
-            bom = r.random() < (0.35 + self.m['torcida'] / 200)
+            imp = (self.s.get('gestao') or {}).get('imprensa', 55)     # relação com a imprensa
+            bom = r.random() < (0.35 + self.m['torcida'] / 200 + (imp - 55) / 250)
             self.noticia('jog_elogio' if bom else 'jog_critica', data, r, jogador=jog)
             self.m['noticias'][-1]['jogador'] = jog
             moral_ajuste(self.s, jog, 1 if bom else -1, data, 'elogiado na imprensa' if bom else 'criticado na imprensa', 10)
@@ -304,9 +308,26 @@ class Mundo:
             tipo, humor, delta = 'vexame', 'revolta', -9
         else:
             tipo, humor, delta = 'derrota', 'chateado', -5 if casa else -4
+        adv_id = p['visitante'] if casa else p['mandante']
+        classico = adv_id in self.rivais
+        from . import vestiario
+        vestiario.resultado(self.s, p, self.team_id, classico)
+        if classico:
+            from . import rivais
+            from .gestao import moral_ajuste
+            nome_c = rivais.nome_classico(self.clube, adv)
+            self._torcida(round(delta * 0.6) + {'V': 3, 'E': 0, 'D': -3}[p['res']])
+            self.m['diretoria'] = int(max(0, min(100, self.m['diretoria'] + {'V': 4, 'E': 0, 'D': -4}[p['res']])))
+            self.noticia('classico_' + p['res'].lower(), p['data'], r, destaque=True, adv=adv, placar=placar, classico=nome_c)
+            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
+            if p['res'] != 'E':
+                moral_ajuste(self.s, '*', 1 if p['res'] == 'V' else -1, p['data'],
+                             ('venceu' if p['res'] == 'V' else 'perdeu') + f' o {nome_c}', 10)
+            self._provocacao(p, adv, nome_c, gp, gc, r)
         self._torcida(delta)
-        self.noticia(tipo, p['data'], r, destaque=tipo in ('goleada', 'vexame'), adv=adv, placar=placar)
-        self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
+        if not classico:       # no clássico a manchete própria já saiu
+            self.noticia(tipo, p['data'], r, destaque=tipo in ('goleada', 'vexame'), adv=adv, placar=placar)
+            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
         if tipo in ('goleada', 'vexame'):
             from .gestao import moral_ajuste
             moral_ajuste(self.s, '*', 1 if tipo == 'goleada' else -1, p['data'],
@@ -345,6 +366,35 @@ class Mundo:
         if humor == 'chateado' and t <= 30:
             humor = 'revolta'
         self.posts(humor, p['data'], r, n=3, adv=adv, placar=placar)
+
+    def _provocacao(self, p, adv, nome_c, gp, gc, r):
+        """Depois do clássico, a torcida rival e a nossa se provocam nas redes."""
+        from .rivais import norm
+        tag = ''.join(norm(adv))[:12] or 'rival'
+        placar = f'{gp} a {gc}'
+        if p['res'] == 'V':
+            nossos = [f'O {nome_c} é nosso! {placar} e o {adv} chorando de novo 😂', f'Freguês é freguês. {adv} sabe o caminho de casa.',
+                      f'Semana inteira zoando o {adv}. Que delícia de {nome_c}!']
+            deles = ['Sorte. Só sorte. Juiz ajudou.', 'Ganharam um jogo e já acham que são campeões kkkk',
+                     'Aproveita que dura pouco.']
+        elif p['res'] == 'D':
+            nossos = [f'Inadmissível perder o {nome_c}. Quero explicação!', 'Clássico não se joga, se ganha. Vergonha.',
+                      f'Uma semana inteira ouvindo piada do {adv}. Obrigado, time.']
+            deles = [f'{placar} e foi pouco 😂', f'Liga pra gente quando aprender a jogar {nome_c}.',
+                     'Freguesia confirmada. Bom dia pra quem é do lado certo.']
+        else:
+            nossos = [f'Empate no {nome_c} tem gosto de nada.', 'Clássico pede mais vontade.']
+            deles = ['Saíram de campo comemorando empate kkk', 'Com esse time, empate foi lucro pra vocês.']
+        v = self._vars({'adv': adv, 'placar': placar}, r)
+        for t in r.sample(nossos, 2):
+            autor = r.choice(arrobas(self.clube))
+            cur = r.randint(2000, 15000)
+            self.m['posts'].append({'data': p['data'], 'autor': autor, 'texto': t, 'humor': 'classico',
+                                    'curtidas': cur, 'reposts': int(cur * 0.25),
+                                    'respostas': [{'autor': f'@{tag}{r.choice(["_oficialfans", "10", "_raiz", "depressao"])}',
+                                                   'texto': r.choice(deles), 'curtidas': r.randint(50, 3000)}]
+                                                 + self._respostas('euforia' if p['res'] == 'V' else 'revolta', r, autor, v, n=1)})
+        self.m['posts'] = self.m['posts'][-300:]
 
     def _diretoria(self, engine, data):
         ap = self.aproveitamento()

@@ -160,6 +160,23 @@ dialog select,dialog input{width:100%}
 .foot{color:var(--dim);font-size:11px;margin-top:30px}
 .hidden{display:none}
 /* tema claro */
+.deps{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.dep p{margin:6px 0;font-size:13px;line-height:1.45}.dep .obra{color:var(--gold)}.dep button{margin-top:8px}
+.niv{display:flex;gap:3px}.niv i{width:14px;height:8px;background:#2b313b;border-radius:1px}.niv i.f{background:var(--lime)}
+.riv{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.placarr{display:flex;gap:10px;margin-bottom:10px}.placarr div{flex:1;background:var(--panel2);border-radius:3px;padding:10px;text-align:center}
+.placarr b{display:block;font-family:var(--head);font-size:26px}.placarr span{font-size:11px;color:var(--mut)}
+.jl{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}.jl small{color:var(--mut);min-width:78px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button{padding:6px 10px;font-size:11px}
+.trofeus{display:flex;gap:10px;flex-wrap:wrap}
+.trof{background:linear-gradient(180deg,rgba(242,194,48,.18),var(--panel2));border:1px solid rgba(242,194,48,.35);border-radius:4px;padding:10px 14px;text-align:center;font-size:26px;min-width:120px}
+.trof b{display:block;font-size:13px;font-family:var(--head);margin-top:4px;letter-spacing:.03em}.trof small{font-size:11px;color:var(--mut)}
+.reac{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;padding:6px 8px;border-radius:3px;background:rgba(255,255,255,.05);color:#c9cfda}
+.reac .jn{width:24px;height:24px;font-size:9px;flex:none}
+.reac.ok{border-left:3px solid var(--green)}.reac.off{border-left:3px solid var(--red)}
+.ev{display:flex;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}.ev .ic{font-size:18px;width:26px;text-align:center}
+.ev b{display:block}.ev p{margin:3px 0;color:var(--mut);font-size:13px}.ev small{color:var(--dim);font-size:11px}
+@media(max-width:900px){.deps{grid-template-columns:1fr}}
 :root[data-theme="light"]{--bg:#eef0f3;--bg2:#ffffff;--panel:#ffffff;--panel2:#e7eaee;--line:#d4d9e0;--txt:#161a21;--mut:#5b6575;--dim:#8a93a3}
 :root[data-theme="light"] body{background:var(--bg)}
 :root[data-theme="light"] .box,:root[data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.06)}
@@ -388,8 +405,13 @@ dialog select,dialog input{width:100%}
   <!-- CLUBE -->
   <section id="t-clube">
     <div class="crumb">Início / Clube / <b>Visão geral</b></div>
-    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a></div>
+    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a><a data-sub="dir">Diretoria</a><a data-sub="est">Estrutura e marca</a><a data-sub="riv">Clássicos</a><a data-sub="temp">Temporadas</a><a data-sub="tec">Carreira do técnico</a></div>
     <div id="c-tab" class="hidden"><div class="box"><h3>Classificação <small id="tabInfo"></small></h3><div id="tabela"></div></div></div>
+    <div id="c-dir" class="hidden"><div id="dirBox"></div></div>
+    <div id="c-est" class="hidden"><div id="estBox"></div></div>
+    <div id="c-riv" class="hidden"><div id="rivBox"></div></div>
+    <div id="c-temp" class="hidden"><div id="tempBox"></div></div>
+    <div id="c-tec" class="hidden"><div id="tecBox"></div></div>
     <div id="c-geral">
     <div class="hero">
       <img class="wmk" src="/escudo.png" onerror="this.remove()">
@@ -485,7 +507,7 @@ dialog select,dialog input{width:100%}
     <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
       <div class="kanban"><div class="kcol"><h4>NEGOCIANDO</h4><div id="kNeg"></div></div><div class="kcol"><h4>CHEGADAS</h4><div id="kIn"></div></div><div class="kcol"><h4>SAÍDAS</h4><div id="kOut"></div></div></div>
       <p style="font-size:12px;color:var(--mut);margin-top:12px">O valor é estimado pela variação do orçamento de transferências entre dois saves. Se você fizer várias negociações antes de salvar, o valor fica dividido entre elas.</p></div></div>
-    <div id="e-evt" class="hidden"><div class="box"><h3>Vestiário <small>afastamentos e acontecimentos</small></h3><div id="evList"></div></div></div>
+    <div id="e-evt" class="hidden"><div id="vestBox"></div><div class="box"><h3>Acontecimentos <small>afastamentos, lesões e o que rola no vestiário</small></h3><div id="evList"></div></div></div>
   </section>
 
   <section id="t-fin" class="hidden">
@@ -650,6 +672,10 @@ function render(){
   const tp=S.time&&S.time.prep;
   if(tp&&tp.rodando) bn+=`<div class="banner"><p><b>Preparando os uniformes do ${esc(S.time.nome)}:</b> o app está tirando os patrocínios originais das ${S.time.n_uniformes} variações e guardando onde eles ficavam. ${esc(tp.msg||'')}</p><div class="prog"><i style="width:${Math.round(100*(tp.i||0)/(tp.n||1))}%"></i></div></div>`;
   else if(tp&&tp.erro) bn+=`<div class="banner err"><p>Preparação dos uniformes: ${esc(tp.msg)}</p></div>`;
+  {const D=(S.carreira||{}).diretoria||{};const ver=`<button class="ghost" onclick="go('clube');abrirSub('c','dir')">Ver</button>`;
+   if(D.status=='demitido') bn+=`<div class="banner err"><p><b>Você foi demitido.</b> ${esc(D.motivo||'')}. Veja as propostas de outros clubes.</p>${ver}</div>`;
+   else if(D.sondagem) bn+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer contratar você.</b> Decida se fica ou aceita.</p>${ver}</div>`;
+   else if(D.ultimato) bn+=`<div class="banner err"><p><b>Ultimato da diretoria:</b> restam ${D.ultimato.restam} jogo(s) para reagir.</p>${ver}</div>`;}
   if(!ok) bn+=`<div class="banner"><p>Lendo o save da carreira… Se demorar, confira se o jogo já gravou um save do Master League.</p></div>`;
   (S.avisos||[]).forEach(a=>toast(a));
   $('banners').innerHTML=bn;
@@ -677,11 +703,11 @@ function rIngame(){const g=S.ingame;const el=$('ingameBox');if(!el)return;
   const t=(S.mundo||{}).torcida??50;
   el.innerHTML=`<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">
     <div>🏟️ <b>${esc(g.estadio||'estádio não encontrado no map_teams.txt')}</b></div>
-    <div>🚩 Faixas: <b>${g.faixas=='apoio'?'de apoio':g.faixas=='protesto'?'de protesto':'originais'}</b> <small style="color:var(--mut)">(torcida ${t}/100: apoio a partir de 75, protesto até 30)</small></div>
-    <div>🌱 Gramado: <b>${g.gramado=='otimo'?'impecável (finanças excelentes)':g.gramado=='ruim'?'seco e falhado (corte de custos)':'normal'}</b></div>
+    <div>🚩 Faixas: <b>${g.faixas=='apoio'?'de apoio':g.faixas=='protesto'?'de protesto':'originais'}</b>${g.faixas_n?` <small style="color:var(--mut)">(${g.faixas_n} faixa(s))</small>`:''} <small style="color:var(--mut)">· ${esc(g.faixas_motivo||('torcida '+t+'/100'))}</small></div>
+    <div>🌱 Gramado: <b>${(()=>{const c=((S.carreira||{}).gramado||{}).cond;return (c==null?'':Math.round(c)+'/100 · ')+(g.gramado=='otimo'?'impecável':g.gramado=='ruim'?'castigado':'normal')})()}</b> <small style="color:var(--mut)">· desgasta a cada jogo em casa, recupera nos dias de folga</small></div>
     <div>📐 Bandeirinhas: <b>${g.bandeirinha?'cores do clube + patrocinador master':'originais'}</b></div>
     <button class="ghost" onclick="api('/api/ingame/atualizar',{}).then(()=>{toast('Estádio atualizado. Vale a partir do próximo jogo em casa.');load()})">Refazer agora</button></div>`}
-function rClube(){rHumor();rIngame();
+function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
   $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
@@ -703,6 +729,80 @@ function rClube(){rHumor();rIngame();
   $('clubOffers').innerHTML=of.length?of.map(o=>`<div class="row" style="cursor:pointer" onclick="go('patro')">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${anos(o.anos)}</small></div><div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div></div>`).join(''):'<div class="empty">Sem propostas no momento.</div>';
 }
 
+function spark(h){if(!h||h.length<2)return '<p>O gráfico aparece a partir da segunda leitura do save.</p>';const W=400,H=70,vs=h.map(x=>x[1]),mn=Math.min(...vs)-3,mx=Math.max(...vs)+3;
+  const pts=vs.map((v,i)=>`${(i/(vs.length-1)*W).toFixed(1)},${(H-(v-mn)/(mx-mn)*H).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--lime)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><p>${dt(h[0][0])} → ${dt(h[h.length-1][0])}</p>`}
+const temp=a=>a+'/'+String(a+1).slice(2);
+function rDir(){const D=(S.carreira||{}).diretoria;const el=$('dirBox');if(!el)return;if(!D){el.innerHTML='<div class="empty">Aguardando a leitura do save.</div>';return}
+  const SIT={firme:['Firme no cargo','var(--green)'],estavel:['Estável','var(--green)'],pressionado:['Pressionado','var(--gold)'],ameacado:['Ameaçado','var(--red)']};
+  const [st,stc]=D.status=='demitido'?['Demitido','var(--red)']:D.status=='saiu'?['Saiu do clube','var(--mut)']:SIT[D.situacao];
+  const M=D.meta;const LS={em_dia:['no caminho','ok'],perto:['perto da meta','wait'],longe:['longe da meta','off'],aguardando:['aguardando o campeonato','']};
+  let h=`<div class="grid3">
+   <div class="meter"><h4>CARGO <b style="color:${stc}">${st}</b></h4><div class="bar"><i style="width:${D.confianca}%;background:${cor(D.confianca)}"></i></div><p>Confiança da diretoria: ${D.confianca}/100 · contrato até a temporada ${D.contrato_ate?temp(D.contrato_ate):'—'}</p></div>
+   <div class="meter"><h4>META NA LIGA</h4>${M?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.liga.texto)}</p><p>${M.liga_status.pos?`Hoje: <b>${M.liga_status.pos}º</b> · `:''}<span class="pill ${LS[M.liga_status.status][1]}">${LS[M.liga_status.status][0]}</span></p>`:'<p>Definida na primeira leitura da temporada.</p>'}</div>
+   <div class="meter"><h4>COPA</h4>${M&&M.copa?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.copa.texto)}</p><p><span class="pill ${M.copa_status.status=='cumprida'?'ok':'wait'}">${M.copa_status.status=='cumprida'?'cumprida':'em andamento'}</span></p>`:'<p style="margin-top:0">Sem meta de copa nesta temporada.</p>'}</div></div>`;
+  if(D.ultimato)h+=`<div class="banner err"><p><b>Ultimato da diretoria.</b> Restam ${D.ultimato.restam} jogo(s): faça 7 pontos no período ou recupere a confiança até 40.</p></div>`;
+  if(D.sondagem)h+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer você.</b> Recusar renova o seu contrato e anima a torcida. Aceitar encerra o trabalho aqui: comece uma carreira nova no jogo com o ${esc(D.sondagem.nome)} e o app passa a acompanhar o novo clube, levando a sua carreira de técnico junto.</p><button class="ghost" onclick="sondagem(false)">Recusar e ficar</button><button class="lime" onclick="sondagem(true)">Aceitar</button></div>`;
+  if(D.status!='empregado')h+=`<div class="box" style="margin-bottom:16px"><h3>${D.status=='demitido'?'Você foi demitido':'Você deixou o clube'} <small>${esc(D.motivo||'')}</small></h3>
+    <p style="color:var(--mut);margin-top:0">Para assumir um destes clubes, comece uma carreira nova no PES com ele: o app passa a acompanhar o novo time sozinho e a sua carreira de técnico (títulos e prestígio) continua.</p>
+    ${(D.propostas||[]).map(p=>`<div class="row"><div class="nm"><b>${esc(p.nome)}</b><small>quer você no comando</small></div></div>`).join('')||'<div class="empty">Nenhuma proposta.</div>'}
+    <div style="margin-top:10px"><button class="ghost" onclick="continuarClube()">Continuar no ${esc(S.clube)} mesmo assim</button></div></div>`;
+  h+=`<div class="grid2"><div class="box"><h3>Histórico do cargo</h3>${(D.historico||[]).map(x=>`<div class="ev"><div class="ic">${{ultimato:'⏳',superou:'💪',demissao:'❌',renovacao:'✍️',fica:'🤝',saida:'✈️',volta:'↩️'}[x.tipo]||'•'}</div><div><b>${esc(x.texto)}</b><small>${dt(x.data)}</small></div></div>`).join('')||'<div class="empty">Nada por enquanto.</div>'}</div>
+    <div class="box"><h3>Como funciona</h3><p style="color:var(--mut);font-size:13px;line-height:1.55;margin-top:0">Confiança abaixo de 25 gera um ultimato de 4 jogos. No fim da temporada, meta cumprida renova o contrato; rebaixamento, ou meta perdida com confiança abaixo de 45, derruba o técnico. Com confiança e torcida em alta, outros clubes podem sondar você.</p>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:10px;cursor:pointer"><input type="checkbox" ${D.demissao_ativa?'checked':''} onchange="api('/api/diretoria/demissao_ativa',{ativo:this.checked}).then(()=>{this.blur();load()})"> A diretoria pode me demitir</label></div></div>`;
+  el.innerHTML=h}
+async function sondagem(a){if(a&&!confirm('Aceitar a proposta? O trabalho neste clube termina aqui.'))return;await api('/api/diretoria/sondagem',{aceitar:a});toast(a?'Proposta aceita. Comece a carreira nova no jogo quando quiser.':'Você ficou! Contrato renovado.');load()}
+async function continuarClube(){await api('/api/diretoria/continuar',{});toast('O presidente voltou atrás. Você segue no comando.');load()}
+function rEstr(){const E=(S.carreira||{}).estrutura;const el=$('estBox');if(!el||!E)return;
+  const niv=n=>`<span class="niv">${Array.from({length:5},(_,i)=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`;
+  el.innerHTML=`<div class="grid3" style="grid-template-columns:1fr 1.4fr"><div class="meter"><h4>VALOR DA MARCA <b style="color:${cor(E.marca)}">${E.marca}</b></h4><div class="bar"><i style="width:${E.marca}%;background:${cor(E.marca)}"></i></div><p>Sobe com títulos, acessos, torcida feliz e marketing; cai com rebaixamento. Hoje soma <b>${E.marca_bonus>0?'+':''}${E.marca_bonus}</b> na atratividade para patrocinadores. Acima de 60, empresas concorrentes tentam tomar o espaço de um patrocinador atual, pagando a multa dele.</p></div>
+   <div class="meter"><h4>EVOLUÇÃO DA MARCA</h4>${spark(E.marca_hist)}</div></div>
+   <div class="deps">${E.deptos.map(d=>`<div class="box dep"><h3>${d.icone} ${esc(d.nome)} ${niv(d.nivel)}</h3><p>Hoje: <b>${esc(d.efeito)}</b></p>
+    ${d.obra?`<p class="obra">🚧 Obra para o nível ${d.obra.para}: fica pronta em ${dt(d.obra.fim)} (faltam ${d.obra.dias} dia(s) da carreira)</p>`:d.proximo?`<p style="color:var(--mut)">Nível ${d.nivel+1}: ${esc(d.proximo)}</p><button class="lime" onclick="investir('${d.id}',${d.custo})">Investir ${eurM(d.custo)} · ${d.dias_obra} dias de obra</button>`:'<p style="color:var(--green)">Nível máximo.</p>'}</div>`).join('')}</div>
+   <div class="box" style="margin-top:16px"><h3>Pagamentos das obras <small>saem do orçamento de transferências do save</small></h3>${(E.debitos||[]).map(x=>`<div class="ev"><div class="ic">🏗️</div><div><b>${esc(x.motivo)} · ${eurM(x.valor)}</b><small>${dt(x.data)} · ${x.status=='aplicado'?'descontado no save':'aguardando gravar no save'}</small></div></div>`).join('')||'<div class="empty">Nenhuma obra ainda.</div>'}</div>`}
+async function investir(d,c){if(!confirm('Investir '+eurM(c)+'? O valor sai do orçamento de transferências do save. Depois, recarregue a carreira no jogo sem salvar antes.'))return;await api('/api/estrutura/investir',{depto:d});toast('Obra iniciada.');load()}
+function rRiv(){const C=S.carreira||{};const el=$('rivBox');if(!el)return;const R=C.rivais||[];
+  el.innerHTML=`<div class="riv">${R.map(r=>`<div class="box"><h3>${esc(r.classico)} <small>contra ${esc(r.nome)}${r.auto?'':' · escolhido por você'}</small></h3>
+    <div class="placarr"><div><b style="color:var(--green)">${r.V}</b><span>vitórias</span></div><div><b>${r.E}</b><span>empates</span></div><div><b style="color:var(--red)">${r.D}</b><span>derrotas</span></div></div>
+    ${(r.jogos||[]).map(j=>`<div class="jl"><small>${dt(j.data)}</small><span class="res ${j.res}">${j.res}</span>${j.gp} x ${j.gc} · ${j.casa?'em casa':'fora'}</div>`).join('')||'<div class="empty" style="font-size:12px">Nenhum clássico jogado ainda nesta carreira.</div>'}</div>`).join('')||'<div class="empty">O app não reconheceu rivais tradicionais para este clube. Escolha abaixo.</div>'}</div>
+   <div class="box" style="margin-top:16px"><h3>Rivais extras <small>times da sua liga que também contam como clássico</small></h3>
+    <div class="chips">${(C.times_tabela||[]).map(t=>{const auto=R.some(r=>r.id==t.id&&r.auto);const on=auto||(C.rivais_manual||[]).includes(t.id);return `<button class="${on?'lime':'ghost'}" ${auto?'disabled title="rival tradicional"':''} onclick="togRival(${t.id})">${esc(t.nome)}</button>`}).join('')||'<span style="color:var(--mut)">A lista aparece depois do primeiro jogo da liga.</span>'}</div>
+    <p style="font-size:12px;color:var(--mut);margin-top:10px">Clássico pesa mais na torcida, na diretoria e no vestiário, tem manchete e pergunta própria na coletiva, provocação entre torcidas nas redes e faixa no estádio depois da vitória.</p></div>`}
+async function togRival(id){const m=new Set((S.carreira||{}).rivais_manual||[]);m.has(id)?m.delete(id):m.add(id);await api('/api/rivais',{ids:[...m]});load()}
+let TEMP=null;
+function rTemp(){const T=(S.carreira||{}).retro||[];const el=$('tempBox');if(!el)return;if(!T.length){el.innerHTML='<div class="empty">A retrospectiva aparece depois do primeiro jogo.</div>';return}
+  if(TEMP==null||!T.some(t=>t.ano==TEMP))TEMP=T[0].ano;const s=T.find(t=>t.ano==TEMP);
+  const tits=T.flatMap(t=>t.titulos.map(n=>({n,ano:t.ano})));
+  const L=[s.pos?`Posição final: <b>${s.pos}º</b>${s.divisao?' na Série '+s.divisao:''}${s.meta_cumprida===true?' · meta cumprida':s.meta_cumprida===false?' · meta não cumprida':''}`:'Campeonato em andamento',
+    s.acesso?'<b style="color:var(--green)">Acesso conquistado</b>':'',s.rebaixado?'<b style="color:var(--red)">Rebaixado</b>':'',
+    s.maior_vitoria?`Maior vitória: <b>${s.maior_vitoria.gp} x ${s.maior_vitoria.gc}</b> no ${esc(s.maior_vitoria.adv)}`:'',
+    s.pior_derrota?`Pior derrota: <b>${s.pior_derrota.gp} x ${s.pior_derrota.gc}</b> para o ${esc(s.pior_derrota.adv)}`:'',
+    s.seq_vitorias?`Maior sequência de vitórias: <b>${s.seq_vitorias}</b>`:'',s.invencibilidade?`Maior invencibilidade: <b>${s.invencibilidade}</b> jogo(s)`:'',
+    s.classicos?`Clássicos: <b>${s.classicos.V}V ${s.classicos.E}E ${s.classicos.D}D</b>`:'',
+    s.patrocinios.novos?`Patrocínios fechados: <b>${s.patrocinios.novos}</b> (${eurM(s.patrocinios.valor)} por temporada)`:'',
+    s.torcida?`Torcida: de ${s.torcida[0]} para <b>${s.torcida[1]}</b>`:''].filter(Boolean);
+  el.innerHTML=`<div class="box" style="margin-bottom:16px"><h3>Sala de troféus <small>${tits.length} título(s) nesta carreira</small></h3><div class="trofeus">${tits.map(t=>`<div class="trof">🏆<b>${esc(t.n)}</b><small>${temp(t.ano)}</small></div>`).join('')||'<div class="empty" style="flex:1">A estante ainda está vazia.</div>'}</div></div>
+   <div class="seg" style="max-width:520px">${T.map(t=>`<button class="${t.ano==TEMP?'on':''}" onclick="TEMP=${t.ano};rTemp()">${temp(t.ano)}</button>`).join('')}</div>
+   <div class="grid2"><div>
+    <div class="cards" style="flex-wrap:wrap">${[['Jogos',s.jogos],['Vitórias',s.V],['Empates',s.E],['Derrotas',s.D],['Gols',s.gp+' x '+s.gc],['Aproveit.',s.aproveitamento==null?'—':s.aproveitamento+'%']].map(([k,v])=>`<div class="card" style="min-width:120px"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+    <div class="box" style="margin-top:14px"><h3>Destaques</h3>${L.map(x=>`<div class="jl">${x}</div>`).join('')}${s.manchete?`<p style="margin-top:12px;font-style:italic">“${esc(s.manchete)}”</p>`:''}</div></div>
+    <div class="box"><h3>Capa da temporada <small><a href="/retro/${s.ano}.png" download="temporada_${s.ano}.png" style="color:var(--lime)">baixar imagem</a></small></h3><img src="/retro/${s.ano}.png?k=${s.jogos}-${s.titulos.length}-${encodeURIComponent(s.manchete||'')}" style="width:100%;border-radius:4px"></div></div>`}
+function rTec(){const T=(S.carreira||{}).tecnico;const el=$('tecBox');if(!el||!T)return;const nome=(S.gestao||{}).tecnico_nome||'Técnico';
+  el.innerHTML=`<div class="grid3"><div class="meter"><h4>PRESTÍGIO <b style="color:${cor(T.prestigio)}">${T.prestigio}</b></h4><div class="bar"><i style="width:${T.prestigio}%;background:${cor(T.prestigio)}"></i></div><p><b>${esc(T.nivel)}</b>. Vai com você para qualquer clube: soma <b>${T.bonus>0?'+':''}${T.bonus}</b> na atratividade para patrocinadores e define a confiança da diretoria quando você chega.</p></div>
+   <div class="meter"><h4>CARREIRA</h4><p style="margin-top:0;font-size:15px;color:var(--txt)">${T.jogos} jogos · ${T.V}V ${T.E}E ${T.D}D</p><p>Aproveitamento ${T.aproveitamento==null?'—':T.aproveitamento+'%'} · ${T.gp} gols pró, ${T.gc} contra</p></div>
+   <div class="meter"><h4>TÍTULOS <b>${T.titulos}</b></h4><p style="margin-top:0">${T.passagens.length} clube(s) comandado(s). Títulos, acessos e boas campanhas sobem o prestígio; rebaixamentos e demissões derrubam.</p></div></div>
+   <div class="box"><h3>Passagens de ${esc(nome)}</h3>${T.passagens.map(p=>`<div class="row"><div class="nm"><b>${esc(p.clube)}</b><small>${dt(p.inicio)} – ${p.ativa?'hoje':dt(p.fim)} · ${p.jogos} jogos · ${p.V}V ${p.E}E ${p.D}D${p.acessos?' · '+p.acessos+' acesso(s)':''}${p.rebaixamentos?' · '+p.rebaixamentos+' rebaixamento(s)':''}</small>
+    <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${p.titulos_nomes.map(t=>`<span class="pill ok">🏆 ${esc(t)}</span>`).join('')}${p.saida=='demitido'?`<span class="pill off">demitido${p.motivo_saida?': '+esc(p.motivo_saida):''}</span>`:p.saida=='saiu'?'<span class="pill">saiu para outro clube</span>':p.ativa?'<span class="pill ok">no comando</span>':''}</div></div></div>`).join('')}
+   <p style="font-size:12px;color:var(--mut);margin-top:12px">A carreira do técnico fica guardada fora dos saves. Ao começar uma carreira nova no jogo, com qualquer clube, ela continua daqui.</p></div>`}
+function rVest(){const V=(S.carreira||{}).vestiario||{};const G=S.gestao||{};const c=V.clima??60;
+  $('vestBox').innerHTML=`<div class="grid3"><div class="meter"><h4>CLIMA DO GRUPO <b style="color:${cor(c)}">${c}</b></h4><div class="bar"><i style="width:${c}%;background:${cor(c)}"></i></div><p>${c>=75?'Grupo fechado com a comissão':c>=50?'Ambiente normal':c>=35?'Clima tenso: reclamações e panelinhas':'Vestiário rachado'}. Sobe com vitórias e técnico que protege o grupo; cai com derrotas, indisciplina e jogador exposto na coletiva.</p></div>
+   <div class="meter"><h4>CAPITÃO</h4><select id="capSel" style="width:100%" onchange="api('/api/vestiario/capitao',{nome:this.value}).then(()=>{this.blur();toast('Braçadeira entregue.');load()})"><option value="">— escolher —</option>${(S.elenco||[]).filter(p=>!p.nome.startsWith('Jogador ')).map(p=>`<option ${p.nome==V.capitao?'selected':''}>${esc(p.nome)}</option>`).join('')}</select><p>Segura parte do baque das derrotas e, com o clima ruim, pode reunir o elenco.</p></div>
+   <div class="meter"><h4>ÍDOLO DA TORCIDA</h4><p style="margin-top:0;font-size:16px;color:var(--txt)">${V.idolo?'⭐ '+esc(V.idolo):'Ninguém ainda'}</p><p>O mais elogiado na imprensa. Ganha faixa no estádio com a torcida em alta.</p>${(V.panelinhas||[]).length?`<p><b>Panelinha:</b> ${V.panelinhas.map(p=>p.jogadores.map(esc).join(', ')).join(' · ')}</p>`:''}</div></div>`;
+  const IC={capitao:'©️',capitao_apaga:'🤝',racha:'💥',reclamacao:'📱',panelinha:'👥',unido:'🍖',lesao:'🩺',indisciplina:'⚠️',pessoal:'🏠'};
+  const ev=[...(G.eventos||[]).map(e=>({data:e.data,ic:IC[e.tipo]||'•',t:e.titulo+' · '+e.jogador,p:e.texto,s:e.ativo?'em andamento':'encerrado'})),
+    ...(V.eventos||[]).map(e=>({data:e.data,ic:IC[e.tipo]||'•',t:e.titulo,p:e.texto,s:e.bom===true?'bom para o grupo':e.bom===false?'ruim para o grupo':''}))].sort((a,b)=>b.data.localeCompare(a.data));
+  $('evList').innerHTML=ev.length?ev.map(e=>`<div class="ev"><div class="ic">${e.ic}</div><div><b>${esc(e.t)}</b><p>${esc(e.p)}</p><small>${dt(e.data)}${e.s?' · '+e.s:''}</small></div></div>`).join('')
+    :'<div class="empty">Nada aconteceu no vestiário ainda.</div>'}
 function clChips(cl){if(!cl)return '';return `<span class="pill ${cl.desempenho?'wait':'ok'}">${cl.desempenho?'com':'sem'} cláusula de desempenho</span> <span class="pill">multa de rescisão ${cl.multa_pct}%</span>${cl.bonus_pct&&(cl.competicoes||[]).length?' '+cl.competicoes.map(c=>`<span class="pill ok" title="bônus por título: ${cl.bonus_pct}% da cota x peso ${TPESO[c]||1}">🏆 ${COMPN[c]||c} +${cl.bonus_pct*(TPESO[c]||1)}%</span>`).join(' '):''}`}
 const TPESO={copa_brasil:1,serie_b:1,brasileirao:2,libertadores:4,interclubes:6,mundial:10};
 const COMPN={copa_brasil:'Copa do Brasil',serie_b:'Série B',brasileirao:'Brasileirão',libertadores:'Libertadores',interclubes:'Interclubes',mundial:'Super Mundial'};
@@ -762,18 +862,20 @@ function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x
   const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
   if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto('neutro','x')||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro','x')}</div></div>`}
     <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">O painel atrás do técnico mostra os patrocinadores com contrato.</p></div></div></div>`+rFotosTec();return}
-  const aberta=c.status=='aberta';$('colInfo').textContent=c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada');
+  const aberta=c.status=='aberta';const imp=(S.carreira||{}).imprensa??55;$('colInfo').textContent=(c.classico?'CLÁSSICO · ':'')+c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada')+' · relação com a imprensa '+imp+'/100';
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
   $('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto(tom,c.id)||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div>`}<div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
-    ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
-    ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`+rFotosTec()}
+    ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}${q.reacao?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome||'?'};return `<div class="reac ${q.reacao.bom?'ok':'off'}">${jnAv(j)}<span><b>${esc(j.nome)}:</b> “${esc(q.reacao.texto)}”</span></div>`})():''}</div>`).join('')}
+    ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida, a diretoria, o vestiário e a sua relação com a imprensa.</p>':''}</div></div></div>`+rFotosTec()}
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
 const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
  lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
  contrato:'mercado',contrato_grande:'mercado',rescisao:'mercado',rumor_patro:'mercado',
  lesao:'elenco',retorno:'elenco',evento:'elenco',jog_elogio:'elenco',jog_critica:'elenco',
- diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores'};
+ diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores',
+ classico_v:'jogo',classico_e:'jogo',classico_d:'jogo',vestiario_racha:'elenco',vestiario_unido:'elenco',jog_reclama:'elenco',vestiario:'elenco',
+ tecnico_demitido:'diretoria',tecnico_sondado:'diretoria',tecnico_fica:'diretoria',tecnico_renova:'diretoria',tecnico_ultimato:'diretoria',tecnico_chega:'diretoria',estrutura:'bastidores'};
 const CATN={jogo:['Jogos','⚽'],tabela:['Tabela','📊'],mercado:['Patrocínio','💼'],elenco:['Elenco','🩺'],diretoria:['Diretoria','🏛️'],imprensa:['Coletiva','🎙️'],bastidores:['Bastidores','👀']};
 let NF='todas',NLIST=[],POSTSEL=0;
 const jnAv=j=>`<div class="jn" style="background:${j.cor}" title="${esc(j.nome)}">${esc(iniciais(j.nome.replace(/"[^"]*"/,'')))}</div>`;
@@ -883,7 +985,7 @@ function offerRow(o){
   const info=wait?`<span class="pill wait">aguardando resposta até ~${dt(o.resposta_em)}</span>`:`<span class="pill">vale até ${dt(o.validade)}</span>`;
   const ped=wait&&o.pedido?` · você pediu ${eurM(o.pedido)}`:'';
   return `<div class="row">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b>${porteTag(e.porte)}
-     <small>${esc(slotName(o.slot))} · ${anos(o.anos)} · início ${dt(o.inicio)}${ped}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${info} ${clChips(wait?o.clausulas_pedidas:o.clausulas)}</div></div>
+     <small>${esc(slotName(o.slot))} · ${anos(o.anos)} · início ${dt(o.inicio)}${ped}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${info} ${o.substitui_empresa?`<span class="pill wait">tira a ${esc(o.substitui_empresa)} do espaço · eles pagam a multa</span>`:''} ${clChips(wait?o.clausulas_pedidas:o.clausulas)}</div></div>
      <div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div>
      <div class="acts">${wait?'':`<button class="lime" onclick="aceitar(${o.id})">Aceitar</button>
        <button onclick="pedir(${o.id})">Negociar</button><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button>
@@ -980,9 +1082,7 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
     const ins=tr.filter(t=>t.tipo=='chegada'),outs=tr.filter(t=>t.tipo=='saida');
     $('kIn').innerHTML=ins.length?ins.map(t=>card(t,'in','CONTRATADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma chegada ainda.</div>';
     $('kOut').innerHTML=outs.length?outs.map(t=>card(t,'out','VENDIDO / DISPENSADO')).join(''):'<div class="empty" style="font-size:12px">Nenhuma saída ainda.</div>'}
-  if(etab=='evt'){const ev=G.eventos||[];
-    $('evList').innerHTML=ev.length?ev.map(e=>`<div class="news ${e.ativo?'dest':''}"><b>${esc(e.titulo)} · ${esc(e.jogador)}</b><p style="margin:4px 0;color:var(--mut)">${esc(e.texto)}</p><small>${dt(e.data)} · ${e.ativo?'em andamento':'encerrado'}</small></div>`).join('')
-      :'<div class="empty">Nada aconteceu no vestiário ainda. De vez em quando surgem atrasos, indisciplina e problemas pessoais; o jogador afastado aparece marcado no cartão.</div>'}
+  if(etab=='evt')rVest();
 }
 // prancheta: posições em % do campo, guardadas no app
 let PR=null,arr=null;
