@@ -325,11 +325,11 @@ class App:
             self.moral_data = None
             if us:
                 try:
-                    mor = savedata.moral_usert(us[-1], ids)
+                    mor = savedata.dados_usert(us[-1], ids)
                     if mor:
                         for j in el:
                             if j['id'] in mor:
-                                j['moral'] = mor[j['id']]
+                                j.update(mor[j['id']])
                         self.moral_data = time.strftime('%d/%m %H:%M', time.localtime(os.path.getmtime(us[-1])))
                 except Exception:
                     log(traceback.format_exc())
@@ -489,7 +489,7 @@ class App:
             if (st.get('orc_inicial') or {}).get('status') == 'pendente':
                 st['orc_inicial']['status'] = 'cancelado'
             antes = st.get('data')
-            novas = self.engine.registrar_partidas(car.results, self.tid(), sim.d2s(car.date))
+            novas = self.engine.registrar_partidas(self.resultados_completos(car), self.tid(), sim.d2s(car.date))
             self.engine.avancar(car.date, primeira_leitura=novo)
             if novo:
                 self.engine.ofertas_iniciais(car.date)
@@ -1003,6 +1003,28 @@ class App:
                 'prep': self.times.prep.get(t['id']), 'n_uniformes': len(t['variantes']),
                 'aprendidos': [k for k, v in t['slots'].items() if v.get('aprendido')]}
 
+    def resultados_completos(self, car):
+        """Partidas do clube: o histórico curto do save (só os jogos que você jogou) mais as súmulas da temporada,
+        que também têm os jogos simulados. Um jogo que já está no histórico do app não entra de novo."""
+        res = list(car.results or [])
+        try:
+            vistos = {(r['torneio'], r['mandante'], r['visitante']) for r in res}
+            ja = {}
+            for p in (self.state or {}).get('partidas', []):
+                ja.setdefault((p['torneio'], p['mandante'], p['visitante']), []).append(p.get('data') or '')
+            for i, m in enumerate(sumulas.do_time(bytes(car.sf.data), car.team_id or self.tid())):
+                k = (m['torneio'], m['mandante'], m['visitante'])
+                if k in vistos:
+                    continue
+                dj = sim.s2d(m['data'])
+                if any(d and dj - dt.timedelta(days=1) <= sim.s2d(d[:10]) <= dj + dt.timedelta(days=200)
+                       for d in ja.get(k, [])):
+                    continue
+                res.append({**m, 'offset': 10 ** 12 + i, 'data_jogo': m['data']})
+        except Exception:
+            log(traceback.format_exc())
+        return res
+
     def estatisticas_view(self):
         e = self.estatisticas
         if not e:
@@ -1029,7 +1051,7 @@ class App:
             'config': {'problemas': config_status(), 'pasta_jogo': CFG.get('pasta_jogo', ''),
                        'pasta_saves': CFG.get('pasta_saves', ''), 'pasta_logos': CFG.get('pasta_logos', ''),
                        'tecnico_nome': CFG.get('tecnico_nome', ''), 'primeira': not CFG.get('configurado')},
-            'clube': self.clube(), 'time': self.time_view(),
+            'clube': self.clube() if (self.time or self.state is not None or CFG.get('clube')) else '', 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
                       'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
@@ -1047,7 +1069,7 @@ class App:
             'redistrib': st.get('redistrib', [])[-6:][::-1],
             'slots': [{'id': k, **{kk: vv for kk, vv in kits.SLOTS[k].items() if kk != 'lugares'}} for k in kits.SLOT_ORDER],
             'livres': eng.slots_livres(eng.hoje()) if eng and eng.hoje() else [],
-            'familias': kits.FAMILIAS,
+            'familias': kits.FAMILIAS if self.time else {},
             'save': st.get('save_info'), 'jogo_aberto': self.game_running(),
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),

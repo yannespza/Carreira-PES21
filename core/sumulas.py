@@ -1,13 +1,15 @@
 """Súmulas das partidas da Master League, lidas do save.
 
 O save guarda a temporada inteira numa tabela de registros de 0x254 bytes (um por partida):
-  +0x04 u16 torneio   +0x07 u8 estado (0x20 a jogar / 0x60 jogada)
+  +0x04 u16 torneio   +0x07 u8 estado (bit 0x40 = jogada: 0x60 na liga, 0x40/0x50 nas copas; 0x20/0x00/0x10 a jogar)
   +0x08 u16 ano  +0x0A u8 mês  +0x0B u8 dia
   +0x14 u32 mandante (id << 14)   +0x18 u32 visitante   +0x1C u8 gols mandante   +0x1F u8 gols visitante
   +0x24 mandante e +0x134 visitante: 17 linhas de 16 bytes, uma por jogador que entrou em campo
      +0 u16 (0xFFFF = linha vazia)  +4 u32 id do jogador  +8 u8 gols  +9 u8 assistências
      +12 u32: bits 0-6 minutos jogados, bits 7-13 nota x10
-Conferido num save real: a soma dos gols dos jogadores bate com o placar em todas as partidas jogadas.
+Liga e copas ficam em sequências separadas de registros, todas com o mesmo formato. Vale para jogos jogados
+e simulados. Conferido em saves reais: a soma dos gols dos jogadores bate com o placar em ~98% dos jogos
+(o resto são gols contra, que não vão para nenhum jogador).
 """
 import struct
 
@@ -15,7 +17,7 @@ import numpy as np
 
 STRIDE = 0x254
 PALAVRAS = STRIDE // 4
-JOGADA, A_JOGAR = 0x60, 0x20
+JOGADA_BIT = 0x40
 LINHAS, LINHA = 17, 16
 LADO = (0x24, 0x134)
 
@@ -25,24 +27,25 @@ def _candidatos(a: np.ndarray):
     n = len(a) - PALAVRAS
     if n <= 0:
         return np.array([], dtype=np.int64)
-    est = a[1:n + 1] >> 24
-    torneio = a[1:n + 1] & 0xFFFF
+    w1 = a[1:n + 1]
+    est, torneio = w1 >> 24, w1 & 0xFFFF
+    w2 = a[2:n + 2]
+    ano, mes, dia = w2 & 0xFFFF, (w2 >> 16) & 0xFF, w2 >> 24
     casa = a[5:n + 5] >> 14
     fora = a[6:n + 6] >> 14
     gc = a[7:n + 7] & 0xFF
-    ok = (((est == JOGADA) | (est == A_JOGAR)) & (torneio > 0) & (casa > 0) & (casa < 20000)
-          & (fora > 0) & (fora < 20000) & (casa != fora) & (gc < 30))
+    ok = (((est & 0x0F) == 0) & (est <= 0x70) & (torneio > 0)
+          & (ano >= 2000) & (ano <= 2100) & (mes >= 1) & (mes <= 12) & (dia >= 1) & (dia <= 31)
+          & (casa > 0) & (casa < 20000) & (fora > 0) & (fora < 20000) & (casa != fora) & (gc < 30))
     return np.nonzero(ok)[0]
 
 
-def achar_tabela(data: bytes):
-    """Devolve (offset, quantidade) da maior sequência de registros de partida, ou None."""
+def achar_tabelas(data: bytes, minimo=2):
+    """Todas as sequências de registros de partida (a liga numa, cada copa noutra): [(offset, quantidade)]."""
     a = np.frombuffer(data[:len(data) // 4 * 4], '<u4')
     cand = _candidatos(a)
-    if not len(cand):
-        return None
     cs = set(cand.tolist())
-    melhor = None
+    out = []
     for w in cand.tolist():
         if w - PALAVRAS in cs:
             continue
@@ -50,9 +53,15 @@ def achar_tabela(data: bytes):
         while x in cs:
             k += 1
             x += PALAVRAS
-        if k >= 20 and (melhor is None or k > melhor[1]):
-            melhor = (w * 4, k)
-    return melhor
+        if k >= minimo:
+            out.append((w * 4, k))
+    return out
+
+
+def achar_tabela(data: bytes):
+    """A maior sequência (a liga). Mantida para quem só precisa dela."""
+    ts = achar_tabelas(data, 20)
+    return max(ts, key=lambda t: t[1]) if ts else None
 
 
 def _jogadores(data, base):
@@ -71,27 +80,32 @@ def _jogadores(data, base):
     return out
 
 
-def partidas(data: bytes, tabela=None):
-    """Todas as partidas já jogadas da temporada, com a súmula de cada time."""
-    tabela = tabela or achar_tabela(data)
-    if not tabela:
-        return []
-    ini, n = tabela
-    res = []
-    for i in range(n):
-        o = ini + i * STRIDE
-        if data[o + 7] != JOGADA:
-            continue
-        ano, mes, dia = struct.unpack_from('<H', data, o + 8)[0], data[o + 0x0A], data[o + 0x0B]
-        casa, fora = struct.unpack_from('<II', data, o + 0x14)
-        res.append({'registro': i, 'torneio': struct.unpack_from('<H', data, o + 4)[0],
-                    'data': f'{ano:04d}-{mes:02d}-{dia:02d}' if 1 <= mes <= 12 and 1 <= dia <= 31 else None,
-                    'mandante': casa >> 14, 'visitante': fora >> 14,
-                    'gols_mandante': data[o + 0x1C], 'gols_visitante': data[o + 0x1F],
-                    'escalacao_mandante': _jogadores(data, o + LADO[0]),
-                    'escalacao_visitante': _jogadores(data, o + LADO[1])})
-    res.sort(key=lambda p: (p['data'] or '', p['registro']))
+def partidas(data: bytes, tabelas=None):
+    """Todas as partidas já jogadas (ou simuladas) da temporada, com a súmula de cada time."""
+    tabelas = tabelas if tabelas is not None else achar_tabelas(data)
+    res, vistos = [], set()
+    for ini, n in tabelas:
+        for i in range(n):
+            o = ini + i * STRIDE
+            if o in vistos or not data[o + 7] & JOGADA_BIT:
+                continue
+            vistos.add(o)
+            ano, mes, dia = struct.unpack_from('<H', data, o + 8)[0], data[o + 0x0A], data[o + 0x0B]
+            casa, fora = struct.unpack_from('<II', data, o + 0x14)
+            res.append({'registro': o, 'torneio': struct.unpack_from('<H', data, o + 4)[0],
+                        'data': f'{ano:04d}-{mes:02d}-{dia:02d}',
+                        'mandante': casa >> 14, 'visitante': fora >> 14,
+                        'gols_mandante': data[o + 0x1C], 'gols_visitante': data[o + 0x1F],
+                        'escalacao_mandante': _jogadores(data, o + LADO[0]),
+                        'escalacao_visitante': _jogadores(data, o + LADO[1])})
+    res.sort(key=lambda p: (p['data'], p['registro']))
     return res
+
+
+def do_time(data: bytes, team_id: int):
+    """Partidas jogadas pelo clube (liga e copas, jogadas ou simuladas), sem a súmula."""
+    return [{k: p[k] for k in ('torneio', 'data', 'mandante', 'visitante', 'gols_mandante', 'gols_visitante')}
+            for p in partidas(data) if team_id in (p['mandante'], p['visitante'])]
 
 
 def do_clube(data: bytes, team_id: int, nomes=None, ultimas=15):

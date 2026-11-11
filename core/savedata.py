@@ -382,6 +382,25 @@ def classificacoes(data: bytes):
 
 
 # ---------------- moral (arquivo "Dados do time" que o jogo grava ao salvar o elenco) ----------------
+def dados_usert(path, ids):
+    """Do arquivo "Dados do time" (USERT): moral e fim de contrato de cada jogador.
+    Bloco do jogador: começa com o id repetido duas vezes; +264 u16 ano, u8 mês, u8 dia do fim do contrato;
+    +279 moral (3 bits: 4 = seta para cima ... 0 = seta para baixo)."""
+    from . import pescrypt
+    d = bytes(pescrypt.decrypt(open(path, 'rb').read()).data)
+    out = {}
+    for pid in ids:
+        o = d.find(struct.pack('<II', pid, pid))
+        if o < 0 or o + 280 > len(d):
+            continue
+        j = {'moral': d[o + 279] & 7}
+        ano, mes, dia = struct.unpack_from('<HBB', d, o + 264)
+        if 2000 <= ano <= 2100 and 1 <= mes <= 12 and 1 <= dia <= 31:
+            j['contrato_ate'] = f'{ano:04d}-{mes:02d}-{dia:02d}'
+        out[pid] = j
+    return out
+
+
 def moral_usert(path, ids):
     """Moral de cada jogador no arquivo USERT (salvar elenco no jogo): byte 279 do bloco do jogador
     (que começa com o id repetido duas vezes), 3 bits: 4 = seta para cima ... 0 = seta para baixo."""

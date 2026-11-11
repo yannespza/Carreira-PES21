@@ -185,6 +185,7 @@ dialog select,dialog input{width:100%}
 @media(max-width:900px){.deps{grid-template-columns:1fr}}
 :root[data-theme="light"]{--bg:#eef0f3;--bg2:#ffffff;--panel:#ffffff;--panel2:#e7eaee;--line:#d4d9e0;--txt:#161a21;--mut:#5b6575;--dim:#8a93a3}
 :root[data-theme="light"] body{background:var(--bg)}
+:root[data-theme="light"] .club b,:root[data-theme="light"] nav a.on,:root[data-theme="light"] nav a:hover{color:#e9ecf1}:root[data-theme="light"] nav a{color:#8a93a3}:root[data-theme="light"] .club small{color:#8a93a3}
 :root[data-theme="light"] .box,:root[data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.06)}
 /* linha do tempo */
 .tl{display:flex;gap:6px;align-items:center;padding:8px 24px;background:var(--bg2);border-bottom:1px solid var(--line);overflow-x:auto}
@@ -406,6 +407,8 @@ dialog select,dialog input{width:100%}
 .emp .rm{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);border:1px solid var(--line);border-radius:50%;width:26px;height:26px;padding:0;color:#fff;font-size:12px;z-index:2}
 .emp .rm:hover{color:var(--red)}
 .emp{position:relative}
+.carta .ctr{display:block;font-size:11px;color:var(--mut);text-align:center;margin-top:2px}.carta .ctr.fim{color:var(--gold)}
+.carta .tg.ctrfim{background:var(--gold);color:#222}
 .emp .lg{position:relative}.emp .lg .troca{position:absolute;bottom:4px;right:6px;font-size:11px;color:#333;background:rgba(255,255,255,.85);border-radius:3px;padding:1px 6px;cursor:pointer;opacity:0;transition:opacity .15s}
 .emp:hover .lg .troca,.emp .lg.sem .troca{opacity:1}.emp .lg.sem{background:repeating-linear-gradient(45deg,#2a2f38 0 8px,#252a32 8px 16px)}
 .emp .lg.sem span.aviso{color:var(--mut);font-size:12px;text-align:center}
@@ -530,10 +533,10 @@ dialog select,dialog input{width:100%}
 
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
-    <div class="crumb">Início / Elenco / <b>Vestiário</b></div>
+    <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
     <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
-    <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div class="cards-el" id="elList"></div>
-      <p style="font-size:12px;color:var(--mut);margin-top:14px">Posição, overall, rosto, lesão e suspensão ainda não foram localizados no save. Por enquanto os cartões mostram nome, altura e os afastamentos criados pelo app.</p></div></div>
+    <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div id="elCtr"></div><div class="cards-el" id="elList"></div>
+      <p style="font-size:12px;color:var(--mut);margin-top:14px">Overall, lesão e suspensão do jogo ainda não foram localizados no save. Os cartões mostram posição, altura, foto, moral e fim de contrato (esses dois vêm do arquivo "Dados do time", que o jogo grava quando você salva o elenco) e os afastamentos criados pelo app.</p></div></div>
     <div id="e-dm" class="hidden"><div id="dmBox"></div></div>
     <div id="e-stats" class="hidden"><div class="cards" id="stCards" style="margin-bottom:14px;flex-wrap:wrap"></div>
       <div class="box"><h3>Jogadores na temporada <small id="stInfo"></small></h3><div style="overflow-x:auto"><table class="tabcl" id="stTab"></table></div>
@@ -1188,18 +1191,22 @@ async function procurarDeNovo(){if(!confirm('Procurar os patrocínios de novo no
     if(Math.abs(b[0]-a[0])<8||Math.abs(b[1]-a[1])<8)return;
     try{await api('/api/time/extra',{familia:fam,caixa:[a[0],a[1],b[0],b[1]]});toast('Área marcada. Clique em "Refazer a limpeza" quando terminar de marcar.');carregarRev()}catch(x){}});
 })();
+document.addEventListener('click',e=>{const a=e.target.closest('.tabs2 a');if(!a)return;const sec=a.closest('section');const b=sec&&sec.querySelector('.crumb b');
+  if(b&&sec.id!='t-patro'&&sec.id!='t-kits')b.textContent=a.textContent.trim()});
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
   ['cartas','pran','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+function fimContrato(p){if(!p.contrato_ate||!S.data)return false;const h=new Date(S.data),f=new Date(p.contrato_ate);return f>=h&&(f-h)<=366*864e5}
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
-  $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral de '+S.moral_data+' (Dados do time)':' · para ver a moral, salve o elenco no jogo (Dados do time)'):'';
+  const ult=el.filter(fimContrato);$('elCtr').innerHTML=ult.length?`<div class="banner" style="margin-bottom:12px"><p><b>📝 Contrato terminando até o fim da temporada:</b> ${ult.map(p=>esc(p.nome)).join(', ')}. Renove no jogo ou planeje a reposição.</p></div>`:'';
+  $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral e contratos de '+S.moral_data+' (Dados do time)':' · para ver a moral e os contratos, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
     $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
   return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
-      <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
+      <div class="nm">${esc(p.nome)}</div>${p.contrato_ate?`<small class="ctr ${fimContrato(p)?'fim':''}" title="Fim do contrato (do arquivo Dados do time)">contrato até ${p.contrato_ate.slice(5,7)}/${p.contrato_ate.slice(0,4)}</small>`:''}${fimContrato(p)?'<span class="tg ctrfim">ÚLTIMO ANO</span>':''}${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rPrancheta();
   if(etab=='transf'){const tr=G.transferencias||[];
     const card=(t,cls,selo)=>`<div class="kcard ${cls}"><span class="selo">${selo}</span><b>${esc(t.nome)}</b><small>${dt(t.data)}${t.valor!=null?' · '+(t.tipo=='chegada'?'custou ~ ':'rendeu ~ ')+eurM(Math.abs(t.valor)):''}</small></div>`;

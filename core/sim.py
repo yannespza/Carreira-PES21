@@ -244,7 +244,7 @@ class Engine:
             casa = r['mandante'] == team_id
             gp, gc = (r['gols_mandante'], r['gols_visitante']) if casa else (r['gols_visitante'], r['gols_mandante'])
             res = 'V' if gp > gc else 'E' if gp == gc else 'D'
-            p = {'chave': chave, 'data': data, 'torneio': r['torneio'], 'mandante': r['mandante'],
+            p = {'chave': chave, 'data': r.get('data_jogo') or data, 'torneio': r['torneio'], 'mandante': r['mandante'],
                  'visitante': r['visitante'], 'gm': r['gols_mandante'], 'gv': r['gols_visitante'], 'res': res}
             self.s['partidas'].append(p); novas.append(p)
         return novas
