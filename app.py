@@ -1728,10 +1728,8 @@ def main():
             abrir_janela(url)
         return
     log('App iniciado, versão', VERSAO)
-    try:
-        atualizar_logos()
-    except Exception:
-        log(traceback.format_exc())
+    # a pasta de logos é lida pela verificação automática logo em seguida (num PC novo isso leva um tempo,
+    # e a janela do app não precisa esperar)
     threading.Thread(target=watcher, daemon=True).start()
     threading.Thread(target=logos_watcher, daemon=True).start()
     class Servidor(ThreadingHTTPServer):
