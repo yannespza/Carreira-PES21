@@ -256,6 +256,101 @@ dialog select,dialog input{width:100%}
 .presets i{display:inline-block;width:26px;height:16px;border-radius:4px;flex:none}
 .moral{position:absolute;top:30px;right:10px;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-weight:900;color:#111;font-size:15px}
 .moral.m4{background:#39d98a}.moral.m3{background:#a6e04a}.moral.m2{background:#f2c230}.moral.m1{background:#f28a30}.moral.m0{background:#e0574a;color:#fff}
+
+/* ===== visual 2.5: herói do clube, portal de notícias, feed ===== */
+:root{--c1:#1f6b3a;--c2:#ffffff}
+.hero{position:relative;overflow:hidden;padding:22px 24px;border-radius:6px;border:1px solid var(--line);
+  background:linear-gradient(115deg,color-mix(in srgb,var(--c1) 55%,#000) 0%,color-mix(in srgb,var(--c1) 22%,var(--bg2)) 55%,var(--bg2) 100%)}
+.hero:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 12px);pointer-events:none}
+.hero>div{position:relative;z-index:1}
+.hero .wmk{position:absolute;right:28%;top:50%;transform:translateY(-50%) rotate(-8deg);height:170%;opacity:.07;z-index:0;filter:grayscale(1) brightness(3)}
+.hero .hesc{height:74px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6));margin-right:14px;vertical-align:middle}
+.hero h1{display:flex;align-items:center;flex-wrap:wrap;gap:6px;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.hpos{display:inline-block;font-size:16px;margin-left:6px;background:var(--lime);color:var(--onlime);font-family:var(--head);padding:3px 9px;border-radius:3px;letter-spacing:.05em}
+.nchips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}
+.nchips a{padding:6px 11px;border:1px solid var(--line);border-radius:20px;font-size:12px;color:var(--mut);cursor:pointer;background:var(--bg2)}
+.nchips a.on{background:var(--lime);color:var(--onlime);border-color:var(--lime);font-weight:700}
+.ngrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:12px}
+.ncard{background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;
+  transition:transform .15s,border-color .15s;animation:entra .35s ease both}
+.ncard:hover{transform:translateY(-2px);border-color:var(--lime)}
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ncard .ntx{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px;flex:1}
+.ncard h4{margin:0;font-size:15px;line-height:1.3;font-weight:600}
+.ncard small{color:var(--mut);font-size:11px;margin-top:auto}
+.ntag{align-self:flex-start;font-family:var(--head);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:2px;background:rgba(255,255,255,.07);color:var(--mut)}
+.c-jogo .ntag{background:rgba(61,220,132,.15);color:var(--green)}.c-tabela .ntag{background:rgba(90,169,255,.15);color:var(--blue)}
+.c-mercado .ntag{background:rgba(242,194,48,.15);color:var(--gold)}.c-elenco .ntag{background:rgba(255,90,95,.14);color:var(--red)}
+.c-diretoria .ntag{background:rgba(190,140,255,.15);color:#c39bff}
+.nmedia{height:118px;position:relative;display:flex;align-items:center;justify-content:center;gap:12px;overflow:hidden;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 70%,#000),color-mix(in srgb,var(--c1) 25%,#111))}
+.nmedia.icon span{font-size:40px;position:relative;z-index:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+.nmedia .wm{position:absolute;height:150%;opacity:.16;right:-10px;transform:rotate(-10deg)}
+.nmedia.logo-m{background:linear-gradient(135deg,#f4f5f7,#d9dde3)}.nmedia.logo-m .lg{width:150px;height:80px;background:none;border:0}
+.nmedia.logo-m .lg img{max-width:100%;max-height:100%}
+.nmedia.jog{justify-content:flex-start;padding:0 18px;font-family:var(--head);font-size:20px;text-transform:uppercase;letter-spacing:.04em}
+.jav{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-family:var(--head);font-size:24px;border:3px solid rgba(255,255,255,.75);flex:none}
+.ncard.big{flex-direction:row;min-height:230px}
+.ncard.big .nmedia{height:auto;flex:1.25;min-height:230px}
+.ncard.big .ntx{flex:1;padding:22px;justify-content:center}
+.ncard.big h4{font-family:var(--head);font-size:30px;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+.ncard.dest:not(.big) h4{color:var(--lime)}
+.placar{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;padding:0 10px}
+.placar .lado{display:flex;flex-direction:column;align-items:center;gap:6px;width:34%;text-align:center;font-family:var(--head);text-transform:uppercase;font-size:12px;letter-spacing:.05em}
+.placar .lado img.esc{height:52px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6))}
+.advb{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-family:var(--head);font-size:18px;border:3px solid rgba(255,255,255,.6)}
+.placar .pl{font-family:var(--head);font-size:40px;white-space:nowrap;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.placar .pl i{font-style:normal;opacity:.5;margin:0 6px;font-size:26px}
+.big .placar .pl{font-size:64px}.big .placar .lado img.esc{height:80px}.big .advb{width:76px;height:76px;font-size:26px}
+.nmedia:has(.placar.V){box-shadow:inset 0 -4px 0 var(--green)}.nmedia:has(.placar.D){box-shadow:inset 0 -4px 0 var(--red)}.nmedia:has(.placar.E){box-shadow:inset 0 -4px 0 var(--mut)}
+/* feed */
+.feed{max-width:680px}
+.termo{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);margin-bottom:12px}
+.termo .bar{flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#e0574a,#f2c230,#3ddc84);position:relative}
+.termo .bar i{position:absolute;top:-5px;width:4px;height:20px;background:#fff;border-radius:2px;box-shadow:0 0 6px #000}
+.termo b{font-size:26px}
+.tw{display:flex;gap:12px;padding:14px 6px;border-bottom:1px solid var(--line);animation:entra .3s ease both}
+.av2x{width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff;overflow:hidden;border:2px solid rgba(255,255,255,.12)}
+.av2x img{width:100%;height:100%;object-fit:cover;object-position:top}
+.av2x.ofc{background:#fff}.av2x.ofc img{object-fit:contain;padding:4px}
+.av2x.tec{background:var(--lime);color:var(--onlime)}
+.tw .hd{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.tw .hd b{font-size:14px}.tw .hd small{color:var(--mut)}
+.tw p{margin:4px 0 8px;line-height:1.45;font-size:14.5px}
+.vf{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px}
+.tw .mid{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:4px 0 10px}
+.tw .mid .nmedia{height:150px}
+.tw .acts{display:flex;gap:26px;color:var(--mut);font-size:13px}
+.tw .acts span{cursor:default}.tw .acts .lk{color:#f2557a}
+.tw details{margin-top:8px}.tw summary{cursor:pointer;color:var(--blue);font-size:13px}
+.tw .rp{display:flex;gap:9px;margin-top:9px;font-size:13.5px}.tw .rp .av2x{width:30px;height:30px;font-size:11px}
+.ptec{background:linear-gradient(90deg,color-mix(in srgb,var(--lime) 10%,transparent),transparent)}
+.moral.app:after{content:'';position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 4px #000}
+@media(max-width:760px){.ncard.big{flex-direction:column}.ncard.big .nmedia{min-height:170px}.ncard.big h4{font-size:22px}.hero .wmk{display:none}}
+
+.ncard{cursor:pointer}
+#mat{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;display:none;overflow:auto;padding:30px 16px}
+#mat.on{display:block}
+#mat .pag{max-width:820px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;animation:entra .25s ease}
+#mat .capa .nmedia{height:260px}
+#mat .capa .nmedia.jog{font-size:30px}
+#mat .art{padding:24px 30px 30px}
+#mat h2{font-size:34px;line-height:1.05;margin:10px 0 14px}
+#mat .ass{display:flex;gap:10px;align-items:center;margin-bottom:18px;color:var(--mut);font-size:13px}
+#mat .art p{font-size:16px;line-height:1.65;margin:0 0 14px}
+#mat .fechar{float:right;margin:10px}
+.jn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--head);font-size:16px;flex:none;border:2px solid rgba(255,255,255,.25)}
+.debate{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+.debate h3 small{color:var(--mut);font-family:var(--body);text-transform:none;letter-spacing:0;font-size:12px;margin-left:6px}
+.fala{display:flex;gap:12px;margin:14px 0;animation:entra .3s ease both}
+.fala .bal{background:var(--panel2);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:10px 14px;flex:1}
+.fala .bal b{font-size:13.5px}.fala .bal small{color:var(--mut);margin-left:6px;font-size:11.5px}
+.fala .bal div{margin-top:4px;font-size:15px;line-height:1.5}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:22px}
+.roster .rj{display:flex;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:10px}
+.roster .rj b{display:block;font-size:13.5px}.roster .rj small{color:var(--mut);font-size:11.5px;line-height:1.35;display:block}
+.perg .rep{display:flex;gap:8px;align-items:center;margin-bottom:4px}.perg .rep .jn{width:28px;height:28px;font-size:11px}
+.perg .rep small{color:#8a93a3}
 </style>
 </head>
 <body>
@@ -286,8 +381,9 @@ dialog select,dialog input{width:100%}
     <div id="c-tab" class="hidden"><div class="box"><h3>Classificação <small id="tabInfo"></small></h3><div id="tabela"></div></div></div>
     <div id="c-geral">
     <div class="hero">
+      <img class="wmk" src="/escudo.png" onerror="this.remove()">
       <div>
-        <h1><span id="hName">—</span><span class="tag" id="hTier">—</span></h1>
+        <h1><img class="hesc" src="/escudo.png" onerror="this.remove()"><span id="hName">—</span><span class="tag" id="hTier">—</span><span class="hpos" id="hPos" style="display:none"></span></h1>
         <div class="meta"><span id="hDate">—</span><span id="hComp">—</span></div>
         <div style="font-size:12px;color:var(--mut)">ATRATIVIDADE PARA PATROCINADORES</div>
         <div class="xp" id="xp"></div>
@@ -396,8 +492,8 @@ dialog select,dialog input{width:100%}
     <div class="crumb">Início / <b>Mídia</b></div>
     <div class="tabs2" data-grp="m"><a data-sub="not" class="on">Notícias</a><a data-sub="col">Sala de imprensa</a><a data-sub="red">Redes sociais</a></div>
     <div id="m-col" class="hidden"><div class="box"><h3>Sala de imprensa <small id="colInfo"></small></h3><div id="sala"></div></div></div>
-    <div id="m-not"><div class="box"><h3>Manchetes <small>imprensa esportiva</small></h3><div id="newsList"></div></div></div>
-    <div id="m-red" class="hidden"><div class="box"><h3>Redes sociais <small>o que a torcida está dizendo</small></h3><div id="postList"></div></div></div>
+    <div id="m-not"><div id="newsList"></div></div><div id="mat" onclick="if(event.target.id=='mat')fecharMat()"></div>
+    <div id="m-red" class="hidden"><div class="feed" id="postList"></div></div>
   </section>
 
   <!-- MENSAGENS -->
@@ -553,6 +649,7 @@ function rTabela(){
   const meu=S.time?S.time.id:null, n=T.linhas.length;
   $('tabInfo').textContent=T.data?'até '+dt(T.data):'';
   {const i=T.linhas.findIndex(l=>l.id==meu);const ini=Math.max(0,Math.min(i-2,n-5));
+   const hp=$('hPos');if(i>=0){hp.style.display='';hp.textContent=T.linhas[i].pos+'º · '+T.linhas[i].pts+' pts'}else hp.style.display='none';
    $('tabMini').innerHTML=i<0?'':`<table class="tabcl">`+T.linhas.slice(ini,ini+5).map(l=>`<tr class="${l.id==meu?'eu':''}"><td>${l.pos}º</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b> pts</td><td>${l.j} j</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`).join('')+'</table>';}
   el.innerHTML=`<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>`+
     T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
@@ -633,17 +730,74 @@ function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
   $('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div><div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
-    ${c.perguntas.map((q,qi)=>`<div class="perg"><p>Repórter: ${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
+    ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
     ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`+rFotosTec()}
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
-function rNews(){rSala();const m=S.mundo||{noticias:[],posts:[]};
-  $('newsList').innerHTML=m.noticias.length?m.noticias.map(n=>`<div class="news ${n.destaque?'dest':''}"><b>${esc(n.titulo)}</b><small>${esc(n.fonte)} · ${dt(n.data)}</small></div>`).join(''):'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';
-  const ops=m.opcoes_post||[];
-  $('postList').innerHTML=`<div class="postbox"><div style="display:flex;gap:10px;align-items:center"><div class="av tec">${esc((m.tecnico||'T')[0])}</div><b>${esc(m.tecnico||'Técnico')}</b><small style="color:var(--mut)">publicar como técnico</small></div>
-    <select id="postSel">${ops.map((t,i)=>`<option value="${i}">${esc(t)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`+
-    (m.posts.length?m.posts.map(p=>`<div class="post ${p.tecnico?'ptec':''}"><div class="av ${p.tecnico?'tec':''}">${esc(p.autor[1].toUpperCase())}</div><div style="flex:1"><b>${esc(p.autor)}</b>${p.tecnico?' <span class="verif">✔ técnico</span>':''}<p>${esc(p.texto)}</p>
-      <small>${dt(p.data)} · ♥ ${(p.curtidas||0).toLocaleString('pt-BR')} · ⟳ ${(p.reposts||0).toLocaleString('pt-BR')} · 💬 ${(p.respostas||[]).length}</small>
-      ${(p.respostas||[]).map(r=>`<div class="resp"><b>${esc(r.autor)}</b> ${esc(r.texto)} <small>♥ ${r.curtidas}</small></div>`).join('')}</div></div>`).join(''):'<div class="empty">Ainda sem posts.</div>')}
+const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
+ lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
+ contrato:'mercado',contrato_grande:'mercado',rescisao:'mercado',rumor_patro:'mercado',
+ lesao:'elenco',retorno:'elenco',evento:'elenco',jog_elogio:'elenco',jog_critica:'elenco',
+ diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores'};
+const CATN={jogo:['Jogos','⚽'],tabela:['Tabela','📊'],mercado:['Patrocínio','💼'],elenco:['Elenco','🩺'],diretoria:['Diretoria','🏛️'],imprensa:['Coletiva','🎙️'],bastidores:['Bastidores','👀']};
+let NF='todas',NLIST=[];
+const jnAv=j=>`<div class="jn" style="background:${j.cor}" title="${esc(j.nome)}">${esc(iniciais(j.nome.replace(/"[^"]*"/,'')))}</div>`;
+function fecharMat(){$('mat').classList.remove('on')}
+async function abrirMat(i){const n=NLIST[i];if(!n)return;const cat=NCAT[n.tipo]||'bastidores';
+  $('mat').innerHTML='<div class="pag"><div class="art">Carregando a matéria…</div></div>';$('mat').classList.add('on');
+  const R=await api('/api/reportagem',{noticia:n});const a=R.autor;
+  $('mat').innerHTML=`<div class="pag"><button class="ghost fechar" onclick="fecharMat()">✕ fechar</button><div class="capa">${midiaNoticia(n)}</div>
+   <div class="art"><span class="ntag c-${cat}">${CATN[cat][1]} ${CATN[cat][0]}</span><h2>${esc(n.titulo)}</h2>
+   <div class="ass">${jnAv(a)}<div><b style="color:var(--txt)">${esc(a.nome)}</b> · ${esc(a.papel)}<br>${esc(n.fonte||a.veiculo)} · ${dt(n.data)}</div></div>
+   ${R.corpo.map(p=>`<p>${esc(p)}</p>`).join('')}
+   <div class="debate"><h3>🎙️ ${esc(R.programa)}<small>a repercussão no programa de debate</small></h3>
+   ${R.mesa.map((m,k)=>`<div class="fala" style="animation-delay:${k*120}ms">${jnAv(m)}<div class="bal"><b>${esc(m.nome)}</b><small>${esc(m.papel)} · ${esc(m.programa)}</small><div>${esc(m.texto)}</div></div></div>`).join('')}</div></div></div>`}
+const escudoImg=c=>`<img class="${c}" src="/escudo.png" onerror="this.style.display='none'">`;
+function hashCor(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return `hsl(${Math.abs(h)%360} 52% 40%)`}
+const advBadge=n=>`<div class="advb" style="background:${hashCor(n)}">${esc(iniciais(n||'?'))}</div>`;
+function placarHTML(n){const eu=esc(S.clube),adv=esc(n.adv||'');const c=n.casa;const r=n.gp>n.gc?'V':n.gp==n.gc?'E':'D';
+  const A=[`${escudoImg('esc')}<span>${eu}</span>`,`${advBadge(n.adv)}<span>${adv}</span>`];if(!c)A.reverse();
+  const G=c?[n.gp,n.gc]:[n.gc,n.gp];
+  return `<div class="placar ${r}"><div class="lado">${A[0]}</div><div class="pl">${G[0]}<i>×</i>${G[1]}</div><div class="lado">${A[1]}</div></div>`}
+function midiaNoticia(n){const cat=NCAT[n.tipo]||'bastidores';
+  if(n.gp!=null)return `<div class="nmedia">${placarHTML(n)}</div>`;
+  if(cat=='mercado'&&n.empresa)return `<div class="nmedia logo-m">${logo(n.empresa)}<b style="color:#222;font-family:var(--head);font-size:18px;text-transform:uppercase">${esc(n.empresa)}</b></div>`;
+  if(n.jogador)return `<div class="nmedia jog">${escudoImg('wm')}<div class="jav" style="background:${hashCor(n.jogador)}">${esc(iniciais(n.jogador))}</div><span>${esc(n.jogador)}</span></div>`;
+  return `<div class="nmedia icon">${escudoImg('wm')}<span>${CATN[cat][1]}</span></div>`}
+function noticiaCard(n,grande,i){const cat=NCAT[n.tipo]||'bastidores';const [cn,ic]=CATN[cat];
+  return `<article class="ncard ${grande?'big':''} c-${cat} ${n.destaque?'dest':''}" onclick="abrirMat(${NLIST.indexOf(n)})" style="animation-delay:${Math.min(i||0,12)*30}ms">${midiaNoticia(n)}
+    <div class="ntx"><span class="ntag">${ic} ${cn}</span><h4>${esc(n.titulo)}</h4><small>${esc(n.fonte||'')} · ${dt(n.data)}</small></div></article>`}
+function rNoticias(){const m=S.mundo||{noticias:[]};const ns=m.noticias||[];
+  const cats=['todas',...Object.keys(CATN)].filter(c=>c=='todas'||ns.some(n=>(NCAT[n.tipo]||'bastidores')==c));
+  const fil=NF=='todas'?ns:ns.filter(n=>(NCAT[n.tipo]||'bastidores')==NF);
+  const chips=`<div class="nchips">${cats.map(c=>`<a class="${NF==c?'on':''}" onclick="NF='${c}';rNoticias()">${c=='todas'?'📰 Todas':CATN[c][1]+' '+CATN[c][0]}</a>`).join('')}</div>`;
+  if(!fil.length){$('newsList').innerHTML=chips+'<div class="empty">As manchetes aparecem conforme o time joga e fecha contratos.</div>';return}
+  NLIST=fil;const top=fil.slice(0,6).find(n=>n.destaque)||fil[0];
+  const ros=(S.jornalistas||[]).map(j=>`<div class="rj">${jnAv(j)}<div><b>${esc(j.nome)}</b><small><b style="display:inline;color:${j.cor}">${esc(j.papel)}</b> · ${esc(j.programa)} (${esc(j.veiculo)})</small><small>${esc(j.perfil)}</small></div></div>`).join('');
+  $('newsList').innerHTML=chips+noticiaCard(top,true,0)+`<div class="ngrid">${fil.filter(n=>n!==top).map((n,i)=>noticiaCard(n,false,i+1)).join('')}</div>`+
+    (ros?`<h3 style="margin-top:28px">A imprensa que cobre o clube <small style="color:var(--mut);text-transform:none;font-family:var(--body);letter-spacing:0">clique numa manchete para ler a matéria e o debate</small></h3><div class="roster">${ros}</div>`:'')}
+function avatarPost(a,tec){if(tec){const f=fotoTec('feliz','av');return f?`<div class="av2x"><img src="/tecnico/${encodeURIComponent(f)}"></div>`:`<div class="av2x tec">${esc(((S.mundo||{}).tecnico||'T')[0])}</div>`}
+  if(/oficial/.test(a))return `<div class="av2x ofc">${escudoImg('')}</div>`;
+  return `<div class="av2x" style="background:${hashCor(a)}">${esc(a.replace('@','').slice(0,2).toUpperCase())}</div>`}
+const verificado=a=>/oficial|jornalista/.test(a);
+function nomePost(a){const t=a.replace('@','').replace(/_/g,' ');return t.charAt(0).toUpperCase()+t.slice(1)}
+function midiaPost(p,ns){if(p.empresa)return `<div class="mid"><div class="nmedia logo-m">${logo(p.empresa)}</div></div>`;
+  if(['euforia','feliz','neutro','chateado','revolta'].includes(p.humor)){const n=ns.find(x=>x.gp!=null&&x.data==p.data);if(n)return `<div class="mid"><div class="nmedia">${placarHTML(n)}</div></div>`}
+  return ''}
+function rFeed(){const m=S.mundo||{posts:[]};const ns=m.noticias||[];const ops=m.opcoes_post||[];const t=m.torcida??50;
+  const emo=t>=85?'🔥':t>=65?'😄':t>=45?'😐':t>=25?'😠':'😡';
+  const termo=`<div class="termo"><b>${emo}</b><div style="flex:1"><small style="color:var(--mut)">HUMOR DA TORCIDA · ${t}/100</small><div class="bar"><i style="left:calc(${t}% - 2px)"></i></div></div></div>`;
+  const nome=(S.gestao||{}).tecnico_nome||m.tecnico||'Técnico';
+  const box=`<div class="postbox"><div style="display:flex;gap:10px;align-items:center">${avatarPost('',true)}<b>${esc(nome)}</b><small style="color:var(--mut)">publicar como técnico</small></div>
+    <select id="postSel">${ops.map((x,i)=>`<option value="${i}">${esc(x)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`;
+  const posts=(m.posts||[]).map((p,i)=>{const rs=p.respostas||[];
+    return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico)}<div style="flex:1;min-width:0">
+      <div class="hd"><b>${esc(p.tecnico?nome:nomePost(p.autor))}</b>${p.tecnico||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
+      <p>${esc(p.texto)}</p>${midiaPost(p,ns)}
+      <div class="acts"><span>💬 ${rs.length}</span><span>🔁 ${(p.reposts||0).toLocaleString('pt-BR')}</span><span class="lk">♥ ${(p.curtidas||0).toLocaleString('pt-BR')}</span></div>
+      ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp">${avatarPost(r.autor)}<div><b>${esc(nomePost(r.autor))}</b> <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
+    </div></div>`}).join('');
+  $('postList').innerHTML=termo+box+(posts||'<div class="empty">Ainda sem posts.</div>')}
+function rNews(){rSala();rNoticias();rFeed()}
 async function postarTecnico(){const i=+$('postSel').value;const j=await api('/api/rede/postar',{i});toast(j.bom?'A torcida curtiu o seu post.':'O post dividiu a torcida.');load()}
 function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O gráfico aparece a partir do segundo save lido.</div>';
   const W=560,H=220,P=36;const all=series.flatMap(s=>pts.map(p=>p[s.k]||0));const mx=Math.max(...all)*1.08||1,mn=0;
@@ -767,8 +921,9 @@ function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0])
 function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral de '+S.moral_data+' (Dados do time)':' · para ver a moral, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>${p.moral!=null?`<div class="moral m${p.moral}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][p.moral]}">${['↓','↘','→','↗','↑'][p.moral]}</div>`:''}
-      <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
+  return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
+      <div class="nm">${esc(p.nome)}</div>${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rPrancheta();
   if(etab=='transf'){const tr=G.transferencias||[];
     const card=(t,cls,selo)=>`<div class="kcard ${cls}"><span class="selo">${selo}</span><b>${esc(t.nome)}</b><small>${dt(t.data)}${t.valor!=null?' · '+(t.tipo=='chegada'?'custou ~ ':'rendeu ~ ')+eurM(Math.abs(t.valor)):''}</small></div>`;
@@ -802,6 +957,8 @@ try{const t=localStorage.getItem('tema');if(t){document.documentElement.dataset.
 // cores do clube (tema camaleão): a cor mais viva do uniforme vira a cor de destaque
 function hexRgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16))}
 function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCores.k==k)return;aplicarCores.k=k;
+  {const r0=document.documentElement.style;const cs=S.cores.map(hexRgb);const sa=c=>Math.max(...c)-Math.min(...c);const fo=cs.slice().sort((a,b)=>sa(b)-sa(a))[0];
+   r0.setProperty('--c1','rgb('+(sa(fo)<40?cs[0]:fo).join(',')+')');r0.setProperty('--c2',S.cores[1]||'#fff')}
   const sat=c=>{const m=Math.max(...c),n=Math.min(...c);return m-n};const lum=c=>.299*c[0]+.587*c[1]+.114*c[2];
   let c=S.cores.map(hexRgb).sort((a,b)=>sat(b)-sat(a))[0];
   if(sat(c)<40)return;  // camisa branca/preta: mantém o verde-limão do app

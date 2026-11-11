@@ -58,6 +58,39 @@ def tipo_partida(p, team_id):
     return 'goleada' if s >= 3 else 'vitoria' if s > 0 else 'empate' if s == 0 else 'vexame' if s <= -3 else 'derrota'
 
 
+def _reporter(tipo, i, chave):
+    from . import imprensa
+    k, intro = imprensa.pergunta_coletiva(tipo in ('vitoria', 'goleada'), i, chave)
+    j = imprensa.JORNALISTAS[k]
+    return {'reporter': k, 'reporter_nome': j['nome'], 'reporter_veiculo': j['programa'], 'intro': intro}
+
+
+def moral_ajuste(state, nome, delta, data, motivo, dias=10):
+    """Guarda um efeito na moral (nome do jogador ou '*' para o elenco todo) que vale por alguns dias."""
+    g = state.setdefault('gestao', {})
+    aj = g.setdefault('moral_aj', [])
+    aj.append({'nome': nome, 'delta': delta, 'data': data, 'dias': dias, 'motivo': motivo})
+    g['moral_aj'] = aj[-120:]
+
+
+def moral_efetiva(state, elenco, hoje):
+    """Moral do jogo (Dados do time) mais os efeitos ativos do app (notícias, eventos, resultados)."""
+    if not hoje:
+        return
+    ativos = [a for a in (state.get('gestao') or {}).get('moral_aj', [])
+              if s2d(a['data']) <= hoje < s2d(a['data']) + dt.timedelta(days=a['dias'])]
+    for j in elenco:
+        base = j.get('moral')
+        # sem a moral do jogo (Dados do time), só os efeitos individuais aparecem
+        meus = [a for a in ativos if a['nome'] == j['nome'] or (a['nome'] == '*' and base is not None)]
+        if not meus:
+            continue
+        grupo = sum(a['delta'] for a in meus if a['nome'] == '*')
+        soma = sum(a['delta'] for a in meus if a['nome'] != '*') + max(-1, min(1, grupo))
+        j['moral_app'] = int(max(0, min(4, (2 if base is None else base) + soma)))
+        j['moral_motivos'] = [f"{'+' if a['delta'] > 0 else ''}{a['delta']} {a['motivo']}" for a in meus][-4:]
+
+
 class Gestao:
     def __init__(self, state, clube, team_id):
         self.s = state
@@ -89,7 +122,7 @@ class Gestao:
             'id': f"col{len(self.g['coletivas']) + 1}", 'partida': partida['chave'], 'data': partida['data'],
             'titulo': f"{self.clube} {gp} x {gc} {adv}", 'tipo': tipo, 'status': 'aberta',
             'perguntas': [{'texto': q, 'respostas': [a[0] for a in ans], 'efeitos': [list(a[1:]) for a in ans],
-                           'escolha': None} for q, ans in qs]})
+                           'escolha': None, **_reporter(tipo, i, partida['chave'])} for i, (q, ans) in enumerate(qs)]})
         self.g['coletivas'] = self.g['coletivas'][-30:]
 
     def responder(self, cid, q, a, mundo):
@@ -120,15 +153,28 @@ class Gestao:
         ('pessoal', 'Problema familiar', 'foi liberado para resolver um problema familiar', 3, 7, 0, 0),
         ('pessoal', 'Intoxicação alimentar', 'teve uma intoxicação alimentar e está fora', 3, 5, 0, 0),
         ('pessoal', 'Acidente doméstico', 'sofreu um acidente doméstico e ficará fora', 7, 12, -1, 0),
+        ('lesao', 'Lesão no treino', 'sentiu uma lesão muscular no treino', 10, 24, -1, 0),
+        ('lesao', 'Entorse no treino', 'torceu o tornozelo em um treino', 7, 18, -1, 0),
+        ('lesao', 'Lesão no treino', 'teve um estiramento na coxa durante o treino', 14, 30, -1, 0),
+        ('lesao', 'Pancada no treino', 'levou uma pancada forte em dividida no treino', 4, 9, 0, 0),
+        ('lesao', 'Lesão no joelho', 'machucou o joelho no treino e passa por exames', 21, 45, -2, -1),
+        ('lesao', 'Dores nas costas', 'sente dores nas costas e foi vetado pelo departamento médico', 5, 12, 0, 0),
     ]
+    # moral (em "pontos" de seta) que cada tipo de evento tira do jogador enquanto dura
+    MORAL_EVENTO = {'indisciplina': -1, 'lesao': -1, 'pessoal': 0}
 
     def semana(self, dia, elenco, mundo):
         """Chamado uma vez por semana da carreira: 6% de chance de um evento com um jogador do elenco."""
         if not elenco:
             return
         ds = d2s(dia)
+        for e in self.g['eventos']:      # quem voltou de lesão vira notícia
+            if e.get('tipo') == 'lesao' and not e.get('voltou') and s2d(e['volta']) <= dia:
+                e['voltou'] = True
+                mundo.noticia('retorno', e['volta'], random.Random(_seed('ret', e['id'])), jogador=e['jogador'])
+                mundo.m['noticias'][-1]['jogador'] = e['jogador']
         r = random.Random(_seed('evt', ds, self.clube))
-        if r.random() > 0.06:
+        if r.random() > 0.08:
             return
         livres = [j for j in elenco if not self.afastado(j['id'], dia)]
         if not livres:
@@ -144,9 +190,16 @@ class Gestao:
         self.g['eventos'] = self.g['eventos'][-60:]
         mundo._torcida(dt_torc)
         mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + dt_dir)))
-        mundo.m['noticias'].append({'data': ds, 'tipo': 'evento', 'destaque': tipo == 'indisciplina',
-                                    'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN']),
-                                    'titulo': f"{self.clube}: {ev['texto']}"})
+        if tipo == 'lesao':
+            ev['texto'] += ' Pelo jogo ele ainda aparece disponível: não escale até a volta.'
+            mundo.noticia('lesao', ds, r, destaque=dias >= 20, jogador=j['nome'], n=dias)
+            mundo.m['noticias'][-1].update(jogador=j['nome'], volta=ev['volta'])
+        else:
+            mundo.m['noticias'].append({'data': ds, 'tipo': 'evento', 'destaque': tipo == 'indisciplina',
+                                        'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN']),
+                                        'jogador': j['nome'], 'titulo': f"{self.clube}: {ev['texto']}"})
+        if self.MORAL_EVENTO.get(tipo):
+            moral_ajuste(self.s, j['nome'], self.MORAL_EVENTO[tipo], ds, titulo, dias)
 
     def afastado(self, pid, dia):
         for e in self.g['eventos']:

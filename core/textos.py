@@ -162,3 +162,35 @@ PRESIDENTE = {
     'tabela_ruim': ["O {pos}º lugar não é aceitável para o {clube}. Precisamos subir na tabela.",
                     "A tabela preocupa: {pos}º colocado. Conto com uma reação rápida."],
 }
+
+# notícias sobre um jogador que mexem com a moral dele (o app guarda o efeito por alguns dias)
+MANCHETES.update({
+    'jog_elogio': [
+        "{jogador} vive grande fase e é exaltado pela torcida do {clube}",
+        "Imprensa elege {jogador} o melhor do {clube} no mês",
+        "{jogador} ganha moral com {tecnico} e deve seguir como titular",
+        "Seleção observa {jogador}, do {clube}",
+        "Torcida do {clube} cria música para {jogador}",
+        "{jogador} é eleito o craque da rodada",
+        "Clubes da Europa monitoram {jogador}; diretoria do {clube} valoriza o atleta",
+    ],
+    'jog_critica': [
+        "{jogador} é vaiado pela torcida do {clube} e vira alvo de críticas",
+        "Comentaristas questionam a fase de {jogador} no {clube}",
+        "{jogador} perde espaço e pode ir para o banco do {clube}",
+        "Torcida pede a saída de {jogador} nas redes sociais",
+        "{jogador} reclama de falta de oportunidades no {clube}",
+        "Atuação apagada de {jogador} preocupa a comissão do {clube}",
+        "{jogador} se irrita com substituição e deixa o campo sem cumprimentar o técnico",
+    ],
+    'lesao': [
+        "Baixa no {clube}: {jogador} se machuca e desfalca o time",
+        "{clube} confirma lesão de {jogador}; departamento médico estima {n} dias de recuperação",
+        "Problema físico tira {jogador} dos próximos jogos do {clube}",
+        "{jogador} sente lesão no treino e preocupa o {clube}",
+    ],
+    'retorno': [
+        "{jogador} recebe alta do departamento médico e volta a treinar com o grupo",
+        "Reforço interno: {jogador} está liberado e volta a ser opção no {clube}",
+    ],
+})

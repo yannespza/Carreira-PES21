@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import tecnico, estudio, savedata, kits, sim, mundo, times, gestao
+from core import imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -340,6 +340,39 @@ class App:
                 return None
         return t['cores']
 
+    def elenco_view(self):
+        st = self.state or {}
+        el = [dict(j) for j in (self.elenco or [])]
+        try:
+            gestao.moral_efetiva(st, el, sim.s2d(st['data']) if st.get('data') else None)
+        except Exception:
+            log(traceback.format_exc())
+        return el
+
+    def escudo_png(self):
+        """Escudo do clube recortado do uniforme (caixa achada na detecção), com o tecido transparente."""
+        t = self.time
+        if not t:
+            return None
+        p = os.path.join(DATA, f"escudo3_{t.get('id', self.tid())}.png")
+        if not os.path.exists(p):
+            try:
+                from PIL import Image
+                v = t['variantes'][0]
+                img = kits.base_image(APP_DIR, v[0], v[1]).convert('RGB').convert('RGBA')
+                x0, y0, x1, y1 = [int(c) for c in (kits.ESCUDO.get(v[0]) or [1098, 1105, 1222, 1232])]
+                x0, y0, x1, y1 = x0 - 12, y0 - 12, x1 + 12, y1 + 12
+                cr = img.crop((x0, y0, x1, y1))
+                m = estudio._mascara_logo(cr)
+                out = Image.new('RGBA', cr.size, (0, 0, 0, 0))
+                out.paste(cr, (0, 0), m)
+                bb = out.getbbox()
+                (out.crop(bb) if bb else out).save(p)
+            except Exception:
+                log(traceback.format_exc())
+                return None
+        return open(p, 'rb').read()
+
     def gestao_view(self):
         st = self.state or {}
         g = st.get('gestao') or {}
@@ -574,7 +607,7 @@ class App:
             'pronto': self.state is not None, 'versao': VERSAO,
             'clube': self.clube(), 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
-                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco, 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
@@ -593,7 +626,7 @@ class App:
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
             'fin_hist': st.get('fin_hist', [])[-60:],
-            'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None,
+            'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
             'zerar_pat': st.get('zerar_pat'),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -679,6 +712,9 @@ class H(BaseHTTPRequestHandler):
                 if os.path.exists(p) and nome.lower().endswith('.png'):
                     return self.send(200, open(p, 'rb').read(), 'image/png')
                 return self.send(404, {'erro': 'sem imagem'})
+            if u.path == '/escudo.png':
+                b = A.escudo_png()
+                return self.send(200, b, 'image/png') if b else self.send(404, {'erro': 'sem escudo'})
             if u.path.startswith('/logo/'):
                 nome = unquote(u.path[6:])
                 if nome.lower().endswith('.png'):
@@ -899,6 +935,14 @@ class H(BaseHTTPRequestHandler):
                     jsave(os.path.join(DATA, 'config.json'), CFG)
                     A.state['cfg_tecnico'] = CFG['tecnico_nome']
                     return self.send(200, {'ok': True})
+                if u.path == '/api/reportagem':
+                    st = A.state or {}
+                    linhas = (st.get('tabela') or {}).get('linhas') or []
+                    meu = next((l for l in linhas if l.get('id') == A.tid()), None)
+                    ctx = {'clube': A.clube(), 'tecnico': CFG.get('tecnico_nome') or 'Yannes Zola',
+                           'pos': meu['pos'] if meu else None, 'torcida': (st.get('mundo') or {}).get('torcida', 50),
+                           'jogador': (st.get('elenco_nomes') or ['o camisa 10'])[0]}
+                    return self.send(200, imprensa.reportagem(body.get('noticia') or {}, ctx))
                 if u.path == '/api/rede/postar':
                     mu = mundo.Mundo(A.state, A.clube(), A.tid())
                     ctx = mu.contexto_tecnico()

@@ -76,7 +76,7 @@ def usar_time(t):
                 ESCUDO[v] = max(esc, key=lambda c: (c[2] - c[0]) * (c[3] - c[1]))
     if not ESCUDO:          # Palmeiras e clubes sem detecção: lugar de costume do escudo
         for v in VARIANTS:
-            ESCUDO[v[0]] = [1095, 1150, 1205, 1290]
+            ESCUDO[v[0]] = [1098, 1105, 1222, 1232]
 
 
 def base_path(app_dir, variant, fname):

@@ -68,10 +68,11 @@ class Mundo:
         return v
 
     def noticia(self, tipo, data, rnd, destaque=False, **v):
+        extra = {k: v[k] for k in ('placar', 'adv', 'empresa', 'n', 'pos') if v.get(k) not in (None, '')}
         self._vars(v, rnd)
         txt = rnd.choice(MANCHETES[tipo]).format(**v)
         self.m['noticias'].append({'data': data, 'titulo': txt, 'tipo': tipo, 'fonte': rnd.choice(FONTES),
-                                   'destaque': destaque})
+                                   'destaque': destaque, **extra})
         self.m['noticias'] = self.m['noticias'][-200:]
 
     def _respostas(self, humor, rnd, autor, v, n=None):
@@ -82,13 +83,15 @@ class Mundo:
                  'curtidas': rnd.randint(0, 600)} for _ in range(n)]
 
     def posts(self, humor, data, rnd, n=3, **v):
+        emp = v.get('empresa') if humor == 'patro' else None
         self._vars(v, rnd)
         for t in rnd.sample(POSTS[humor], min(n, len(POSTS[humor]))):
             autor = rnd.choice(arrobas(self.clube))
             cur = rnd.randint(40, 4000)
             self.m['posts'].append({'data': data, 'autor': autor, 'texto': t.format(**v), 'humor': humor,
                                     'curtidas': cur, 'reposts': int(cur * rnd.uniform(0.05, 0.3)),
-                                    'respostas': self._respostas(humor, rnd, autor, v)})
+                                    'respostas': self._respostas(humor, rnd, autor, v),
+                                    **({'empresa': emp} if emp else {})})
         self.m['posts'] = self.m['posts'][-300:]
 
     def post_tecnico(self, contexto, idx, data):
@@ -257,6 +260,15 @@ class Mundo:
         r = random.Random(_seed('sem', data))
         for _ in range(r.randint(1, 2)):
             self.noticia('bastidores', data, r)
+        # notícia sobre um jogador: elogio sobe a moral dele, crítica derruba (por uns 10 dias)
+        el = self.s.get('elenco_nomes') or []
+        if el and r.random() < 0.55:
+            from .gestao import moral_ajuste
+            jog = r.choice(el)
+            bom = r.random() < (0.35 + self.m['torcida'] / 200)
+            self.noticia('jog_elogio' if bom else 'jog_critica', data, r, jogador=jog)
+            self.m['noticias'][-1]['jogador'] = jog
+            moral_ajuste(self.s, jog, 1 if bom else -1, data, 'elogiado na imprensa' if bom else 'criticado na imprensa', 10)
         # rumor de patrocínio com empresa que ainda não está no clube
         emps = [e for e in (self.s.get('empresas') or {}) if not any(
             c['empresa'] == e and c['status'] in ('ativo', 'assinado') for c in self.s.get('contratos', []))]
@@ -291,6 +303,11 @@ class Mundo:
             tipo, humor, delta = 'derrota', 'chateado', -5 if casa else -4
         self._torcida(delta)
         self.noticia(tipo, p['data'], r, destaque=tipo in ('goleada', 'vexame'), adv=adv, placar=placar)
+        self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
+        if tipo in ('goleada', 'vexame'):
+            from .gestao import moral_ajuste
+            moral_ajuste(self.s, '*', 1 if tipo == 'goleada' else -1, p['data'],
+                         'goleada' if tipo == 'goleada' else 'goleada sofrida', 7)
         # sequências
         seq = self.s.get('partidas', [])
         n = 0
@@ -302,6 +319,8 @@ class Mundo:
                 break
         if alvo == 'V' and n >= 3:
             self.noticia('seq_vitorias', p['data'], r, destaque=True, n=n); self._torcida(2)
+            from .gestao import moral_ajuste
+            moral_ajuste(self.s, '*', 1, p['data'], f'{n} vitórias seguidas', 10)
             humor = 'euforia'
         inv = 0
         for x in reversed(seq):
@@ -313,6 +332,8 @@ class Mundo:
             self.noticia('invicto', p['data'], r, destaque=True, n=inv)
         if alvo == 'D' and n >= 3:
             self.noticia('seq_derrotas', p['data'], r, destaque=True, n=n); self._torcida(-3)
+            from .gestao import moral_ajuste
+            moral_ajuste(self.s, '*', -1, p['data'], f'{n} derrotas seguidas', 10)
             humor = 'revolta'
         # humor da torcida pesa nos posts
         t = self.m['torcida']

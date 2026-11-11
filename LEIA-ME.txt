@@ -23,6 +23,22 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.5:
+- Notícias em formato de portal: manchete principal grande, cards com placar e escudo, filtros por
+  assunto (jogos, tabela, patrocínio, elenco, diretoria, coletiva, bastidores).
+- Clique numa manchete para ler a matéria completa, assinada por um jornalista, e a repercussão no
+  programa de debate. Seis jornalistas com personalidade própria (o crítico, o irônico, o setorista,
+  o pilhado, a analista tática e o veterano) comentam cada assunto do seu jeito.
+- Na coletiva, cada pergunta é feita por um desses jornalistas, que se revezam.
+- Redes sociais com cara de feed: avatares, selo de verificado, imagem do placar nos posts,
+  respostas recolhidas e termômetro do humor da torcida.
+- Topo do clube com escudo, cores do clube e posição na tabela.
+- Situações adversas: lesões no treino (de 4 a 45 dias), acidentes, indisciplina. O jogador aparece
+  como LESIONADO no cartão até a data de volta, vira notícia e volta com notícia de alta.
+  Atenção: por enquanto isso vale só no app (o jogo ainda deixa escalar); não escale até a volta.
+- Moral: elogios e críticas da imprensa, lesões, goleadas e sequências mexem na moral mostrada no
+  cartão por alguns dias (bolinha branca na seta = efeito do app; passe o mouse para ver o motivo).
+
 Novidades da 2.2:
 - Linha do tempo dos jogos no topo (clique numa bolinha para ver o placar).
 - Tema claro/escuro e cor de destaque tirada do uniforme do clube.
