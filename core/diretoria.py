@@ -13,6 +13,8 @@ import random, datetime as dt
 from .sim import d2s, s2d, _seed
 
 PRAZO_ULTIMATO = 4
+REQ_CONFIANCA, REQ_TORCIDA, REQ_JOGOS = 78, 70, 10     # para outros clubes sondarem o técnico
+INTERVALO_SONDAGEM, CHANCE_SONDAGEM = 90, 0.12          # dias entre sondagens e chance por semana
 
 
 def temporada(dia):
@@ -193,17 +195,18 @@ def processar(state, engine, mundo, hoje, nomes):
                  f'), a diretoria renovou o seu contrato até o fim da temporada {e["contrato_ate"]}.')
             e['historico'].append({'data': ds, 'tipo': 'renovacao', 'texto': f'Renovou até {e["contrato_ate"]}'})
     # sondagem de outro clube (no máximo uma a cada 90 dias)
-    if conf >= 78 and mundo.m['torcida'] >= 70 and not e.get('sondagem') and len(state.get('partidas', [])) >= 10:
+    if conf >= REQ_CONFIANCA and mundo.m['torcida'] >= REQ_TORCIDA and not e.get('sondagem') and len(state.get('partidas', [])) >= REQ_JOGOS:
         u = e.get('ult_sondagem')
         semana = hoje.isocalendar()[:2]
-        if (not u or (hoje - s2d(u)).days >= 90) and e.get('sond_semana') != list(semana):
+        if (not u or (hoje - s2d(u)).days >= INTERVALO_SONDAGEM) and e.get('sond_semana') != list(semana):
             e['sond_semana'] = list(semana)
             r = random.Random(_seed('sond', *semana))
-            if r.random() < 0.12:
+            if r.random() < CHANCE_SONDAGEM:
                 cl = _propostas(state, nomes, 1, True, r)
                 if cl:
                     e['sondagem'] = {'data': ds, **cl[0]}
                     e['ult_sondagem'] = ds
+                    e['historico'].append({'data': ds, 'tipo': 'sondagem', 'texto': f'Sondado pelo {cl[0]["nome"]}'})
                     mundo.noticia('tecnico_sondado', ds, r, adv=cl[0]['nome'])
                     _msg(engine, ds, f'Sondagem do {cl[0]["nome"]}',
                          f'O {cl[0]["nome"]} procurou o seu empresário. Eles querem você no comando. '
@@ -255,7 +258,18 @@ def view(state, mundo, hoje):
     restam = None
     if ult:
         restam = max(0, ult['prazo'] - (len(state.get('partidas', [])) - ult['jogos_base']))
-    return {'status': e['status'], 'situacao': situacao(conf), 'confianca': conf, 'contrato_ate': e.get('contrato_ate'),
+    torcida = mundo.m.get('torcida', 50) if mundo else 50
+    jogos = len(state.get('partidas', []))
+    u = e.get('ult_sondagem')
+    dias = (hoje - s2d(u)).days if u and hoje else None
+    mercado = {'confianca': conf, 'torcida': torcida, 'jogos': jogos, 'dias_ult': dias,
+               'requisitos': [{'nome': 'Confiança da diretoria', 'atual': conf, 'alvo': REQ_CONFIANCA},
+                              {'nome': 'Humor da torcida', 'atual': torcida, 'alvo': REQ_TORCIDA},
+                              {'nome': 'Jogos no comando', 'atual': jogos, 'alvo': REQ_JOGOS}],
+               'intervalo_ok': dias is None or dias >= INTERVALO_SONDAGEM, 'intervalo': INTERVALO_SONDAGEM,
+               'chance_semana': int(CHANCE_SONDAGEM * 100),
+               'recebidas': [h for h in e['historico'] if h.get('tipo') in ('sondagem', 'fica', 'saida', 'demissao')][-20:][::-1]}
+    return {'mercado': mercado, 'status': e['status'], 'situacao': situacao(conf), 'confianca': conf, 'contrato_ate': e.get('contrato_ate'),
             'ultimato': ult and {**ult, 'restam': restam}, 'sondagem': e.get('sondagem'),
             'propostas': e.get('propostas', []), 'motivo': e.get('motivo'), 'demissao_ativa': e['demissao_ativa'],
             'historico': e['historico'][-12:][::-1],

@@ -192,7 +192,7 @@ class Mundo:
         for c in self.s.get('contratos', []):
             r = random.Random(_seed('c', c['id'], c['status']))
             from .kits import SLOTS
-            pos = 'espaço “' + SLOTS[c['slot']]['nome'] + '”'
+            pos = 'espaço “' + SLOTS.get(c['slot'], {}).get('nome', c['slot']) + '”'
             if c['id'] not in vis['contratos']:
                 vis['contratos'].append(c['id'])
                 grande = c['valor'] >= 5_000_000

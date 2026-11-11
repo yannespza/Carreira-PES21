@@ -51,6 +51,34 @@ def _stats(state):
     return s
 
 
+def deslocar(data_str, anos):
+    """Data do jogo -> data na linha do tempo do técnico (soma anos)."""
+    if not data_str or not anos:
+        return data_str
+    try:
+        d = dt.date.fromisoformat(data_str[:10])
+    except ValueError:
+        return data_str
+    try:
+        return d.replace(year=d.year + anos).isoformat()
+    except ValueError:                      # 29/02 num ano que não é bissexto
+        return d.replace(year=d.year + anos, day=28).isoformat()
+
+
+def _desloc_nova(ps, inicio):
+    """Toda carreira nova no PES recomeça o calendário. Para a linha do tempo do técnico seguir em frente,
+    a passagem nova ganha tantos anos quantos forem precisos para começar depois do fim da anterior."""
+    fins = [deslocar(p.get('fim') or p.get('ultima_leitura') or p.get('inicio'), p.get('desloc_anos', 0))
+            for p in ps if p.get('inicio')]
+    fins = [f for f in fins if f]
+    if not inicio or not fins:
+        return 0
+    ultimo, k = max(fins), 0
+    while deslocar(inicio, k) <= ultimo and k < 100:
+        k += 1
+    return k
+
+
 def registrar(data_dir, chave, state, clube, hoje):
     """Atualiza a passagem atual com os números do estado da carreira. Devolve a carreira inteira."""
     c = carregar(data_dir)
@@ -58,8 +86,9 @@ def registrar(data_dir, chave, state, clube, hoje):
     atual = next((p for p in ps if p['chave'] == chave), None)
     nova = atual is None
     if nova:
-        atual = {'chave': chave, 'clube': clube, 'team_id': state.get('time_id'),
-                 'inicio': state.get('data') or (hoje and hoje.isoformat())}
+        inicio = state.get('data') or (hoje and hoje.isoformat())
+        atual = {'chave': chave, 'clube': clube, 'team_id': state.get('time_id'), 'inicio': inicio,
+                 'desloc_anos': _desloc_nova(ps, inicio)}
         ps.append(atual)
     for p in ps:                       # as outras passagens ficam encerradas
         if p is not atual and p.get('ativa'):
@@ -113,5 +142,16 @@ def view(c):
     ap = round(100 * (3 * tot['V'] + tot['E']) / (3 * tot['jogos'])) if tot['jogos'] else None
     pr = c.get('prestigio', prestigio(c))
     return {'prestigio': pr, 'nivel': nivel(pr), 'bonus': bonus_atratividade(pr), 'aproveitamento': ap, **tot,
-            'passagens': [{**p, 'titulos_nomes': [COMP_NOMES.get(t['comp'], t['comp']) for t in p.get('titulos', [])]}
-                          for p in ps][::-1]}
+            'passagens': [_passagem_view(p) for p in ps][::-1]}
+
+
+def _passagem_view(p):
+    """Datas na linha do tempo do técnico; as do jogo ficam em *_jogo."""
+    k = p.get('desloc_anos', 0)
+    fim = p.get('fim') or (None if p.get('ativa') else p.get('ultima_leitura'))
+    return {**p, 'inicio_jogo': p.get('inicio'), 'fim_jogo': fim, 'atual_jogo': p.get('ultima_leitura'),
+            'inicio': deslocar(p.get('inicio'), k), 'fim': deslocar(fim, k),
+            'atual': deslocar(p.get('ultima_leitura'), k),
+            'titulos': [{**t, 'data': deslocar(t.get('data'), k)} for t in p.get('titulos', [])],
+            'temporadas': [{**t, 'ano': t['ano'] + k} for t in p.get('temporadas', []) if t.get('ano') is not None],
+            'titulos_nomes': [COMP_NOMES.get(t['comp'], t['comp']) for t in p.get('titulos', [])]}

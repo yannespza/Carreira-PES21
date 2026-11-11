@@ -803,13 +803,13 @@ class App:
         mud = []
         for c in atual:
             if c['id'] not in antes:
-                mud.append(f"entra {c['empresa']} ({kits.SLOTS[c['slot']]['nome']})")
+                mud.append(f"entra {c['empresa']} ({kits.SLOTS.get(c['slot'], {}).get('nome', c['slot'])})")
             elif antes[c['id']] != json.loads(self.assinatura([c]))[0]:
                 mud.append(f"ajuste no logo da {c['empresa']}")
         ids = {c['id'] for c in atual}
         for cid, c in antes.items():
             if cid not in ids:
-                mud.append(f"sai {c[2]} ({kits.SLOTS[c[1]]['nome']})")
+                mud.append(f"sai {c[2]} ({kits.SLOTS.get(c[1], {}).get('nome', c[1])})")
         return mud or ['atualização dos uniformes']
 
     def aplicar_kits(self):

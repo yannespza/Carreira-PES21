@@ -23,6 +23,13 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.3:
+- Clube > Carreira do técnico > Mercado de técnicos: a proposta em aberto (aceitar ou recusar ali mesmo),
+  o histórico de propostas e o que falta para outros clubes te procurarem (confiança, torcida, jogos).
+- Calendário contínuo: toda carreira nova no PES recomeça o calendário. Na linha do tempo do técnico,
+  o app soma os anos necessários para a passagem nova começar depois da anterior e mostra as duas datas
+  (a da carreira do técnico e a do jogo). Dentro de cada save, as datas continuam as do jogo.
+
 Novidades da 3.2:
 - Elenco > Estatísticas: gols, assistências, minutos e nota de cada jogador na temporada, lidos da súmula
   que o próprio jogo grava no save a cada partida. Destaques (artilheiro, assistências, melhor nota média,
