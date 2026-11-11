@@ -10,7 +10,7 @@ O que o Sider entrega de verdade (confirmado nos módulos do GOGOSZ instalados):
 - io.open para gravar arquivos.
 Goleador: lido pela mesma cadeia de ponteiros que o GOGOSZ usa no GolsJogador.lua (só leitura).
 Cartões, lesões e substituições não têm caminho conhecido: o modo sondagem grava fotos da memória quando
-você aperta 1 a 4 no menu do Sider, para comparar e achar onde o jogo guarda esses dados.
+você aperta C, L, S ou R no menu do Sider, para comparar e achar onde o jogo guarda esses dados.
 """
 import os, json, time, threading
 
@@ -21,9 +21,9 @@ LUA = r'''-- AppCarreiraAoVivo.lua (App de Carreira PES 21)
 -- Ponte com o app: grava live_match_data.json na pasta do jogo quando a partida muda.
 -- Não desenha nada no campo e não escreve na memória do jogo: lê match.stats(), lê (só lê) a cadeia de
 -- ponteiros do goleador que o próprio GOGOSZ usa (GolsJogador.lua) e grava arquivos.
--- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas 1 a 4 gravam uma "foto" da memória
+-- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas C, L, S e R gravam uma "foto" da memória
 -- para descobrirmos onde o jogo guarda cartões, lesões e substituições.
-local m = { version = "1.1" }
+local m = { version = "1.2" }
 
 local ARQ, TMP, PASTA_SONDA
 local quadro = 0
@@ -160,7 +160,7 @@ local function copiar(st)
 end
 
 -- ---------- sondagem ----------
-local ROTULOS = { [0x31] = "cartao", [0x32] = "lesao", [0x33] = "substituicao", [0x34] = "referencia" }
+local ROTULOS = { [0x43] = "cartao", [0x4C] = "lesao", [0x53] = "substituicao", [0x52] = "referencia" }
 
 local function sonda(rotulo)
     if not PASTA_SONDA then return end
@@ -265,7 +265,7 @@ Cadeia do goleador: %s
 
 MODO SONDAGEM (ajuda o app a achar cartões e lesões)
 Logo depois de cada lance, aperte:
-[1] Cartão   [2] Lesão   [3] Substituição   [4] Referência (lance comum)
+[C] Cartão   [L] Lesão   [S] Substituição   [R] Referência (lance comum)
 
 Sondas gravadas nesta sessão: %d
 %s]], m.version, r and "encontrada" or "não encontrada (fora da partida?)", nsondas, aviso)
