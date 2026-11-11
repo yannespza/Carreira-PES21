@@ -23,6 +23,15 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.1 (partida ao vivo, em teste):
+- Autor do gol ao vivo: o módulo lê (só lê) a mesma cadeia de memória que o GolsJogador.lua do GOGOSZ usa
+  para tocar a música do jogador. O painel AO VIVO e o post da torcida mostram o nome de quem marcou.
+- Modo sondagem, para descobrirmos cartões, lesões e substituições: durante a partida, abra o menu do
+  Sider, vá até "App de Carreira · partida ao vivo" e, logo depois do lance, aperte:
+  1 = cartão, 2 = lesão, 3 = substituição, 4 = referência (lance comum, sem nada especial).
+  Cada tecla grava uma "foto" da memória em GOGOSZ\AppCarreira\sondas (cada gol também grava uma,
+  automaticamente). Depois de alguns jogos, mande essa pasta para análise.
+
 Novidades da 3.0 (partida ao vivo, em teste):
 - O app instala o módulo AppCarreiraAoVivo.lua no Sider (com backup do sider.ini). Durante a partida ele
   lê o placar, o período e o relógio pelo match.stats() do Sider (o mesmo que o placar do GOGOSZ usa) e

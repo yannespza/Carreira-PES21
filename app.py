@@ -192,6 +192,7 @@ class App:
             edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
+            self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
             # moral: só existe no arquivo "Dados do time" (USERT...) que o jogo grava quando você salva o elenco
             us = sorted(glob.glob(os.path.join(os.path.dirname(car.path), 'USERT*')), key=os.path.getmtime)
             self.moral_data = None
@@ -412,7 +413,8 @@ class App:
                 nosso = e.get('lado') == lado_meu
                 pl = e.get('placar') or dados.get('placar') or [0, 0]
                 gp, gc = (pl[0], pl[1]) if lado_meu == 'casa' else (pl[1], pl[0])
-                txt = (f"GOOOOL! {gp} x {gc} aos {e.get('minuto', '?')}'! VAMOOOS {self.clube().upper()}! 🔥" if nosso else
+                quem = (self.aovivo.jogadores.get(e.get('jogador_id')) or {}).get('nome') if e.get('jogador_id') else None
+                txt = (f"GOOOOL{' DO ' + quem.upper() if quem else ''}! {gp} x {gc} aos {e.get('minuto', '?')}'! VAMOOOS {self.clube().upper()}! 🔥" if nosso else
                        f"Tomamos o gol aos {e.get('minuto', '?')}'. {gp} x {gc}. Acorda, time!")
                 m.setdefault('posts', []).append({'data': st.get('data'), 'autor': '@torcida_aovivo', 'texto': txt,
                                                   'humor': 'euforia' if nosso else 'revolta', 'aovivo': True,

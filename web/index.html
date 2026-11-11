@@ -767,7 +767,7 @@ async function liveTick(){let d;try{d=await (await fetch('/api/aovivo')).json()}
   const el=$('live');if(!el)return;
   if(!d.placar||(!d.ativo&&!d.pausado)){el.innerHTML='';return}
   const per={1:'1º tempo',2:'2º tempo',3:'prorrogação',4:'prorrogação'};
-  const evs=(d.eventos||[]).filter(e=>e.tipo=='gol').map(e=>`<span>⚽ ${e.minuto??'?'}' ${esc(e.lado=='casa'?d.casa_nome:d.fora_nome)}</span>`).join('');
+  const evs=(d.eventos||[]).filter(e=>e.tipo=='gol').map(e=>`<span>⚽ ${e.minuto??'?'}' ${esc(e.jogador||(e.lado=='casa'?d.casa_nome:d.fora_nome))}</span>`).join('');
   el.innerHTML=`<div class="live ${d.ativo?'':'pausa'}"><div class="pt"></div><div><div style="font-size:11px;letter-spacing:.1em;color:#ff8b94">${d.ativo?'AO VIVO':'PARTIDA PAUSADA'} ${d.periodo&&per[d.periodo]?'· '+per[d.periodo]:''}</div>
     <div class="pl">${esc(d.casa_nome)} ${d.placar[0]} x ${d.placar[1]} ${esc(d.fora_nome)}</div></div><div class="mn">${d.minuto??''}'</div><div class="evs">${evs}</div></div>`}
 setInterval(liveTick,1000);

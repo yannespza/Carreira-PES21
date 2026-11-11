@@ -8,8 +8,9 @@ O que o Sider entrega de verdade (confirmado nos módulos do GOGOSZ instalados):
 - match.stats(): home_score, away_score, period, clock_minutes, clock_seconds (o placar do patch usa isso);
 - ctx.home_team, ctx.away_team, ctx.tournament_id, ctx.sider_dir e o evento display_frame (todo quadro);
 - io.open para gravar arquivos.
-Goleador, cartões e lesões NÃO vêm da API do Sider. O Lua grava todos os campos que match.stats()
-devolver ("campos"), para descobrirmos se a sua versão traz algo a mais.
+Goleador: lido pela mesma cadeia de ponteiros que o GOGOSZ usa no GolsJogador.lua (só leitura).
+Cartões, lesões e substituições não têm caminho conhecido: o modo sondagem grava fotos da memória quando
+você aperta 1 a 4 no menu do Sider, para comparar e achar onde o jogo guarda esses dados.
 """
 import os, json, time, threading
 
@@ -18,17 +19,26 @@ ARQUIVO = 'live_match_data.json'
 
 LUA = r'''-- AppCarreiraAoVivo.lua (App de Carreira PES 21)
 -- Ponte com o app: grava live_match_data.json na pasta do jogo quando a partida muda.
--- Não desenha nada na tela e não escreve na memória do jogo: só lê match.stats() e grava um arquivo.
-local m = { version = "1.0" }
+-- Não desenha nada no campo e não escreve na memória do jogo: lê match.stats(), lê (só lê) a cadeia de
+-- ponteiros do goleador que o próprio GOGOSZ usa (GolsJogador.lua) e grava arquivos.
+-- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas 1 a 4 gravam uma "foto" da memória
+-- para descobrirmos onde o jogo guarda cartões, lesões e substituições.
+local m = { version = "1.1" }
 
-local ARQ, TMP
+local ARQ, TMP, PASTA_SONDA
 local quadro = 0
 local ativo = false
 local ult = nil
 local casa, fora, torneio = nil, nil, nil
 local eventos = {}
 local seq = 0
-local inicio = 0
+local pend = nil          -- gol esperando a leitura do goleador
+local nsondas = 0
+local aviso = ""
+
+-- cadeia do goleador (a mesma do GolsJogador.lua do GOGOSZ):
+-- base do jogo + 0x3700A68 -> ponteiro; +0x0 -> ponteiro; +0x48 -> ponteiro; +0x1C4 = id do jogador (u32)
+local OFS = { 0x3700A68, 0x0, 0x48, 0x1C4 }
 
 local function esc(s)
     s = tostring(s)
@@ -61,6 +71,52 @@ local function json(v)
     return "null"
 end
 
+-- ---------- leitura de memória (só leitura, sempre protegida) ----------
+local function bytes(addr, n)
+    if not memory or not memory.read then return nil end
+    local ok, b = pcall(memory.read, addr, n)
+    if ok and type(b) == "string" and #b >= n then return b end
+    return nil
+end
+
+local function num(b, tipo, n)
+    if not b then return nil end
+    if ffi then
+        local ok, v = pcall(function()
+            local p = ffi.new(tipo .. "[1]")
+            ffi.copy(p, b, n)
+            return tonumber(p[0])
+        end)
+        if ok then return v end
+    end
+    local ok, v = pcall(memory.unpack, n == 8 and "u64" or "u32", b)
+    if ok then return v end
+    return nil
+end
+
+local function u64(a) return num(bytes(a, 8), "uint64_t", 8) end
+local function u32(a) return num(bytes(a, 4), "uint32_t", 4) end
+local function ptr_ok(v) return type(v) == "number" and v > 0x10000 and v < 0x7fffffffffff end
+
+local function cadeia()
+    if not memory or not memory.get_process_info then return nil end
+    local ok, info = pcall(memory.get_process_info)
+    if not ok or not info or not info.base then return nil end
+    local p = u64(info.base + OFS[1]); if not ptr_ok(p) then return nil end
+    local q = u64(p + OFS[2]); if not ptr_ok(q) then return nil end
+    local r = u64(q + OFS[3]); if not ptr_ok(r) then return nil end
+    return p, q, r
+end
+
+local function goleador()
+    local p, q, r = cadeia()
+    if not r then return nil end
+    local id = u32(r + OFS[4])
+    if id and id > 0 and id < 700000 then return id end
+    return nil
+end
+
+-- ---------- arquivo para o app ----------
 local function gravar(status)
     if not ARQ then return end
     local dados = {
@@ -68,10 +124,9 @@ local function gravar(status)
         placar = ult and { ult.home_score or 0, ult.away_score or 0 } or nil,
         periodo = ult and ult.period or nil,
         minuto = ult and ult.clock_minutes or nil, segundo = ult and ult.clock_seconds or nil,
-        campos = ult, eventos = eventos,
+        campos = ult, eventos = eventos, sondas = nsondas,
     }
     local txt = json(dados)
-    -- grava num temporário e troca de nome: o app nunca lê um arquivo pela metade
     local f = io.open(TMP, "w")
     if not f then return end
     f:write(txt)
@@ -92,6 +147,7 @@ local function evento(tipo, extra)
                 segundo = ult and ult.clock_seconds }
     for k, v in pairs(extra or {}) do e[k] = v end
     eventos[#eventos + 1] = e
+    return e
 end
 
 local function copiar(st)
@@ -103,9 +159,38 @@ local function copiar(st)
     return c
 end
 
+-- ---------- sondagem ----------
+local ROTULOS = { [0x31] = "cartao", [0x32] = "lesao", [0x33] = "substituicao", [0x34] = "referencia" }
+
+local function sonda(rotulo)
+    if not PASTA_SONDA then return end
+    local p, q, r = cadeia()
+    nsondas = nsondas + 1
+    local nome = string.format("%s%03d_%s_%s", PASTA_SONDA, nsondas, rotulo,
+                               ult and tostring(ult.clock_minutes or 0) or "x")
+    local partes, meta = {}, { rotulo = rotulo, n = nsondas, minuto = ult and ult.clock_minutes,
+                                segundo = ult and ult.clock_seconds, placar = ult and { ult.home_score, ult.away_score },
+                                casa = casa, fora = fora, regioes = {} }
+    local pos = 0
+    for _, reg in ipairs({ { "p", p, 0x400 }, { "q", q, 0x800 }, { "r", r, 0x4000 } }) do
+        local b = reg[2] and bytes(reg[2], reg[3])
+        if b then
+            partes[#partes + 1] = b
+            meta.regioes[#meta.regioes + 1] = { nome = reg[1], endereco = string.format("0x%X", reg[2]),
+                                                 inicio_no_arquivo = pos, tamanho = #b }
+            pos = pos + #b
+        end
+    end
+    local f = io.open(nome .. ".bin", "wb")
+    if f then f:write(table.concat(partes)); f:close() end
+    local g = io.open(nome .. ".json", "w")
+    if g then g:write(json(meta)); g:close() end
+    aviso = string.format("Sonda %d gravada (%s, %s regiões)", nsondas, rotulo, #meta.regioes)
+    log("AppCarreiraAoVivo: " .. aviso)
+end
+
+-- ---------- eventos do Sider ----------
 function m.set_teams(ctx, home, away)
-    -- times definidos para uma partida nova: fecha a anterior, se ficou aberta
-    -- (match.stats() pode continuar respondendo nos menus depois do apito final)
     if ativo then
         ativo = false
         evento("fim")
@@ -117,11 +202,19 @@ end
 
 function m.display_frame(ctx)
     quadro = quadro + 1
-    if quadro % 15 ~= 0 then return end          -- umas 4 leituras por segundo bastam
+    if quadro % 15 ~= 0 then return end
+    -- goleador: lê um instante depois do gol (como o GOGOSZ faz)
+    if pend and quadro >= pend.q then
+        local id = goleador()
+        if id then pend.e.jogador_id = id end
+        if PASTA_SONDA and m.sondar_gols then sonda("gol") end
+        pend = nil
+        gravar("ao_vivo")
+    end
     if not (match and match.stats) then return end
     local ok, st = pcall(match.stats)
     if not ok or type(st) ~= "table" then
-        if ativo then                             -- saiu da partida
+        if ativo then
             ativo = false
             evento("fim")
             gravar("encerrada")
@@ -130,7 +223,7 @@ function m.display_frame(ctx)
     end
     local novo = copiar(st)
     if not ativo then
-        ativo, eventos, seq, ult = true, {}, 0, novo
+        ativo, eventos, seq, ult, pend = true, {}, 0, novo, nil
         casa = casa or ctx.home_team
         fora = fora or ctx.away_team
         torneio = torneio or ctx.tournament_id
@@ -143,23 +236,52 @@ function m.display_frame(ctx)
     local hs0, as0 = ult.home_score or 0, ult.away_score or 0
     local p0 = ult.period
     ult = novo
-    if hs > hs0 then evento("gol", { lado = "casa", placar = { hs, as } }); mudou = true end
-    if as > as0 then evento("gol", { lado = "fora", placar = { hs, as } }); mudou = true end
+    if hs > hs0 then
+        -- o gol só vai para o arquivo depois da leitura do goleador (30 quadros, meio segundo)
+        pend = { e = evento("gol", { lado = "casa", placar = { hs, as } }), q = quadro + 30 }
+    end
+    if as > as0 then
+        -- o gol só vai para o arquivo depois da leitura do goleador (30 quadros, meio segundo)
+        pend = { e = evento("gol", { lado = "fora", placar = { hs, as } }), q = quadro + 30 }
+    end
     if hs < hs0 or as < as0 then evento("correcao_placar", { placar = { hs, as } }); mudou = true end
     if novo.period ~= p0 then evento("periodo", { de = p0, para = novo.period }); mudou = true end
+    if pend then return end
     if mudou or (novo.clock_minutes ~= nil and novo.clock_minutes ~= (m._min or -1)) then
         m._min = novo.clock_minutes
         gravar("ao_vivo")
     end
 end
 
+function m.key_down(ctx, vkey)
+    local r = ROTULOS[vkey]
+    if r then sonda(r) end
+end
+
+function m.overlay_on(ctx)
+    local p, q, r = cadeia()
+    return string.format([[App de Carreira · partida ao vivo %s
+Cadeia do goleador: %s
+
+MODO SONDAGEM (ajuda o app a achar cartões e lesões)
+Logo depois de cada lance, aperte:
+[1] Cartão   [2] Lesão   [3] Substituição   [4] Referência (lance comum)
+
+Sondas gravadas nesta sessão: %d
+%s]], m.version, r and "encontrada" or "não encontrada (fora da partida?)", nsondas, aviso)
+end
+
 function m.init(ctx)
     local base = ctx.sider_dir or ".\\"
     ARQ = base .. "live_match_data.json"
     TMP = base .. "live_match_data.tmp"
+    PASTA_SONDA = base .. "GOGOSZ\\AppCarreira\\sondas\\"
+    m.sondar_gols = true      -- grava uma sonda em cada gol (serve de referência conhecida)
     ctx.register("set_teams", m.set_teams)
     ctx.register("display_frame", m.display_frame)
-    log("AppCarreiraAoVivo: gravando a partida em " .. ARQ)
+    ctx.register("overlay_on", m.overlay_on)
+    ctx.register("key_down", m.key_down)
+    log("AppCarreiraAoVivo " .. m.version .. ": gravando a partida em " .. ARQ)
 end
 
 return m
@@ -168,6 +290,7 @@ return m
 
 def instalar(pasta_jogo, backup_dir, log=print):
     from .ingame import instalar_modulo
+    os.makedirs(os.path.join(pasta_jogo, 'GOGOSZ', 'AppCarreira', 'sondas'), exist_ok=True)
     return instalar_modulo(pasta_jogo, backup_dir, log, nome=MODULO, conteudo=LUA)
 
 
@@ -186,6 +309,7 @@ class Monitor(threading.Thread):
         self._seq = 0
         self._lock = threading.Lock()
         self.parar = threading.Event()
+        self.jogadores = {}      # id -> {'nome': ...} (o app preenche com o arquivo de elencos)
 
     def caminho(self):
         p = self.pasta_jogo_fn()
@@ -247,8 +371,12 @@ class Monitor(threading.Thread):
         nm = lambda i: (nomes or {}).get(i, f'Time {i}') if i is not None else '—'
         # o minuto do jogo anda a cada ~6 s reais: 90 s sem gravação = jogo pausado ou encerrado
         ativo = d.get('status') == 'ao_vivo' and idade is not None and idade < 90
-        evs = [e for e in (d.get('eventos') or []) if e.get('tipo') in ('gol', 'periodo', 'fim')]
+        evs = [dict(e) for e in (d.get('eventos') or []) if e.get('tipo') in ('gol', 'periodo', 'fim')]
+        for e in evs:
+            if e.get('jogador_id'):
+                e['jogador'] = (self.jogadores or {}).get(e['jogador_id'], {}).get('nome') or f"Jogador {e['jogador_id']}"
         return {'instalado': True, 'ativo': ativo, 'status': d.get('status'), 'pausado': d.get('status') == 'ao_vivo' and not ativo,
                 'casa': d.get('casa'), 'fora': d.get('fora'), 'casa_nome': nm(d.get('casa')), 'fora_nome': nm(d.get('fora')),
                 'placar': d.get('placar'), 'periodo': d.get('periodo'), 'minuto': d.get('minuto'), 'segundo': d.get('segundo'),
-                'eventos': evs[-20:], 'campos': sorted((d.get('campos') or {}).keys()), 'idade': idade}
+                'eventos': evs[-20:], 'campos': sorted((d.get('campos') or {}).keys()), 'idade': idade,
+                'sondas': d.get('sondas') or 0}
