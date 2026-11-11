@@ -210,6 +210,25 @@ class Career:
             struct.pack_into('<i', self.sf.data, o2, u)
         return antes * UNIT
 
+    def redistribuir(self, euros: int):
+        """Passa dinheiro do orçamento de transferências para o de salários (euros > 0) ou o contrário
+        (euros < 0). No salário mexe no teto e no saldo que o jogo mostra."""
+        u = int(round(euros / UNIT))
+        d = self.sf.data
+        g = lambda k: struct.unpack_from('<i', d, self.fin_off + FIN[k])[0]
+        t1, t2, teto, sal = g('orc_transf'), g('orc_transf_2'), g('teto_salario'), g('orc_salario')
+        if u > 0 and u > t1:
+            raise ValueError('Não há tanto dinheiro de transferências.')
+        if u < 0 and -u > max(sal, 0):
+            raise ValueError('Não há tanto saldo de salários para devolver.')
+        put = lambda k, v: struct.pack_into('<i', d, self.fin_off + FIN[k], v)
+        put('orc_transf', t1 - u)
+        if t2 == t1:
+            put('orc_transf_2', t2 - u)
+        put('teto_salario', max(0, teto + u))
+        put('orc_salario', max(0, sal + u))
+        return {k: g(k) * UNIT for k in ('orc_transf', 'teto_salario', 'orc_salario')}
+
     def zerar_patrocinio(self):
         """Zera só a receita de patrocínio que veio com a carreira. O orçamento de transferências não é mexido."""
         o = self.fin_off + FIN['rec_patrocinio']

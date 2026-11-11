@@ -80,8 +80,9 @@ class Engine:
 
     # ---------- empresas ----------
     def sync_empresas(self, nomes_pastas):
+        removidas = set(self.s.get('empresas_removidas', []))
         for nome, pasta in nomes_pastas:
-            if nome in self.s['empresas']:
+            if nome in self.s['empresas'] or nome in removidas:
                 continue
             setor, porte = EMPRESAS_PADRAO.get(nome, ('outros', None))
             if porte is None:

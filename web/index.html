@@ -351,6 +351,17 @@ dialog select,dialog input{width:100%}
 .roster .rj b{display:block;font-size:13.5px}.roster .rj small{color:var(--mut);font-size:11.5px;line-height:1.35;display:block}
 .perg .rep{display:flex;gap:8px;align-items:center;margin-bottom:4px}.perg .rep .jn{width:28px;height:28px;font-size:11px}
 .perg .rep small{color:#8a93a3}
+
+.palco.foto{height:560px;background:#111}
+.palco.foto img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;animation:fadein .5s ease}
+@keyframes fadein{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:none}}
+.dist{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center}
+.dist .lado2{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:14px;text-align:center}
+.dist .lado2 b{display:block;font-family:var(--head);font-size:26px}.dist .lado2 small{color:var(--mut)}
+.dist .lado2 .nv{font-size:13px;margin-top:4px}
+.emp .rm{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);border:1px solid var(--line);border-radius:50%;width:26px;height:26px;padding:0;color:#fff;font-size:12px;z-index:2}
+.emp .rm:hover{color:var(--red)}
+.emp{position:relative}
 </style>
 </head>
 <body>
@@ -479,6 +490,7 @@ dialog select,dialog input{width:100%}
   <section id="t-fin" class="hidden">
     <div class="crumb">Início / <b>Finanças</b></div>
     <div class="cards" id="finCards" style="margin-bottom:18px"></div>
+    <div class="box" style="margin-bottom:20px"><h3>Distribuir o orçamento <small>passe dinheiro das transferências para os salários (ou o contrário)</small></h3><div id="finDist"></div></div>
     <div class="grid2">
       <div class="box"><h3>Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
       <div class="box"><h3>Receitas da temporada <small>como aparecem no jogo</small></h3><div id="finRec"></div></div>
@@ -717,18 +729,25 @@ function rFotosTec(){const R=(S.gestao||{}).rostos||{};const nome=(S.gestao||{})
    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><span>Nome:</span><input id="tecNome" value="${esc(nome)}" style="max-width:220px"><button class="ghost" onclick="api('/api/tecnico/nome',{nome:$('tecNome').value}).then(load)">Salvar nome</button></div>
    <div class="tecgrid">${['feliz','neutro','irritado'].map(h=>`<div><b>${nomes[h]}</b><div class="tecmini">${(R[h]||[]).map(f=>`<div class="tm"><img src="/tecnico/${encodeURIComponent(f)}"><a onclick="apagarFotoTec('${esc(f)}')">remover</a></div>`).join('')||'<small style="color:var(--mut)">nenhuma ainda</small>'}</div>
      <label class="ghost btnup">+ Enviar foto<input type="file" accept="image/*" multiple style="display:none" onchange="enviarFotoTec('${h}',this.files)"></label></div>`).join('')}</div>
+   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><b>Cena completa da coletiva</b> <small style="color:var(--mut)">${((S.gestao||{}).cena||[]).length?'instalada: '+S.gestao.cena.join(', ')+' — a blusa e o painel mudam sozinhos com o clube e os patrocinadores':'ainda não instalada'}</small><br>
+     <label class="ghost btnup" style="margin-top:8px">Importar pacote da cena (.zip)<input type="file" accept=".zip" style="display:none" onchange="importarCena(this.files[0])"></label></div>
    <p style="font-size:12px;color:var(--mut);margin-top:10px">Pode mandar várias fotos para cada humor: a coletiva alterna entre elas. Se faltar foto de um humor, o app usa a neutra.</p></div>`}
 async function enviarFotoTec(h,files){for(const f of files){const d=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
   await api('/api/tecnico/foto',{humor:h,dados:d})}toast('Foto recortada e salva.');load()}
+async function importarCena(f){if(!f)return;const d=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+  const j=await api('/api/tecnico/cena_zip',{dados:d});toast(j.humores&&j.humores.length?'Cena instalada: '+j.humores.join(', ')+'.':'O arquivo não tinha a cena.',!(j.humores||[]).length);load()}
 async function apagarFotoTec(n){await api('/api/tecnico/apagar',{nome:n});load()}
+function palcoFoto(tom,chave){const cs=(S.gestao||{}).cena||[];if(!cs.length)return null;const h=cs.includes(tom)?tom:(cs.includes('neutro')?'neutro':cs[0]);
+  const k=encodeURIComponent((S.cores||[]).join()+'|'+S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa+x.slot).join());
+  return `<div class="palco foto"><img src="/tecnico/cena/${h}.jpg?k=${k}" onerror="this.parentNode.style.display='none'"></div>`}
 function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
   const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
   const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
-  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro','x')}</div></div>
+  if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto('neutro','x')||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro','x')}</div></div>`}
     <div><p style="font-size:15px">A próxima coletiva acontece depois do próximo jogo lido no save.</p><p style="color:#8a93a3;font-size:12px">O painel atrás do técnico mostra os patrocinadores com contrato.</p></div></div></div>`+rFotosTec();return}
   const aberta=c.status=='aberta';$('colInfo').textContent=c.titulo+' · '+dt(c.data)+(aberta?' · responda':' · encerrada');
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
-  $('sala').innerHTML=`<div class="sala"><div class="conteudo"><div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div><div>
+  $('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto(tom,c.id)||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div>`}<div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
     ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}</div>`).join('')}
     ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida e com a diretoria.</p>':''}</div></div></div>`+rFotosTec()}
@@ -808,7 +827,20 @@ function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O grá
     const l=pts.length-1;g+=`<circle cx="${x(l)}" cy="${y(pts[l][s.k]||0)}" r="4" fill="${s.c}"/>`});
   g+=`<text x="${P}" y="${H-10}" fill="#8a93a3" font-size="10">${dt(pts[0].data)}</text><text x="${W-10}" y="${H-10}" fill="#8a93a3" font-size="10" text-anchor="end">${dt(pts[pts.length-1].data)}</text></svg>`;
   return g+`<div style="display:flex;gap:16px;font-size:12px;color:var(--mut)">${series.map(s=>`<span><i style="display:inline-block;width:10px;height:10px;background:${s.c};margin-right:6px"></i>${s.n}</span>`).join('')}<span>valores em ${MO().simbolo} milhões</span></div>`}
-function rFin(){const d=S.dinheiro||{};const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
+let DIST=0;
+function rDist(){const d=S.dinheiro||{};const t=d.orc_transf||0,sl=d.orc_salario||0;const passo=100000;
+  const mn=-Math.floor(sl/passo)*passo,mx=Math.floor(t/passo)*passo;DIST=Math.max(mn,Math.min(mx,DIST));
+  const h=(S.redistrib||[]).map(r=>`<div style="font-size:12px;color:var(--mut)">${dt(r.data)} · ${r.valor>0?'transferências → salários':'salários → transferências'}: <b>${eurM(Math.abs(r.valor))}</b></div>`).join('');
+  $('finDist').innerHTML=d.orc_transf==null?'<div class="empty">Aparece depois que o app ler o save.</div>':`<div class="dist">
+    <div class="lado2"><small>TRANSFERÊNCIAS</small><b>${eurM(t-DIST)}</b><div class="nv" style="color:${DIST>0?'var(--red)':DIST<0?'var(--green)':'var(--mut)'}">${DIST?(DIST>0?'− ':'+ ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div>
+    <div style="min-width:260px;text-align:center"><input type="range" style="width:100%" min="${mn}" max="${mx}" step="${passo}" value="${DIST}" oninput="DIST=+this.value;rDist()">
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">${[-1000000,-500000,500000,1000000].map(v=>`<button class="ghost" onclick="DIST=DIST+(${v});rDist()">${v>0?'+':'−'}${eurM(Math.abs(v))} sal.</button>`).join('')}</div>
+      <button class="lime" style="margin-top:10px" ${DIST?'':'disabled'} onclick="redistribuir()">Gravar no save</button></div>
+    <div class="lado2"><small>SALÁRIOS (saldo)</small><b>${eurM(sl+DIST)}</b><div class="nv" style="color:${DIST>0?'var(--green)':DIST<0?'var(--red)':'var(--mut)'}">${DIST?(DIST>0?'+ ':'− ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div></div>
+    <p style="font-size:12px;color:var(--mut);margin:12px 0 4px">O app grava no save. No jogo, volte ao menu principal e carregue a carreira de novo (sem salvar antes) para ver os valores novos.</p>${h}`}
+async function redistribuir(){if(!DIST)return;if(!confirm((DIST>0?'Passar '+eurM(DIST)+' das transferências para os salários?':'Passar '+eurM(-DIST)+' dos salários para as transferências?')+'\n\nDepois, recarregue a carreira no jogo sem salvar antes.'))return;
+  try{await api('/api/orcamento/redistribuir',{valor:DIST});DIST=0;toast('Orçamento redistribuído no save. Recarregue a carreira no jogo.');load()}catch(e){}}
+function rFin(){const d=S.dinheiro||{};rDist();const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);
   const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
   const mul=(S.multas||[]).filter(m=>m.status=='aplicada').reduce((a,m)=>a+m.valor,0);
@@ -1020,13 +1052,18 @@ function rMsgs(){
     ${o?`<div style="display:flex;gap:8px;margin-top:18px"><button class="lime" onclick="aceitar(${o.id})">Aceitar</button><button onclick="pedir(${o.id})">Negociar</button><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button><button class="red" onclick="recusar(${o.id})">Recusar</button></div>`:''}`;
 }
 
+async function removerEmp(n){if(!confirm('Remover '+n+' da lista de empresas? As propostas abertas dela são canceladas. Dá para restaurar depois.'))return;
+  try{await api('/api/empresa/remover',{nome:n});toast(n+' removida.');load()}catch(e){}}
+async function restaurarEmp(n){await api('/api/empresa/restaurar',{nome:n});load()}
 function rEmps(){
   const busy=n=>{const c=S.contratos.find(c=>c.empresa==n&&(c.status=='ativo'||c.status=='assinado'));if(c)return `<span class="pill ok">patrocinador · ${esc(slotName(c.slot))}</span>`;
     const o=S.ofertas.find(o=>o.empresa==n);if(o)return `<span class="pill wait">${o.status=='aguardando'?'negociando':'proposta aberta'}</span>`;return ''};
   $('egrid').innerHTML=S.empresas.map(e=>{const bl=e.bloqueio_ate&&e.bloqueio_ate>S.data;
-    return `<div class="emp"><div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)}</div>
+    const vig=S.contratos.some(c=>c.empresa==e.nome&&(c.status=='ativo'||c.status=='assinado'));
+    return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}<div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)}</div>
     <small>${esc(e.setor)} · perfil ${esc(e.personalidade)}</small>${busy(e.nome)}${bl?`<small>Volta a negociar em ${dt(e.bloqueio_ate)}</small>`:''}
-    <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('');
+    <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('')+
+    ((S.empresas_removidas||[]).length?`<div class="emp" style="grid-column:1/-1"><b>Removidas</b><small>${S.empresas_removidas.map(n=>`${esc(n)} <a style="color:var(--lime);cursor:pointer" onclick="restaurarEmp('${esc(n)}')">restaurar</a>`).join(' · ')}</small></div>`:'');
 }
 async function procurar(nome){
   $('dTitle').textContent='Proposta para '+nome;

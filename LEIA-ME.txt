@@ -23,6 +23,16 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 2.6:
+- Cena da coletiva com fotos de verdade: importe o pacote da cena (.zip) em Mídia > Sala de imprensa >
+  Fotos do técnico. A blusa ganha a cor do clube, o escudo e a marca master; o painel atrás mostra os
+  patrocinadores com contrato. Trocou de clube ou de patrocinador, a cena muda sozinha. A foto muda
+  com o humor (feliz, neutro, irritado) conforme o resultado e as respostas.
+- Finanças > Distribuir o orçamento: passa dinheiro das transferências para os salários (ou o contrário)
+  e grava no save. Depois recarregue a carreira no jogo, sem salvar antes.
+- Comercial > Empresas: botão ✕ remove uma empresa que não está patrocinando (as propostas abertas dela
+  são canceladas). As removidas ficam listadas no fim e podem ser restauradas.
+
 Novidades da 2.5:
 - Notícias em formato de portal: manchete principal grande, cards com placar e escudo, filtros por
   assunto (jogos, tabela, patrocínio, elenco, diretoria, coletiva, bastidores).

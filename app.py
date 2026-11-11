@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
+from core import cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -349,6 +349,38 @@ class App:
             log(traceback.format_exc())
         return el
 
+    def cena_jpg(self, humor):
+        """Foto da coletiva com o agasalho nas cores do clube e o painel dos patrocinadores vigentes."""
+        if not cena.disponiveis(DATA):
+            return None
+        try:
+            from PIL import Image
+            st = self.state or {}
+            cores = self.cores_time() or ['#1f6b3a', '#ffffff']
+            def sat(h):
+                c = [int(h.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
+                return max(c) - min(c)
+            cor1 = max(cores, key=sat) if max(sat(c) for c in cores) >= 40 else cores[0]
+            cor2 = next((c for c in cores if c != cor1), '#ffffff')
+            eb = self.escudo_png()
+            esc = Image.open(io.BytesIO(eb)) if eb else None
+            ativos = sorted([c for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')],
+                            key=lambda c: -c.get('valor', 0))
+            logos, patro = [], None
+            for c in ativos:
+                lp = self.logos.path(c['empresa'])
+                if os.path.exists(lp) and c['empresa'] not in [n for n, _ in logos]:
+                    im = Image.open(lp)
+                    logos.append((c['empresa'], im))
+                    if c['slot'] == 'peito':
+                        patro = im
+            if patro is None and logos:
+                patro = logos[0][1]
+            return cena.compor(DATA, humor, cor1, cor2, esc, patro, logos, self.clube())
+        except Exception:
+            log(traceback.format_exc())
+            return None
+
     def escudo_png(self):
         """Escudo do clube recortado do uniforme (caixa achada na detecção), com o tecido transparente."""
         t = self.time
@@ -383,7 +415,7 @@ class App:
         return {'coletivas': g.get('coletivas', [])[-8:][::-1], 'eventos': evs,
                 'transferencias': g.get('transferencias', [])[-60:][::-1], 'prancheta': g.get('prancheta', {}),
                 'revisoes': g.get('revisoes', [])[-5:][::-1],
-                'rostos': tecnico.listar(os.path.join(DATA, 'tecnico')),
+                'rostos': tecnico.listar(os.path.join(DATA, 'tecnico')), 'cena': cena.disponiveis(DATA),
                 'tecnico_nome': CFG.get('tecnico_nome') or 'Yannes Zola'}
 
     # ----- dinheiro no jogo -----
@@ -618,7 +650,8 @@ class App:
             'ofertas_hist': [o for o in st.get('ofertas', []) if o['status'] not in ('aberta', 'aguardando')][-20:][::-1],
             'contratos': st.get('contratos', []),
             'mensagens': st.get('mensagens', [])[-60:][::-1],
-            'empresas': empresas,
+            'empresas': empresas, 'empresas_removidas': st.get('empresas_removidas', []),
+            'redistrib': st.get('redistrib', [])[-6:][::-1],
             'slots': [{'id': k, **{kk: vv for kk, vv in kits.SLOTS[k].items() if kk != 'lugares'}} for k in kits.SLOT_ORDER],
             'livres': eng.slots_livres(eng.hoje()) if eng and eng.hoje() else [],
             'familias': kits.FAMILIAS,
@@ -706,6 +739,10 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/estado':
                 with LOCK:
                     return self.send(200, A.view())
+            if u.path.startswith('/tecnico/cena/'):
+                humor = os.path.basename(unquote(u.path))[:-4]
+                b = A.cena_jpg(humor)
+                return self.send(200, b, 'image/jpeg') if b else self.send(404, {'erro': 'sem cena'})
             if u.path.startswith('/tecnico/'):
                 nome = os.path.basename(unquote(u.path[9:]))
                 p = os.path.join(DATA, 'tecnico', nome)
@@ -934,6 +971,44 @@ class H(BaseHTTPRequestHandler):
                     CFG['tecnico_nome'] = (body.get('nome') or '').strip()[:40] or 'Yannes Zola'
                     jsave(os.path.join(DATA, 'config.json'), CFG)
                     A.state['cfg_tecnico'] = CFG['tecnico_nome']
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/tecnico/cena_zip':
+                    import base64
+                    dados = base64.b64decode(body['dados'].split(',', 1)[-1])
+                    return self.send(200, {'ok': True, 'humores': cena.importar_zip(DATA, dados)})
+                if u.path == '/api/orcamento/redistribuir':
+                    car = A.career
+                    if car is None or car.fin_off is None:
+                        return self.send(400, {'erro': 'O app ainda não leu o save da carreira.'})
+                    valor = int(body['valor'])
+                    try:
+                        novo = car.redistribuir(valor)
+                        car.write(os.path.join(DATA, 'backups_save'), log)
+                    except ValueError as e:
+                        return self.send(400, {'erro': str(e)})
+                    A.save_mtime = car.mtime
+                    A.state['dinheiro'] = car.money()
+                    A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
+                    A.persist()
+                    return self.send(200, {'ok': True, **novo})
+                if u.path in ('/api/empresa/remover', '/api/empresa/restaurar'):
+                    st = A.state
+                    nome = body['nome']
+                    rem = st.setdefault('empresas_removidas', [])
+                    if u.path.endswith('remover'):
+                        if any(c['empresa'] == nome and c['status'] in ('ativo', 'assinado') for c in st.get('contratos', [])):
+                            return self.send(400, {'erro': 'Essa empresa tem contrato vigente. Rescinda antes de remover.'})
+                        if nome not in rem:
+                            rem.append(nome)
+                        st.get('empresas', {}).pop(nome, None)
+                        for o in st.get('ofertas', []):
+                            if o.get('empresa') == nome and o['status'] in ('aberta', 'aguardando'):
+                                o['status'] = 'cancelada'
+                    else:
+                        if nome in rem:
+                            rem.remove(nome)
+                        A.engine.sync_empresas([(nome, '')])
+                    A.persist()
                     return self.send(200, {'ok': True})
                 if u.path == '/api/reportagem':
                     st = A.state or {}
