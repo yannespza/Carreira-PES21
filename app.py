@@ -13,6 +13,7 @@ PORT = 8765
 DATA = os.path.join(APP_DIR, 'data')
 LOG_PATH = os.path.join(DATA, 'app.log')
 LOCK = threading.RLock()
+LOGOS_LOCK = threading.Lock()     # uma leitura da pasta de logos por vez (botão e verificação automática)
 
 
 def log(*a):
@@ -39,6 +40,128 @@ def jsave(p, obj):
 
 
 CFG = jload(os.path.join(DATA, 'config.json'), {})
+
+
+# ---------------- primeira configuração (PC novo, app emprestado) ----------------
+def _docs_bases():
+    home = os.path.expanduser('~')
+    bases = [os.path.join(home, x) for x in ('Documents', 'Documentos')]
+    try:
+        for d in os.listdir(home):
+            if d.lower().startswith('onedrive') and os.path.isdir(os.path.join(home, d)):
+                bases += [os.path.join(home, d, x) for x in ('Documents', 'Documentos')]
+    except OSError:
+        pass
+    return [b for b in bases if os.path.isdir(b)]
+
+
+def _saves_em(pasta):
+    return [p for p in glob.glob(os.path.join(pasta, '*', 'save', 'ML*'))
+            if re.fullmatch(r'ML[0-9A-F]{8}', os.path.basename(p))]
+
+
+def detectar_saves():
+    """Pastas de save do PES 2021 (KONAMI, GOGOSZ...) dentro de Documentos, a mais usada primeiro."""
+    achadas = {}
+    for b in _docs_bases():
+        try:
+            n1 = [os.path.join(b, d) for d in os.listdir(b)]
+        except OSError:
+            continue
+        for d in n1:
+            if not os.path.isdir(d):
+                continue
+            cands = [d]
+            try:
+                cands += [os.path.join(d, x) for x in os.listdir(d) if os.path.isdir(os.path.join(d, x))]
+            except OSError:
+                pass
+            for c in cands:
+                ms = _saves_em(c)
+                if ms:
+                    achadas[c] = max(os.path.getmtime(m) for m in ms)
+    return [k for k, _ in sorted(achadas.items(), key=lambda kv: -kv[1])]
+
+
+def _jogo_ok(p):
+    return bool(p) and os.path.isfile(os.path.join(p, 'PES2021.exe'))
+
+
+def detectar_jogo():
+    """Pastas com o PES2021.exe: caminhos da Steam e até 3 níveis abaixo da raiz de cada disco.
+    As que têm o patch GOGOSZ (kitserver) vêm primeiro."""
+    import string
+    achadas = []
+    pular = {'windows', '$recycle.bin', 'programdata', 'users', 'system volume information', 'recovery',
+             'perflogs', 'msocache', 'intel', 'amd', 'nvidia', '$windows.~bt', '$windows.~ws', 'onedrivetemp'}
+    for letra in string.ascii_uppercase[2:]:
+        raiz = f'{letra}:\\'
+        if not os.path.isdir(raiz):
+            continue
+        for sub in (r'Program Files (x86)\Steam', r'Program Files\Steam', 'SteamLibrary', 'Steam',
+                    r'Games\Steam', r'Games\SteamLibrary'):
+            p = os.path.join(raiz, sub, 'steamapps', 'common', 'eFootball PES 2021')
+            if _jogo_ok(p):
+                achadas.append(p)
+        fila, vistos = [(raiz, 0)], 0
+        while fila and vistos < 4000:
+            d, nivel = fila.pop(0)
+            vistos += 1
+            try:
+                itens = os.listdir(d)
+            except OSError:
+                continue
+            if 'PES2021.exe' in itens:
+                achadas.append(d)
+                continue
+            if nivel >= 3:
+                continue
+            for x in itens:
+                if x.lower() in pular or x.startswith('.'):
+                    continue
+                c = os.path.join(d, x)
+                if os.path.isdir(c):
+                    fila.append((c, nivel + 1))
+    vistas = []
+    for a in achadas:
+        if a not in vistas:
+            vistas.append(a)
+    tem_patch = lambda p: os.path.isfile(os.path.join(p, 'GOGOSZ', 'kitserver', 'map.txt'))
+    return sorted(vistas, key=lambda p: not tem_patch(p))
+
+
+def config_status():
+    probs = []
+    if not _jogo_ok(CFG.get('pasta_jogo')):
+        probs.append('jogo')
+    if not CFG.get('pasta_saves') or not _saves_em(CFG.get('pasta_saves')):
+        probs.append('saves')
+    return probs
+
+
+def preparar_config():
+    """PC novo: preenche sozinho o que conseguir achar e grava. O que faltar, a tela de configuração pede."""
+    mudou = False
+    if not CFG.get('pasta_logos'):
+        CFG['pasta_logos'] = os.path.join(APP_DIR, 'Logos')
+        os.makedirs(CFG['pasta_logos'], exist_ok=True)
+        mudou = True
+    if os.name == 'nt' and not _jogo_ok(CFG.get('pasta_jogo')):
+        j = detectar_jogo()
+        if j:
+            CFG['pasta_jogo'] = j[0]; mudou = True
+    if os.name == 'nt' and not (CFG.get('pasta_saves') and _saves_em(CFG['pasta_saves'])):
+        sv = detectar_saves()
+        if sv:
+            CFG['pasta_saves'] = sv[0]; CFG.pop('save_escolhido', None); mudou = True
+    if mudou:
+        jsave(os.path.join(DATA, 'config.json'), CFG)
+
+
+try:
+    preparar_config()
+except Exception:
+    pass
 TORNEIOS = {17: 'Brasileirão', 79: 'Série B', 81: 'Série C', 80: 'Série D', 23: 'Copa do Brasil',
             86: 'Supercopa do Brasil', 2: 'Libertadores', 3: 'Libertadores', 4: 'Libertadores (final)',
             5: 'Sudamericana', 6: 'Sudamericana (final)', 7: 'Recopa', 1: 'Intercontinental'}
@@ -47,7 +170,7 @@ TORNEIOS = {17: 'Brasileirão', 79: 'Série B', 81: 'Série C', 80: 'Série D', 
 def mapa_kitserver():
     """{id: 'Pais\\Liga\\Time'} do kitserver do GOGOSZ (país e liga de cada time do jogo)."""
     out = {}
-    p = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', 'kitserver', 'map.txt')
+    p = os.path.join(CFG.get('pasta_jogo', ''), 'GOGOSZ', 'kitserver', 'map.txt')
     try:
         for line in open(p, encoding='utf-8-sig', errors='replace'):
             m = re.match(r'\s*(\d+)\s*,\s*"([^"]+)"', line)
@@ -72,7 +195,7 @@ def foto_jogador(pid):
         return None          # sem foto: procura de novo a cada 3 dias (caso você instale fotos novas)
     os.makedirs(cache, exist_ok=True)
     for pasta in PASTAS_FOTO:
-        f = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', pasta, 'common', 'render', 'symbol', 'player', f'{pid}.dds')
+        f = os.path.join(CFG.get('pasta_jogo', ''), 'GOGOSZ', pasta, 'common', 'render', 'symbol', 'player', f'{pid}.dds')
         if os.path.exists(f):
             try:
                 from PIL import Image
@@ -88,7 +211,7 @@ def foto_jogador(pid):
 
 def team_names():
     names = {}
-    p = os.path.join(CFG['pasta_jogo'], 'GOGOSZ', 'kitserver', 'map.txt')
+    p = os.path.join(CFG.get('pasta_jogo', ''), 'GOGOSZ', 'kitserver', 'map.txt')
     try:
         for line in open(p, encoding='utf-8-sig', errors='replace'):
             m = re.match(r'\s*(\d+)\s*,\s*"([^"]+)"', line)
@@ -101,7 +224,7 @@ def team_names():
 
 class App:
     def __init__(self):
-        self.logos = LogoBank(APP_DIR, CFG['pasta_logos'])
+        self.logos = LogoBank(APP_DIR, CFG.get('pasta_logos', ''))
         self.names = team_names()
         self.mapa = mapa_kitserver()
         diretoria.MAPA = self.mapa
@@ -122,9 +245,9 @@ class App:
         # partida ao vivo: o módulo Lua grava live_match_data.json; esta thread lê sem travar nada
         self.aovivo = aovivo.Monitor(lambda: CFG.get('pasta_jogo'), self.ao_vivo_evento, log=log)
         self.aovivo.start()
-        if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG['pasta_jogo']):
+        if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
             try:
-                aovivo.instalar(CFG['pasta_jogo'], os.path.join(DATA, 'backups_save'), log)
+                aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
         self.elenco = []
@@ -223,7 +346,7 @@ class App:
     def listar_saves(self):
         from core import pescrypt
         out = []
-        for p in glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', 'ML*')):
+        for p in glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', 'ML*')):
             if not re.fullmatch(r'ML[0-9A-F]{8}', os.path.basename(p)):
                 continue
             try:
@@ -246,9 +369,9 @@ class App:
         esc = CFG.get('save_escolhido')
         if esc and os.path.exists(esc):
             return esc
-        cands = glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', CFG.get('arquivo_save', 'ML00000000')))
+        cands = glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', CFG.get('arquivo_save', 'ML00000000')))
         if not cands:
-            cands = glob.glob(os.path.join(CFG['pasta_saves'], '*', 'save', 'ML*'))
+            cands = glob.glob(os.path.join(CFG.get('pasta_saves', ''), '*', 'save', 'ML*'))
         return max(cands, key=os.path.getmtime) if cands else None
 
     def game_running(self):
@@ -451,6 +574,7 @@ class App:
             chave = os.path.basename(self.state_path or 'carreira') + '|' + str(self.tid())
             if st.get('carreira_id_novo'):
                 chave += '|' + st['carreira_id']
+            self.chave_tec = chave
             c, nova = tecnico_carreira.registrar(DATA, chave, st, self.clube(), car.date)
             st['prestigio_tecnico'] = c['prestigio']
             if nova and len(c['passagens']) > 1 and car.date:
@@ -490,7 +614,8 @@ class App:
             'rivais_manual': manual, 'times_tabela': [{'id': i, 'nome': n} for i, n in times],
             'gramado': {'cond': cond, 'nivel': ingame.nivel_gramado(cond)[0] if cond is not None else None,
                         'hist': gr.get('hist', [])[-30:]},
-            'retro': ret, 'tecnico': tecnico_carreira.view(tecnico_carreira.carregar(DATA)),
+            'retro': ret, 'tecnico': {**tecnico_carreira.view(tecnico_carreira.carregar(DATA)),
+                                      'arquivadas': tecnico_carreira.arquivadas(DATA)},
             'medico': medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None),
             'ranking': self.ranking_view(),
         }
@@ -564,10 +689,10 @@ class App:
                      sorted(plano['vars'].items()), list(gram), 2]
             if not forcar and st.get('ingame_assin') == assin:
                 return
-            ingame.instalar_modulo(CFG['pasta_jogo'], os.path.join(DATA, 'backups_save'), log)
+            ingame.instalar_modulo(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             eb = self.escudo_png()
             esc = Image.open(io.BytesIO(eb)) if eb else None
-            res = ingame.gerar(CFG['pasta_jogo'], self.tid(), self.clube(), cores, esc, patro, plano, gram, log)
+            res = ingame.gerar(CFG.get('pasta_jogo', ''), self.tid(), self.clube(), cores, esc, patro, plano, gram, log)
             res['gramado_cond'] = cond
             res['em'] = st.get('data')
             st['ingame'] = res
@@ -885,6 +1010,9 @@ class App:
             empresas.append({'nome': n, **e, 'global': sim.e_global(n, e)})
         return {
             'pronto': self.state is not None, 'versao': VERSAO,
+            'config': {'problemas': config_status(), 'pasta_jogo': CFG.get('pasta_jogo', ''),
+                       'pasta_saves': CFG.get('pasta_saves', ''), 'pasta_logos': CFG.get('pasta_logos', ''),
+                       'tecnico_nome': CFG.get('tecnico_nome', ''), 'primeira': not CFG.get('configurado')},
             'clube': self.clube(), 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
                       'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
@@ -899,6 +1027,7 @@ class App:
             'contratos': st.get('contratos', []),
             'mensagens': st.get('mensagens', [])[-60:][::-1],
             'ingame': st.get('ingame'), 'empresas': empresas, 'empresas_removidas': st.get('empresas_removidas', []),
+            'empresas_sem_logo': self.logos.sem_imagem([e['nome'] for e in empresas]),
             'redistrib': st.get('redistrib', [])[-6:][::-1],
             'slots': [{'id': k, **{kk: vv for kk, vv in kits.SLOTS[k].items() if kk != 'lugares'}} for k in kits.SLOT_ORDER],
             'livres': eng.slots_livres(eng.hoje()) if eng and eng.hoje() else [],
@@ -927,17 +1056,30 @@ def watcher():
         time.sleep(3)
 
 
+def atualizar_logos():
+    """Lê a pasta de logos: empresas novas entram no app; imagens trocadas ou sem cópia limpa são refeitas
+    com o fundo transparente."""
+    with LOGOS_LOCK:
+        novos = A.logos.scan()
+        atualizados = list(A.logos.atualizados)
+        renomeados = dict(A.logos.renomeados)
+    if (novos or renomeados) and A.engine:
+        with LOCK:
+            for velho, novo_nome in renomeados.items():
+                A.engine.renomear_empresa(velho, novo_nome)
+            A.engine.sync_empresas([(n['nome'], n['pasta']) for n in novos])
+            A.persist()
+    if novos:
+        log('logos novos:', [n['nome'] for n in novos])
+    if atualizados:
+        log('logos refeitos:', atualizados)
+    return novos, atualizados
+
+
 def logos_watcher():
     while True:
         try:
-            novos = A.logos.scan()
-            if (novos or A.logos.renomeados) and A.engine:
-                with LOCK:
-                    for velho, novo_nome in A.logos.renomeados.items():
-                        A.engine.renomear_empresa(velho, novo_nome)
-                    A.engine.sync_empresas([(n['nome'], n['pasta']) for n in novos])
-                    A.persist()
-                log('logos novos:', [n['nome'] for n in novos])
+            atualizar_logos()
         except Exception:
             log(traceback.format_exc())
         time.sleep(20)
@@ -1171,6 +1313,65 @@ class H(BaseHTTPRequestHandler):
             CFG['moeda'] = cod
             jsave(os.path.join(DATA, 'config.json'), CFG)
             return self.send(200, {'ok': True})
+        if u.path == '/api/config/detectar':
+            return self.send(200, {'jogo': detectar_jogo(), 'saves': detectar_saves()})
+        if u.path == '/api/config/escolher':
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)
+                p = filedialog.askdirectory(title=body.get('titulo') or 'Escolha a pasta',
+                                            initialdir=body.get('inicial') or None)
+                r.destroy()
+            except Exception as e:
+                return self.send(400, {'erro': f'Não consegui abrir a janela de pastas ({e}). Cole o caminho no campo.'})
+            return self.send(200, {'pasta': os.path.normpath(p) if p else ''})
+        if u.path == '/api/config':
+            jogo = (body.get('pasta_jogo') or '').strip().strip('"')
+            saves = (body.get('pasta_saves') or '').strip().strip('"')
+            logos = (body.get('pasta_logos') or '').strip().strip('"')
+            if not _jogo_ok(jogo):
+                return self.send(400, {'erro': 'Não achei o PES2021.exe nessa pasta do jogo.'})
+            if not _saves_em(saves):
+                return self.send(400, {'erro': 'Não achei saves do Master League nessa pasta (ela deve ter subpastas com "save\\ML...").'})
+            mudou_saves = saves != CFG.get('pasta_saves')
+            CFG.update(pasta_jogo=jogo, pasta_saves=saves, configurado=True)
+            if logos:
+                CFG['pasta_logos'] = logos
+            nome = (body.get('tecnico_nome') or '').strip()[:40]
+            if nome:
+                CFG['tecnico_nome'] = nome
+            if mudou_saves:
+                CFG.pop('save_escolhido', None)
+            jsave(os.path.join(DATA, 'config.json'), CFG)
+            self.send(200, {'ok': True})
+            reiniciar()
+            return
+        if u.path == '/api/logos/atualizar':
+            try:
+                novos, atual = atualizar_logos()
+            except Exception as e:
+                log(traceback.format_exc())
+                return self.send(500, {'erro': f'Não consegui ler a pasta de logos: {e}'})
+            with LOCK:
+                nomes = list(((A.state or {}).get('empresas') or {}).keys())
+            return self.send(200, {'novas': [n['nome'] for n in novos], 'atualizadas': atual,
+                                   'sem_imagem': A.logos.sem_imagem(nomes),
+                                   'pasta': A.logos.logos_dir, 'pasta_existe': os.path.isdir(A.logos.logos_dir)})
+        if u.path == '/api/logos/enviar':
+            import base64
+            nome = (body.get('nome') or '').strip()
+            dados = body.get('dados') or ''
+            if not nome or not dados:
+                return self.send(400, {'erro': 'Faltou a empresa ou a imagem.'})
+            try:
+                raw = base64.b64decode(dados.split(',', 1)[-1])
+                with LOGOS_LOCK:
+                    A.logos.definir(nome, raw)
+            except Exception as e:
+                log(traceback.format_exc())
+                return self.send(400, {'erro': f'Não consegui usar essa imagem ({e}).'})
+            return self.send(200, {'ok': True})
         if u.path == '/api/sair':
             self.send(200, {'ok': True})
             log('App encerrado pelo usuário')
@@ -1236,6 +1437,21 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, {'ok': True, 'nome': nome})
                 if u.path == '/api/tecnico/apagar':
                     tecnico.apagar(os.path.join(DATA, 'tecnico'), body['nome'])
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/tecnico/nova_carreira':
+                    nome = (body.get('nome') or '').strip()[:40]
+                    if nome:
+                        CFG['tecnico_nome'] = nome
+                        jsave(os.path.join(DATA, 'config.json'), CFG)
+                        if A.state is not None:
+                            A.state['cfg_tecnico'] = nome
+                    chave = getattr(A, 'chave_tec', None)
+                    st = A.state or {}
+                    tecnico_carreira.zerar(DATA, chave, st.get('data'))
+                    if chave and st:
+                        c, _ = tecnico_carreira.registrar(DATA, chave, st, A.clube(), None)
+                        st['prestigio_tecnico'] = c['prestigio']
+                        A.persist()
                     return self.send(200, {'ok': True})
                 if u.path == '/api/tecnico/nome':
                     CFG['tecnico_nome'] = (body.get('nome') or '').strip()[:40] or 'Yannes Zola'
@@ -1509,7 +1725,10 @@ def main():
             abrir_janela(url)
         return
     log('App iniciado, versão', VERSAO)
-    A.logos.scan()
+    try:
+        atualizar_logos()
+    except Exception:
+        log(traceback.format_exc())
     threading.Thread(target=watcher, daemon=True).start()
     threading.Thread(target=logos_watcher, daemon=True).start()
     class Servidor(ThreadingHTTPServer):

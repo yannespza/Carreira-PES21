@@ -141,12 +141,29 @@ class LogoBank:
     def save_map(self):
         json.dump(self.map, open(self.map_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
+    def _assinatura(self, caminho):
+        try:
+            st = os.stat(caminho)
+            return [st.st_size, int(st.st_mtime)]
+        except OSError:
+            return None
+
+    def _processar(self, caminho, nome):
+        im = Image.open(caminho)
+        if im.width < 600:
+            im = im.convert('RGBA').resize((im.width * 3, im.height * 3), Image.LANCZOS)
+        remove_background(im).save(os.path.join(self.cache_dir, nome + '.png'))
+        self._mem.pop(nome, None)
+
     def scan(self):
         """Procura logos novos na pasta do usuário. Retorna a lista de empresas novas.
+        Também refaz (com fundo transparente) as imagens trocadas na pasta e as que ficaram sem cópia limpa:
+        essas vão para self.atualizados.
         Quando a limpeza dos logos melhora (VERSAO_CACHE), refaz todos e guarda os nomes que mudaram em
         self.renomeados (nome antigo -> novo) para o app atualizar as empresas."""
         novos = []
         self.renomeados = {}
+        self.atualizados = []
         if not os.path.isdir(self.logos_dir):
             return novos
         refazer = self.map.get('_versao') != VERSAO_CACHE
@@ -154,12 +171,34 @@ class LogoBank:
         if refazer:
             self.map = {}
         used = set(v for k, v in self.map.items() if not k.startswith('_'))
+        arqs = self.map.setdefault('_arquivos', {})
+        dono = self.map.setdefault('_dono', {})      # empresa -> arquivo que deu a imagem atual
+        for rel, nome in self.map.items():
+            if not rel.startswith('_'):
+                dono.setdefault(nome, rel)
         for root, _, files in os.walk(self.logos_dir):
             for f in sorted(files):
                 if not f.lower().endswith(EXTS):
                     continue
-                rel = os.path.relpath(os.path.join(root, f), self.logos_dir)
+                cam = os.path.join(root, f)
+                rel = os.path.relpath(cam, self.logos_dir)
                 if rel in self.map:
+                    nome = self.map[rel]
+                    sig = self._assinatura(cam)
+                    trocou = rel in arqs and arqs[rel] != sig and dono.get(nome, rel) == rel
+                    sem_img = not os.path.exists(self.path(nome)) and dono.get(nome, rel) == rel
+                    if rel not in arqs and not sem_img:
+                        arqs[rel] = sig          # versões antigas não guardavam a assinatura do arquivo
+                    elif dono.get(nome) != rel:
+                        arqs[rel] = sig          # outra imagem é a da empresa: esta só fica registrada
+                    elif trocou or sem_img:
+                        try:
+                            self._processar(cam, nome)
+                            arqs[rel] = sig
+                            dono[nome] = rel
+                            self.atualizados.append(nome)
+                        except Exception:
+                            pass
                     continue
                 nome = nice_name(f)
                 if rel in antigo and not _NOME_RUIM.search(antigo[rel]):
@@ -170,14 +209,11 @@ class LogoBank:
                         self.renomeados[antigo[rel]] = nome
                     continue
                 try:
-                    im = Image.open(os.path.join(root, f))
-                    if im.width < 600:
-                        im = im.convert('RGBA').resize((im.width * 3, im.height * 3), Image.LANCZOS)
-                    remove_background(im).save(os.path.join(self.cache_dir, nome + '.png'))
-                    self._mem.pop(nome, None)
+                    self._processar(cam, nome)
                 except Exception:
                     continue
                 self.map[rel] = nome; used.add(nome)
+                arqs[rel] = self._assinatura(cam); dono[nome] = rel
                 if rel in antigo:
                     if antigo[rel] != nome:
                         self.renomeados[antigo[rel]] = nome
@@ -193,6 +229,29 @@ class LogoBank:
 
     def nomes(self):
         return sorted(set(v for k, v in self.map.items() if not k.startswith('_')))
+
+    def definir(self, nome, dados: bytes):
+        """Imagem escolhida no app para uma empresa: vai para a pasta de logos e vira a imagem da empresa
+        (com o fundo tirado). Devolve o caminho gravado."""
+        import io as _io
+        im = Image.open(_io.BytesIO(dados))
+        im.load()
+        os.makedirs(self.logos_dir, exist_ok=True)
+        base = re.sub(r'[\\/:*?"<>|]+', ' ', nome).strip() or 'empresa'
+        cam = os.path.join(self.logos_dir, base + ' (app).png')
+        im.save(cam)
+        rel = os.path.relpath(cam, self.logos_dir)
+        self._processar(cam, nome)
+        self.map[rel] = nome
+        arqs = self.map.setdefault('_arquivos', {})
+        # a imagem nova passa a ser a "dona" da empresa: as outras do mesmo nome deixam de ser refeitas
+        self.map.setdefault('_dono', {})[nome] = rel
+        arqs[rel] = self._assinatura(cam)
+        self.save_map()
+        return cam
+
+    def sem_imagem(self, nomes):
+        return [n for n in nomes if not os.path.exists(self.path(n))]
 
     def path(self, nome):
         return os.path.join(self.cache_dir, nome + '.png')

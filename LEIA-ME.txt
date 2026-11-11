@@ -23,6 +23,15 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.4:
+- Carreira do técnico > "Recomeçar do zero": começa outra carreira de técnico (mesmo nome ou outro).
+  A anterior fica guardada em data\tecnico e aparece em "Carreiras anteriores".
+- Comercial > Empresas > "Atualizar imagens": lê a pasta de logos na hora, coloca as empresas novas e
+  refaz com fundo transparente as imagens que você trocou e as que estavam sem imagem.
+  Em cada empresa, passe o mouse no logo e clique em "trocar imagem" para escolher outra.
+- Configuração inicial: num computador novo, o app procura sozinho a pasta do jogo e a dos saves e
+  pergunta o que não achar. Para trocar depois: "Pastas do jogo", na barra de cima.
+
 Novidades da 3.3.1:
 - Correção: ao começar uma carreira nova, o app dava erro e não lia o save novo. Agora lê normalmente.
 - Recomeçar no mesmo arquivo de save com o mesmo clube vira uma passagem nova na carreira do técnico

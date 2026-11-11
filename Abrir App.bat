@@ -5,7 +5,7 @@ cd /d "%~dp0"
 py -c "import numpy, PIL, etcpak" 2>nul
 if errorlevel 1 (
   echo Instalando componentes pela primeira vez. Aguarde...
-  py -m pip install --no-index --find-links "%~dp0wheels" numpy pillow etcpak --quiet --disable-pip-version-check
+  py -m pip install --no-index --find-links "%~dp0wheels" numpy pillow etcpak --quiet --disable-pip-version-check 2>nul || py -m pip install numpy pillow etcpak --quiet --disable-pip-version-check
 )
 py app.py
 if errorlevel 1 (

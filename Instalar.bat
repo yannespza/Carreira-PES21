@@ -5,9 +5,23 @@ cd /d "%~dp0"
 echo.
 echo  Instalando o App de Carreira...
 echo.
-py -m pip install --no-index --find-links "%~dp0wheels" numpy pillow etcpak --quiet --disable-pip-version-check
+where py >nul 2>nul
 if errorlevel 1 (
-  echo  Nao consegui instalar os componentes. Tire um print desta janela e mande para o Claude.
+  echo  O Python nao esta instalado neste computador.
+  echo  Vou abrir a pagina de download. Instale e MARQUE a opcao "Add python.exe to PATH".
+  echo  Depois rode este Instalar.bat de novo.
+  start "" "https://www.python.org/downloads/windows/"
+  pause
+  exit /b 1
+)
+py -m pip install --no-index --find-links "%~dp0wheels" numpy pillow etcpak --quiet --disable-pip-version-check 2>nul
+if errorlevel 1 (
+  echo  Baixando os componentes da internet (so desta vez^)...
+  py -m pip install numpy pillow etcpak --quiet --disable-pip-version-check
+)
+py -c "import numpy, PIL, etcpak" 2>nul
+if errorlevel 1 (
+  echo  Nao consegui instalar os componentes. Tire um print desta janela e mande para quem te passou o app.
   pause
   exit /b 1
 )

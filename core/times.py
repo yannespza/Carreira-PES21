@@ -123,7 +123,7 @@ class Times:
         if tid == 137 and os.path.isdir(os.path.join(self.data, 'kits_base', 'p1')):
             # o Palmeiras já foi preparado à mão nas versões anteriores
             t = {'id': 137, 'nome': 'Palmeiras', 'pasta': self.cfg.get('pasta_kits') or pasta_kits(
-                     self.cfg['pasta_jogo'], self.mapa, 137),
+                     self.cfg.get('pasta_jogo', ''), self.mapa, 137),
                  'base_dir': os.path.join(self.data, 'kits_base'), 'variantes': VARIANTES_PALMEIRAS,
                  'familias': FAMILIAS_PALMEIRAS, 'slots': PADRAO, 'ordem': ORDEM_PADRAO, 'preparado': True,
                  'atratividade_base': self.cfg.get('atratividade_base', 68), 'deteccao': {}, 'legado': True}
@@ -138,7 +138,7 @@ class Times:
         os.replace(p + '.tmp', p)
 
     def novo(self, tid):
-        pasta = pasta_kits(self.cfg['pasta_jogo'], self.mapa, tid)
+        pasta = pasta_kits(self.cfg.get('pasta_jogo', ''), self.mapa, tid)
         vs = listar_variantes(pasta)
         fams = {}
         for _, _, f in vs:

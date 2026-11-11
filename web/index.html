@@ -406,6 +406,9 @@ dialog select,dialog input{width:100%}
 .emp .rm{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);border:1px solid var(--line);border-radius:50%;width:26px;height:26px;padding:0;color:#fff;font-size:12px;z-index:2}
 .emp .rm:hover{color:var(--red)}
 .emp{position:relative}
+.emp .lg{position:relative}.emp .lg .troca{position:absolute;bottom:4px;right:6px;font-size:11px;color:#333;background:rgba(255,255,255,.85);border-radius:3px;padding:1px 6px;cursor:pointer;opacity:0;transition:opacity .15s}
+.emp:hover .lg .troca,.emp .lg.sem .troca{opacity:1}.emp .lg.sem{background:repeating-linear-gradient(45deg,#2a2f38 0 8px,#252a32 8px 16px)}
+.emp .lg.sem span.aviso{color:var(--mut);font-size:12px;text-align:center}
 </style>
 </head>
 <body>
@@ -424,8 +427,9 @@ dialog select,dialog input{width:100%}
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
 <div class="tl" id="timeline"><small>LINHA DO TEMPO</small></div>
-<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span></div>
+<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
 
+<div id="setup" class="hidden" style="position:fixed;inset:0;z-index:200;background:rgba(10,12,16,.92);overflow:auto;padding:40px 16px"><div class="box" style="max-width:760px;margin:0 auto" id="setupBox"></div></div>
 <main>
   <div id="live"></div>
   <div id="banners"></div>
@@ -484,7 +488,9 @@ dialog select,dialog input{width:100%}
     <div id="p-ct" class="hidden"></div>
     <div id="p-hi" class="hidden"></div>
     <div id="p-em" class="hidden">
-    <p style="color:var(--mut);margin-top:-6px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira.</p>
+    <div style="display:flex;gap:14px;align-items:flex-start;margin-top:-6px;margin-bottom:12px;flex-wrap:wrap"><p style="color:var(--mut);margin:0;flex:1;min-width:280px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira. Para trocar a imagem de uma empresa, passe o mouse no logo e clique em "trocar imagem": o app tira o fundo sozinho.</p>
+      <button class="ghost" id="btLogos" onclick="atualizarLogos()">Atualizar imagens</button></div>
+    <div id="logosMsg"></div>
     <div class="egrid" id="egrid"></div></div>
   </section>
 
@@ -669,6 +675,24 @@ async function carregarSaves(){try{const j=await (await fetch('/api/saves')).jso
   const ms=$('moSel');if(S.moeda&&document.activeElement!==ms){const o=Object.entries(S.moeda.opcoes).map(([k,v])=>`<option value="${k}" ${k==S.moeda.cod?'selected':''}>${v} ${k}</option>`).join('');if(ms.innerHTML!=o)ms.innerHTML=o}
   const sel=$('saveSel');if(document.activeElement===sel)return;
   sel.innerHTML=j.saves.map(s=>`<option value="${esc(s.caminho)}" ${s.caminho==j.atual?'selected':''}>${esc(s.nome)} · ${esc(s.clube||'?')} · ${s.data?dt(s.data):'—'} · salvo ${esc(s.salvo_em)}</option>`).join('')||'<option>nenhum save encontrado</option>'}catch(e){}}
+let SETUP=false;
+function abrirSetup(manual){const C=S.config||{};SETUP=true;$('setup').classList.remove('hidden');
+  const P=C.problemas||[],campo=(id,rot,val,dica,ok)=>`<label style="display:block;margin:14px 0 4px;font-weight:600">${rot} ${ok?'<span class="pill ok">ok</span>':'<span class="pill off">falta</span>'}</label>
+    <div style="display:flex;gap:6px"><input id="${id}" value="${esc(val||'')}" style="flex:1" placeholder="${esc(dica)}"><button class="ghost" onclick="escolherPasta('${id}')">Escolher…</button></div><div id="${id}_sug" style="font-size:12px;color:var(--mut);margin-top:4px"></div>`;
+  $('setupBox').innerHTML=`<h3>${manual?'Pastas do jogo':'Bem-vindo ao App de Carreira'} <small>${manual?'confira ou troque as pastas':'configuração inicial'}</small></h3>
+    <p style="color:var(--mut);margin-top:0">${manual?'':'O app acompanha a sua Master League do PES 2021 lendo o save. Precisa saber onde estão o jogo e os saves neste computador. '}O que o app encontrou sozinho já vem preenchido.</p>
+    ${campo('cfJogo','Pasta do jogo (onde fica o PES2021.exe)',C.pasta_jogo,'ex.: D:\\Jogos\\eFootball PES 2021',!P.includes('jogo'))}
+    ${campo('cfSaves','Pasta dos saves (Documentos\\KONAMI\\eFootball PES 2021 SEASON UPDATE)',C.pasta_saves,'ex.: C:\\Users\\voce\\Documents\\KONAMI\\eFootball PES 2021 SEASON UPDATE',!P.includes('saves'))}
+    ${campo('cfLogos','Pasta das logos das empresas (patrocinadores)',C.pasta_logos,'',true)}
+    <label style="display:block;margin:14px 0 4px;font-weight:600">Seu nome de técnico</label><input id="cfNome" value="${esc(C.tecnico_nome||'')}" maxlength="40" placeholder="Como os jornais vão te chamar" style="max-width:320px">
+    <div style="display:flex;gap:8px;margin-top:20px;align-items:center"><button class="lime" onclick="salvarSetup()">Salvar e abrir</button>${manual&&!P.length?'<button class="ghost" onclick="fecharSetup()">Fechar</button>':''}<span id="cfMsg" style="color:var(--mut);font-size:12px"></span></div>`;
+  if(P.length)api('/api/config/detectar',{}).then(r=>{const sug=(id,l)=>{if(l.length>1||(l.length&&!$(id).value))$(id+'_sug').innerHTML='Encontrei: '+l.slice(0,4).map(x=>`<a style="cursor:pointer;color:var(--lime)" onclick="$('${id}').value=this.textContent">${esc(x)}</a>`).join(' · ')};
+    sug('cfJogo',r.jogo);sug('cfSaves',r.saves);if(!$('cfJogo').value&&r.jogo.length)$('cfJogo').value=r.jogo[0];if(!$('cfSaves').value&&r.saves.length)$('cfSaves').value=r.saves[0]}).catch(()=>{})}
+function fecharSetup(){SETUP=false;$('setup').classList.add('hidden')}
+async function escolherPasta(id){try{const r=await api('/api/config/escolher',{inicial:$(id).value});if(r.pasta)$(id).value=r.pasta}catch(x){}}
+async function salvarSetup(){$('cfMsg').textContent='Salvando…';
+  try{await api('/api/config',{pasta_jogo:$('cfJogo').value,pasta_saves:$('cfSaves').value,pasta_logos:$('cfLogos').value,tecnico_nome:$('cfNome').value});
+    $('cfMsg').textContent='Pronto! Reiniciando o app…';setTimeout(()=>location.reload(),4000)}catch(x){$('cfMsg').textContent=''}}
 async function escolherSave(c){if(SAVES&&c==SAVES.atual)return;await api('/api/save/escolher',{caminho:c});toast('Carregando a carreira escolhida…');S=null;setTimeout(()=>{load();carregarSaves()},2500)}
 setTimeout(carregarSaves,800);setInterval(carregarSaves,30000);
 let ATU=null;
@@ -681,6 +705,7 @@ setInterval(()=>load(false),3000);load();
 
 function render(){
   if(!S)return;
+  if(S.config&&S.config.problemas.length&&!SETUP)abrirSetup(false);
   const ok=S.pronto&&S.data;
   $('clubName').textContent=(S.clube||'').toUpperCase(); if(S.versao)$('ver').textContent=S.versao;
   $('dateChip').textContent=dt(S.data);
@@ -839,7 +864,14 @@ function rTec(){const T=(S.carreira||{}).tecnico;const el=$('tecBox');if(!el||!T
    <div class="meter"><h4>TÍTULOS <b>${T.titulos}</b></h4><p style="margin-top:0">${T.passagens.length} clube(s) comandado(s). Títulos, acessos e boas campanhas sobem o prestígio; rebaixamentos e demissões derrubam.</p></div></div>
    ${rMercado(nome)}<div class="box"><h3>Passagens de ${esc(nome)} <small>linha do tempo do técnico</small></h3>${T.passagens.map(p=>`<div class="row"><div class="nm"><b>${esc(p.clube)}</b><small>${dt(p.inicio)} – ${p.ativa?dt(p.atual)+' (hoje)':dt(p.fim)}${p.desloc_anos?` <span title="Toda carreira nova no PES recomeça o calendário. Aqui a linha do tempo do técnico continua: somamos ${p.desloc_anos} ano(s) às datas desta carreira.">(no jogo: ${dt(p.inicio_jogo)} – ${p.ativa?dt(p.atual_jogo):dt(p.fim_jogo)})</span>`:''} · ${p.jogos} jogos · ${p.V}V ${p.E}E ${p.D}D${p.acessos?' · '+p.acessos+' acesso(s)':''}${p.rebaixamentos?' · '+p.rebaixamentos+' rebaixamento(s)':''}</small>
     <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${p.titulos_nomes.map(t=>`<span class="pill ok">🏆 ${esc(t)}</span>`).join('')}${p.saida=='demitido'?`<span class="pill off">demitido${p.motivo_saida?': '+esc(p.motivo_saida):''}</span>`:p.saida=='saiu'?'<span class="pill">saiu para outro clube</span>':p.ativa?'<span class="pill ok">no comando</span>':''}</div></div></div>`).join('')}
-   <p style="font-size:12px;color:var(--mut);margin-top:12px">A carreira do técnico fica guardada fora dos saves. Ao começar uma carreira nova no jogo, com qualquer clube, ela continua daqui. Como o PES recomeça o calendário em toda carreira nova, o app soma os anos necessários para a linha do tempo do técnico seguir em frente; dentro do save, as datas continuam as do jogo.</p></div>`}
+   <p style="font-size:12px;color:var(--mut);margin-top:12px">A carreira do técnico fica guardada fora dos saves. Ao começar uma carreira nova no jogo, com qualquer clube, ela continua daqui. Como o PES recomeça o calendário em toda carreira nova, o app soma os anos necessários para a linha do tempo do técnico seguir em frente; dentro do save, as datas continuam as do jogo.</p></div>
+   <div class="box" style="margin-top:16px"><h3>Recomeçar do zero <small>outra carreira de técnico, com o mesmo nome ou outro</small></h3>
+    <p style="color:var(--mut);font-size:13px;margin-top:0">Zera prestígio, títulos e passagens. A carreira atual não é apagada: fica guardada como carreira anterior. O clube aberto agora continua no app, mas só conta daqui em diante.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="novoTecNome" value="${esc(nome)}" maxlength="40" style="max-width:260px" placeholder="Nome do técnico"><button class="ghost" onclick="novaCarreiraTec()">Começar carreira nova</button></div>
+    ${(T.arquivadas||[]).length?`<h4 style="margin:16px 0 6px;font-size:12px;color:var(--mut);letter-spacing:.08em">CARREIRAS ANTERIORES</h4>${T.arquivadas.map(a=>`<div class="ev"><div class="ic">📁</div><div><b>${a.clubes.map(esc).join(' → ')||'sem clubes'}</b><small>${a.jogos} jogos · ${a.titulos} título(s) · prestígio ${a.prestigio??'—'} · ${esc(a.arquivo)}</small></div></div>`).join('')}`:''}</div>`}
+async function novaCarreiraTec(){const nome=($('novoTecNome').value||'').trim();
+  if(!confirm(`Começar uma carreira de técnico do zero${nome?' como '+nome:''}?\n\nPrestígio, títulos e passagens recomeçam. A carreira atual fica guardada como carreira anterior.`))return;
+  await api('/api/tecnico/nova_carreira',{nome});toast('Carreira de técnico recomeçada. Boa sorte!');load()}
 function rMercado(nome){const D=(S.carreira||{}).diretoria;if(!D||!D.mercado)return '';const M=D.mercado;
   let h=`<div class="box" style="margin-bottom:16px"><h3>Mercado de técnicos <small>propostas de outros clubes para ${esc(nome)}</small></h3>`;
   if(D.sondagem)h+=`<div class="banner" style="margin:0 0 14px"><p><b>📨 Proposta do ${esc(D.sondagem.nome)}</b>${D.sondagem.pais?` · ${esc(D.sondagem.pais)} · ${esc(D.sondagem.liga||'')}${D.sondagem.pos?' · '+D.sondagem.pos+'º no ranking':''}`:''}<br><small style="color:var(--mut)">Chegou em ${dt(D.sondagem.data)}. Recusar renova o seu contrato e anima a torcida. Aceitar encerra o trabalho no ${esc(S.clube)}: depois comece uma carreira nova no PES com o ${esc(D.sondagem.nome)} e o app leva a sua carreira de técnico junto.</small></p><button class="ghost" onclick="sondagem(false)">Recusar e ficar</button><button class="lime" onclick="sondagem(true)">Aceitar</button></div>`;
@@ -1293,11 +1325,24 @@ function rEmps(){
     const o=S.ofertas.find(o=>o.empresa==n);if(o)return `<span class="pill wait">${o.status=='aguardando'?'negociando':'proposta aberta'}</span>`;return ''};
   $('egrid').innerHTML=S.empresas.map(e=>{const bl=e.bloqueio_ate&&e.bloqueio_ate>S.data;
     const vig=S.contratos.some(c=>c.empresa==e.nome&&(c.status=='ativo'||c.status=='assinado'));
-    return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}<div class="lg"><img src="/logo/${encodeURIComponent(e.nome)}.png"></div><div><b>${esc(e.nome)}</b> ${porteTag(e.porte)} <span class="pill ${e.global?'ok':''}" style="cursor:pointer" title="Marca mundial pode patrocinar clubes de fora do Brasil. Clique para trocar." onclick="togGlobal('${esc(e.nome)}',${!e.global})">${e.global?'🌎 mundial':'🇧🇷 nacional'}</span></div>
+    return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}${(()=>{const sem=(S.empresas_sem_logo||[]).includes(e.nome);return `<div class="lg ${sem?'sem':''}">${sem?'<span class="aviso">sem imagem</span>':`<img src="/logo/${encodeURIComponent(e.nome)}.png?v=${LOGOV}">`}<label class="troca">${sem?'escolher imagem':'trocar imagem'}<input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="enviarLogo('${esc(e.nome)}',this)"></label></div>`})()}<div><b>${esc(e.nome)}</b> ${porteTag(e.porte)} <span class="pill ${e.global?'ok':''}" style="cursor:pointer" title="Marca mundial pode patrocinar clubes de fora do Brasil. Clique para trocar." onclick="togGlobal('${esc(e.nome)}',${!e.global})">${e.global?'🌎 mundial':'🇧🇷 nacional'}</span></div>
     <small>${esc(e.setor)} · perfil ${esc(e.personalidade)}</small>${busy(e.nome)}${bl?`<small>Volta a negociar em ${dt(e.bloqueio_ate)}</small>`:''}
     <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('')+
     ((S.empresas_removidas||[]).length?`<div class="emp" style="grid-column:1/-1"><b>Removidas</b><small>${S.empresas_removidas.map(n=>`${esc(n)} <a style="color:var(--lime);cursor:pointer" onclick="restaurarEmp('${esc(n)}')">restaurar</a>`).join(' · ')}</small></div>`:'');
 }
+let LOGOV=Date.now();
+async function atualizarLogos(){const b=$('btLogos');b.disabled=true;b.textContent='Lendo a pasta…';
+  try{const r=await api('/api/logos/atualizar',{});LOGOV=Date.now();
+    const p=[];if(r.novas.length)p.push(`<b>${r.novas.length} empresa(s) nova(s):</b> ${r.novas.map(esc).join(', ')}`);
+    if(r.atualizadas.length)p.push(`<b>${r.atualizadas.length} imagem(ns) refeita(s)</b> com fundo transparente: ${r.atualizadas.map(esc).join(', ')}`);
+    if(!r.pasta_existe)p.push(`Não achei a pasta de logos (${esc(r.pasta)}).`);
+    else if(!p.length)p.push('Tudo em dia: nenhuma imagem nova ou trocada na pasta de logos.');
+    if(r.sem_imagem.length)p.push(`Ainda sem imagem: ${r.sem_imagem.map(esc).join(', ')}. Passe o mouse no card e clique em "escolher imagem".`);
+    $('logosMsg').innerHTML=`<div class="banner" style="margin-bottom:12px"><p>${p.join('<br>')}</p></div>`;await load()}
+  catch(x){}finally{b.disabled=false;b.textContent='Atualizar imagens'}}
+async function enviarLogo(nome,inp){const f=inp.files[0];if(!f)return;
+  const dados=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f)});
+  toast('Tirando o fundo da imagem…');try{await api('/api/logos/enviar',{nome,dados});LOGOV=Date.now();toast('Imagem do '+nome+' atualizada.');await load()}catch(x){}}
 async function procurar(nome){
   $('dTitle').textContent='Proposta para '+nome;
   const sl=S.livres.map(s=>`<option value="${s}">${esc(slotName(s))}</option>`).join('');

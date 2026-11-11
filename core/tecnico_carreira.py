@@ -30,8 +30,9 @@ def salvar(data_dir, c):
     os.replace(tmp, _p(data_dir))
 
 
-def _stats(state):
-    ps = state.get('partidas', [])
+def _stats(state, desde=None):
+    """Números da passagem. desde: carreira de técnico recomeçada no meio deste save (só conta dali em diante)."""
+    ps = [p for p in state.get('partidas', []) if not desde or (p.get('data') or '') > desde]
     tid = state.get('time_id')
     s = {'jogos': len(ps), 'V': 0, 'E': 0, 'D': 0, 'gp': 0, 'gc': 0}
     for p in ps:
@@ -40,13 +41,15 @@ def _stats(state):
         s['gp'] += p['gm'] if casa else p['gv']
         s['gc'] += p['gv'] if casa else p['gm']
     g = state.get('gestao') or {}
-    s['titulos'] = [{'comp': t['comp'], 'data': t['data']} for t in g.get('titulos', [])]
-    temps = g.get('temporadas', [])
+    s['titulos'] = [{'comp': t['comp'], 'data': t['data']} for t in g.get('titulos', [])
+                    if not desde or (t.get('data') or '') > desde]
+    temps = [t for t in g.get('temporadas', []) if not desde or (t.get('ano') or 0) >= int(desde[:4])]
     s['acessos'] = sum(1 for t in temps if t.get('acesso'))
     s['rebaixamentos'] = sum(1 for t in temps if t.get('rebaixado'))
     s['temporadas'] = [{'ano': t['ano'], 'pos': t['pos'], 'divisao': t.get('divisao')} for t in temps]
     e = g.get('emprego') or {}
-    s['saida'] = e.get('status') if e.get('status') in ('demitido', 'saiu') else None
+    s['saida'] = e.get('status') if e.get('status') in ('demitido', 'saiu') and (
+        not desde or (e.get('data') or '9999') > desde) else None
     s['motivo_saida'] = e.get('motivo') if s['saida'] else None
     return s
 
@@ -90,7 +93,7 @@ def registrar(data_dir, chave, state, clube, hoje):
     atual = next((p for p in ps if p['chave'] == chave), None)
     nova = atual is None
     if nova:
-        inicio = state.get('data') or (hoje and hoje.isoformat())
+        inicio = (c.get('corte') or {}).get(chave) or state.get('data') or (hoje and hoje.isoformat())
         atual = {'chave': chave, 'clube': clube, 'team_id': state.get('time_id'), 'inicio': inicio,
                  'desloc_anos': _desloc_nova(ps, inicio)}
         ps.append(atual)
@@ -98,11 +101,42 @@ def registrar(data_dir, chave, state, clube, hoje):
         if p is not atual and p.get('ativa'):
             p['ativa'] = False
             p['fim'] = p.get('ultima_leitura') or p.get('inicio')
-    atual.update(_stats(state), ativa=True, clube=clube, team_id=state.get('time_id'),
+    atual.update(_stats(state, (c.get('corte') or {}).get(chave)), ativa=True, clube=clube, team_id=state.get('time_id'),
                  ultima_leitura=state.get('data'))
     c['prestigio'] = prestigio(c)
     salvar(data_dir, c)
     return c, nova
+
+
+def zerar(data_dir, chave_atual=None, data_atual=None):
+    """Começa uma carreira de técnico do zero. A atual vai para data/tecnico/carreira_arquivo_<data>.json.
+    O clube aberto agora continua, mas só conta daqui em diante."""
+    import time
+    c = carregar(data_dir)
+    if c.get('passagens'):
+        arq = _p(data_dir).replace('carreira.json', time.strftime('carreira_arquivo_%Y%m%d_%H%M%S.json'))
+        os.makedirs(os.path.dirname(arq), exist_ok=True)
+        json.dump(c, open(arq, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    novo = {'passagens': [], 'iniciada': time.strftime('%Y-%m-%d %H:%M'),
+            'corte': {chave_atual: data_atual} if chave_atual and data_atual else {}}
+    novo['prestigio'] = prestigio(novo)
+    salvar(data_dir, novo)
+    return novo
+
+
+def arquivadas(data_dir):
+    import glob
+    out = []
+    for p in sorted(glob.glob(os.path.join(data_dir, 'tecnico', 'carreira_arquivo_*.json')))[::-1]:
+        try:
+            c = json.load(open(p, encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        ps = c.get('passagens', [])
+        out.append({'arquivo': os.path.basename(p), 'clubes': [x.get('clube') for x in ps],
+                    'jogos': sum(x.get('jogos', 0) for x in ps),
+                    'titulos': sum(len(x.get('titulos', [])) for x in ps), 'prestigio': c.get('prestigio')})
+    return out
 
 
 def prestigio(c):
