@@ -142,6 +142,9 @@ def config_status():
 def preparar_config():
     """PC novo: preenche sozinho o que conseguir achar e grava. O que faltar, a tela de configuração pede."""
     mudou = False
+    if 'tecnico_nome' not in CFG and CFG.get('pasta_jogo'):
+        # instalação antiga (antes do nome ser configurável): o nome era fixo
+        CFG['tecnico_nome'] = 'Yannes Zola'; mudou = True
     if not CFG.get('pasta_logos'):
         CFG['pasta_logos'] = os.path.join(APP_DIR, 'Logos')
         os.makedirs(CFG['pasta_logos'], exist_ok=True)
@@ -494,7 +497,7 @@ class App:
     # ----- imprensa, torcida, diretoria -----
     def mundo_processar(self):
         try:
-            self.state['cfg_tecnico'] = CFG.get('tecnico_nome') or 'Yannes Zola'
+            self.state['cfg_tecnico'] = CFG.get('tecnico_nome') or 'Técnico'
             mu = mundo.Mundo(self.state, self.clube(), self.tid())
             mu.rivais = set(self.rivais_ids())
             mu.processar(self.engine, lambda i: self.names.get(i, f'Time {i}'))
@@ -679,7 +682,7 @@ class App:
             gram = ingame.nivel_gramado(cond)
             hoje = sim.s2d(st['data']) if st.get('data') else None
             ids = set(self.rivais_ids())
-            plano = ingame.plano_faixas(st, self.clube(), hoje, CFG.get('tecnico_nome') or 'Yannes Zola',
+            plano = ingame.plano_faixas(st, self.clube(), hoje, CFG.get('tecnico_nome') or 'Técnico',
                                         vestiario.idolo(st), [self.names.get(i) for i in ids])
             logos, patro = self._logos_vigentes()
             mestre = next((c['empresa'] for c in st.get('contratos', []) if c['status'] in ('ativo', 'assinado')
@@ -769,7 +772,7 @@ class App:
                 'transferencias': g.get('transferencias', [])[-60:][::-1], 'prancheta': g.get('prancheta', {}),
                 'revisoes': g.get('revisoes', [])[-5:][::-1],
                 'rostos': tecnico.listar(os.path.join(DATA, 'tecnico')), 'cena': cena.disponiveis(DATA),
-                'tecnico_nome': CFG.get('tecnico_nome') or 'Yannes Zola'}
+                'tecnico_nome': CFG.get('tecnico_nome') or 'Técnico'}
 
     # ----- dinheiro no jogo -----
     def verificar_creditos(self, car):
@@ -1149,7 +1152,7 @@ class H(BaseHTTPRequestHandler):
                 from PIL import Image as _I
                 eb = A.escudo_png()
                 png = retro.capa(s_, A.clube(), _I.open(io.BytesIO(eb)) if eb else None, A.cores_time(),
-                                 CFG.get('tecnico_nome') or 'Yannes Zola')
+                                 CFG.get('tecnico_nome') or 'Técnico')
                 return self.send(200, png, 'image/png')
             if u.path.startswith('/tecnico/cena/'):
                 humor = os.path.basename(unquote(u.path))[:-4]
@@ -1454,7 +1457,7 @@ class H(BaseHTTPRequestHandler):
                         A.persist()
                     return self.send(200, {'ok': True})
                 if u.path == '/api/tecnico/nome':
-                    CFG['tecnico_nome'] = (body.get('nome') or '').strip()[:40] or 'Yannes Zola'
+                    CFG['tecnico_nome'] = (body.get('nome') or '').strip()[:40] or 'Técnico'
                     jsave(os.path.join(DATA, 'config.json'), CFG)
                     A.state['cfg_tecnico'] = CFG['tecnico_nome']
                     return self.send(200, {'ok': True})
@@ -1503,7 +1506,7 @@ class H(BaseHTTPRequestHandler):
                     st = A.state or {}
                     linhas = (st.get('tabela') or {}).get('linhas') or []
                     meu = next((l for l in linhas if l.get('id') == A.tid()), None)
-                    ctx = {'clube': A.clube(), 'tecnico': CFG.get('tecnico_nome') or 'Yannes Zola',
+                    ctx = {'clube': A.clube(), 'tecnico': CFG.get('tecnico_nome') or 'Técnico',
                            'pos': meu['pos'] if meu else None, 'torcida': (st.get('mundo') or {}).get('torcida', 50),
                            'jogador': (st.get('elenco_nomes') or ['o camisa 10'])[0]}
                     return self.send(200, imprensa.reportagem(body.get('noticia') or {}, ctx))

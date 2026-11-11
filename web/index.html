@@ -950,7 +950,7 @@ $('dlg').addEventListener('close',()=>$('dOk').classList.remove('hidden'));
 let TOM=null;
 function fotoTec(tom,chave){const R=(S.gestao||{}).rostos||{};let l=R[tom]||[];if(!l.length)l=R.neutro||R.feliz||R.irritado||[];
   if(!l.length)return null;let h=0;for(const ch of String(chave||''))h=(h*31+ch.charCodeAt(0))>>>0;return l[h%l.length]}
-function rosto(tom,chave){const c=S.cores||[];const nome=(S.gestao||{}).tecnico_nome||'Yannes Zola';const f=fotoTec(tom||'neutro',chave);
+function rosto(tom,chave){const c=S.cores||[];const nome=(S.gestao||{}).tecnico_nome||'Técnico';const f=fotoTec(tom||'neutro',chave);
   const cor=c[0]||'#1f6b3a',cor2=c[1]||'#ffffff';
   const filtro={feliz:'brightness(1.07) saturate(1.12)',neutro:'none',irritado:'contrast(1.12) saturate(.88) brightness(.96)'}[tom||'neutro'];
   const pessoa=f?`<img class="tecfoto" src="/tecnico/${encodeURIComponent(f)}" style="filter:${filtro}">`:
@@ -963,7 +963,7 @@ function rosto(tom,chave){const c=S.cores||[];const nome=(S.gestao||{}).tecnico_
    <rect x="380" y="0" width="18" height="40" rx="4" fill="#9fd3ff" opacity=".55"/>
    <path d="M150 112 h140 l10 -36 h-160z" fill="#e9ecf1"/><text x="220" y="94" font-size="13" fill="#151a22" text-anchor="middle" font-family="Arial" font-weight="700" letter-spacing="1">${esc(nome.toUpperCase())}</text>
    <text x="220" y="106" font-size="8" fill="#555" text-anchor="middle" font-family="Arial" letter-spacing="2">TÉCNICO · ${esc((S.clube||'').toUpperCase())}</text></svg>`}
-function rFotosTec(){const R=(S.gestao||{}).rostos||{};const nome=(S.gestao||{}).tecnico_nome||'Yannes Zola';
+function rFotosTec(){const R=(S.gestao||{}).rostos||{};const nome=(S.gestao||{}).tecnico_nome||'Técnico';
   const nomes={feliz:'Feliz (vitórias)',neutro:'Neutro (empates)',irritado:'Irritado (derrotas)'};
   return `<div class="box" style="margin-top:16px"><h3>Fotos do técnico <small>o fundo sai sozinho; foto de frente, da cintura para cima, numa parede lisa fica melhor</small></h3>
    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><span>Nome:</span><input id="tecNome" value="${esc(nome)}" style="max-width:220px"><button class="ghost" onclick="api('/api/tecnico/nome',{nome:$('tecNome').value}).then(load)">Salvar nome</button></div>

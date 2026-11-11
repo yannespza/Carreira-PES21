@@ -29,7 +29,7 @@ def arrobas(clube):
     return [f'@{c}_raiz', f'@torcida{c}', f'@{c}_oficialfans', f'@sou{c}', f'@{c}10', f'@nacao_{c}',
             f'@{c}depressao', f'@fala{c}', '@torcedor_fiel', '@jornalistaFC', '@cornetafc', '@resenha_fut']
 
-TECNICO_PADRAO = 'Yannes Zola'
+TECNICO_PADRAO = 'Técnico'
 
 
 class Mundo:
