@@ -16,18 +16,17 @@ def eur_mi(v):
 
 
 # ---------------- textos (banco em textos.py) ----------------
-from .textos import MANCHETES, POSTS, PRESIDENTE, RESPOSTAS, POSTS_TECNICO, FONTES
+from .textos import MANCHETES, POSTS_TECNICO, FONTES
+from . import vozes
+from .vozes import PRESIDENTE
 
 ARROBAS_PALMEIRAS = ['@verdao_raiz', '@alviverde_sp', '@palestrino10', '@torcedor_fiel', '@mancha_ofc', '@porco_doido',
                      '@verde_mais', '@academia_fc', '@sp_palestra', '@nacao_verde', '@cronista_alviverde', '@jornalistaFC']
 
 
 def arrobas(clube):
-    if 'PALMEIRAS' in clube.upper():
-        return ARROBAS_PALMEIRAS
-    c = ''.join(ch for ch in __import__('unicodedata').normalize('NFKD', clube).lower() if ch.isalnum())[:12]
-    return [f'@{c}_raiz', f'@torcida{c}', f'@{c}_oficialfans', f'@sou{c}', f'@{c}10', f'@nacao_{c}',
-            f'@{c}depressao', f'@fala{c}', '@torcedor_fiel', '@jornalistaFC', '@cornetafc', '@resenha_fut']
+    return [h for h, _ in vozes.torcedores(clube)]
+
 
 TECNICO_PADRAO = 'Técnico'
 
@@ -48,6 +47,7 @@ class Mundo:
         m.setdefault('historico', [])     # evolução (data, torcida, diretoria)
         m.setdefault('alertas_dir', {})
         self.m = m
+        vozes.migrar(state, clube)
         self.rivais = set()       # ids dos rivais (o app preenche antes de processar)
         self.nomes = None
 
@@ -75,27 +75,63 @@ class Mundo:
     def noticia(self, tipo, data, rnd, destaque=False, **v):
         extra = {k: v[k] for k in ('placar', 'adv', 'empresa', 'n', 'pos', 'classico') if v.get(k) not in (None, '')}
         self._vars(v, rnd)
-        txt = rnd.choice(MANCHETES[tipo]).format(**v)
+        txt = vozes.Memoria(self.s).escolher('n:' + tipo, MANCHETES[tipo], rnd, v)
         self.m['noticias'].append({'data': data, 'titulo': txt, 'tipo': tipo, 'fonte': rnd.choice(FONTES),
                                    'destaque': destaque, **extra})
         self.m['noticias'] = self.m['noticias'][-200:]
 
     def _respostas(self, humor, rnd, autor, v, n=None):
-        pool = RESPOSTAS.get(humor) or RESPOSTAS['neutro']
         n = rnd.randint(0, 3) if n is None else n
-        outros = [a for a in arrobas(self.clube) if a != autor]
-        return [{'autor': rnd.choice(outros), 'texto': rnd.choice(pool).format(**v),
-                 'curtidas': rnd.randint(0, 600)} for _ in range(n)]
+        mem = vozes.Memoria(self.s)
+        if humor in vozes.TECNICO:
+            perfis = [p for p in vozes.torcedores(self.clube) if p[0] != autor]
+            rnd.shuffle(perfis)
+            return [{'autor': h, 'nome': nome, 'curtidas': rnd.randint(5, 900),
+                     'texto': vozes.humanizar(mem.escolher('r:' + humor, vozes.TECNICO[humor], rnd, v), rnd)}
+                    for h, nome in perfis[:n]]
+        return vozes.respostas(humor, mem, rnd, autor, vozes.torcedores(self.clube), v, n)
+
+    def _lesionado(self):
+        from datetime import date
+        hoje = self._hoje()
+        for e in reversed((self.s.get('gestao') or {}).get('eventos', [])):
+            if e.get('tipo') == 'lesao' and e.get('volta') and hoje and e['volta'] > hoje:
+                return e.get('jogador')
+        return None
 
     def posts(self, humor, data, rnd, n=3, **v):
+        """Torcida comentando. Depois do jogo o assunto é o resultado; na semana, assuntos variados."""
         emp = v.get('empresa') if humor == 'patro' else None
         self._vars(v, rnd)
-        for t in rnd.sample(POSTS[humor], min(n, len(POSTS[humor]))):
-            autor = rnd.choice(arrobas(self.clube))
-            cur = rnd.randint(40, 4000)
-            self.m['posts'].append({'data': data, 'autor': autor, 'texto': t.format(**v), 'humor': humor,
-                                    'curtidas': cur, 'reposts': int(cur * rnd.uniform(0.05, 0.3)),
-                                    'respostas': self._respostas(humor, rnd, autor, v),
+        mem = vozes.Memoria(self.s)
+        perfis = vozes.torcedores(self.clube)
+        el = self.s.get('elenco_nomes') or []
+        if humor == 'semana':
+            les = self._lesionado()
+            pesos = vozes.temas_semana(self.m.get('torcida', 50), bool(les))
+            temas = []
+            while len(temas) < n and len(temas) < len(pesos):
+                t = rnd.choices(list(pesos), list(pesos.values()))[0]
+                if t not in temas:
+                    temas.append(t)
+        else:
+            temas = [humor] * n
+            les = None
+        autores = rnd.sample(perfis, min(len(perfis), len(temas)))
+        for tema, (autor, nome) in zip(temas, autores):
+            vv = dict(v)
+            if tema == 'lesao' and les:
+                vv['jogador'] = les
+            elif el:
+                vv['jogador'] = rnd.choice(el)
+            b = vozes.TORCIDA.get(tema) or vozes.TORCIDA['neutro']
+            texto = vozes.humanizar(mem.escolher('p:' + tema, b['posts'], rnd, vv), rnd)
+            cur = int(rnd.randint(30, 600) * (1 + rnd.paretovariate(1.6)))
+            nr = rnd.choices([0, 1, 2, 3, 4, 5], [2, 3, 4, 3, 2, 1])[0]
+            self.m['posts'].append({'data': data, 'autor': autor, 'nome': nome, 'texto': texto, 'humor': humor,
+                                    'tema': tema, 'curtidas': cur,
+                                    **({'jogador': vv['jogador']} if tema in ('jogador_bom', 'jogador_ruim', 'lesao') else {}), 'reposts': int(cur * rnd.uniform(0.03, 0.3)),
+                                    'respostas': vozes.respostas(tema, mem, rnd, autor, perfis, vv, nr),
                                     **({'empresa': emp} if emp else {})})
         self.m['posts'] = self.m['posts'][-300:]
 
@@ -128,7 +164,7 @@ class Mundo:
         r = random.Random(_seed('pres', tipo, data))
         v.setdefault('clube', self.clube)
         v.setdefault('tecnico', self.tecnico())
-        texto = r.choice(PRESIDENTE[tipo]).format(**v)
+        texto = vozes.Memoria(self.s).escolher('d:' + tipo, PRESIDENTE[tipo], r, v)
         assunto = {'boas_vindas': 'Metas da temporada', 'elogio': 'Mensagem da presidência',
                    'cobranca': 'Cobrança da diretoria', 'ultimato': 'URGENTE: situação do time',
                    'meta_financeira': 'Patrocínios', 'tabela_boa': 'Posição na tabela',

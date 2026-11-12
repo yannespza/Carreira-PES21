@@ -1077,10 +1077,10 @@ function rNoticias(){const m=S.mundo||{noticias:[]};const ns=m.noticias||[];
   const ros=(S.jornalistas||[]).map(j=>`<div class="rj">${jnAv(j)}<div><b>${esc(j.nome)}</b><small><b style="display:inline;color:${j.cor}">${esc(j.papel)}</b> · ${esc(j.programa)} (${esc(j.veiculo)})</small><small>${esc(j.perfil)}</small></div></div>`).join('');
   $('newsList').innerHTML=chips+noticiaCard(top,true,0)+`<div class="ngrid">${fil.filter(n=>n!==top).map((n,i)=>noticiaCard(n,false,i+1)).join('')}</div>`+
     (ros?`<h3 style="margin-top:28px">A imprensa que cobre o clube <small style="color:var(--mut);text-transform:none;font-family:var(--body);letter-spacing:0">clique numa manchete para ler a matéria e o debate</small></h3><div class="roster">${ros}</div>`:'')}
-function avatarPost(a,tec){if(tec){const f=fotoTec('feliz','av');return f?`<div class="av2x"><img src="/tecnico/${encodeURIComponent(f)}"></div>`:`<div class="av2x tec">${esc(((S.mundo||{}).tecnico||'T')[0])}</div>`}
-  if(/oficial/.test(a))return `<div class="av2x ofc">${escudoImg('')}</div>`;
-  return `<div class="av2x" style="background:${hashCor(a)}">${esc(a.replace('@','').slice(0,2).toUpperCase())}</div>`}
-const verificado=a=>/oficial|jornalista/.test(a);
+function avatarPost(a,tec,nm){if(tec){const f=fotoTec('feliz','av');return f?`<div class="av2x"><img src="/tecnico/${encodeURIComponent(f)}"></div>`:`<div class="av2x tec">${esc(((S.mundo||{}).tecnico||'T')[0])}</div>`}
+  if(/oficial$/.test(a))return `<div class="av2x ofc">${escudoImg('')}</div>`;
+  return `<div class="av2x" style="background:${hashCor(a)}">${esc(nm?nm.replace(/[^A-Za-zÀ-ú ]/g,'').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase():a.replace('@','').slice(0,2).toUpperCase())}</div>`}
+const verificado=a=>/oficial$|jornalista/i.test(a);
 function nomePost(a){const t=a.replace('@','').replace(/_/g,' ');return t.charAt(0).toUpperCase()+t.slice(1)}
 function midiaPost(p,ns){if(p.empresa)return `<div class="mid"><div class="nmedia logo-m">${logo(p.empresa)}</div></div>`;
   if(['euforia','feliz','neutro','chateado','revolta'].includes(p.humor)){const n=ns.find(x=>x.gp!=null&&x.data==p.data);if(n)return `<div class="mid"><div class="nmedia">${placarHTML(n)}</div></div>`}
@@ -1099,11 +1099,11 @@ function rFeed(){const m=S.mundo||{posts:[]};const ns=m.noticias||[];const ops=m
       <p style="font-size:12px;color:var(--mut);margin:8px 0 0">As redes oficiais ficam com ele: publica, responde a torcida e decide o que conta aos setoristas. A coletiva é sua.</p>
       ${A.log&&A.log.length?`<ul class="asslog">${A.log.slice(0,5).map(l=>`<li>${dt(l.data)} · ${esc(l.texto)}</li>`).join('')}</ul>`:''}</div></div>`:'';
   const posts=(m.posts||[]).map((p,i)=>{const rs=p.respostas||[];
-    return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico)}<div style="flex:1;min-width:0">
-      <div class="hd"><b>${esc(p.tecnico?nome:p.assessor?(S.clube||nomePost(p.autor)):nomePost(p.autor))}</b>${p.tecnico||p.assessor||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
+    return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico,p.nome)}<div style="flex:1;min-width:0">
+      <div class="hd"><b>${esc(p.tecnico?nome:p.assessor?(S.clube||nomePost(p.autor)):(p.nome||nomePost(p.autor)))}</b>${p.tecnico||p.assessor||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
       <p>${esc(p.texto)}</p>${midiaPost(p,ns)}
       <div class="acts"><span>💬 ${rs.length}</span><span>🔁 ${(p.reposts||0).toLocaleString('pt-BR')}</span><span class="lk">♥ ${(p.curtidas||0).toLocaleString('pt-BR')}</span></div>
-      ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp ${r.oficial?'ofc':''}">${avatarPost(r.autor)}<div><b>${esc(r.oficial?(S.clube||nomePost(r.autor)):nomePost(r.autor))}</b>${r.oficial?' <span class="vf">✓</span>':''} <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
+      ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp ${r.oficial?'ofc':''}">${avatarPost(r.autor,false,r.nome)}<div><b>${esc(r.oficial?(S.clube||nomePost(r.autor)):(r.nome||nomePost(r.autor)))}</b>${r.oficial?' <span class="vf">✓</span>':''} <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
     </div></div>`}).join('');
   $('postList').innerHTML=termo+box+(posts||'<div class="empty">Ainda sem posts.</div>')}
 function rNews(){rSala();rNoticias();rFeed()}
