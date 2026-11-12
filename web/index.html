@@ -281,6 +281,11 @@ dialog select,dialog input{width:100%}
 .tabcl{width:100%;border-collapse:collapse;font-size:12px}.tabcl th{color:var(--mut);font-weight:600;padding:4px 3px;border-bottom:1px solid var(--line)}
 .tabcl td{padding:4px 3px;text-align:center;border-bottom:1px solid var(--line)}.tabcl tr.eu td{background:color-mix(in srgb,var(--lime) 22%,transparent);font-weight:700}
 .tabcl tr.sobe td:first-child{box-shadow:inset 3px 0 0 #3fbf6a}.tabcl tr.cai td:first-child{box-shadow:inset 3px 0 0 #e0574a}
+.asscard{display:flex;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px;margin-bottom:14px;align-items:flex-start;flex-wrap:wrap}
+.asscard .aav{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:20px;color:#111;flex:none}
+.asscard .ast{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--mut)}.asscard .ast b{color:var(--txt);font-size:14px;display:block}
+.asslog{margin:8px 0 0;padding:0;list-style:none;font-size:12px;color:var(--mut)}.asslog li{padding:2px 0}
+.rp.ofc{background:rgba(198,255,0,.06);border-radius:8px}
 .postbox{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
 .postbox select{width:100%}.postbox .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700}.av.tec{background:var(--lime);color:#111}.verif{font-size:11px;color:var(--lime)}
 .post.ptec{background:color-mix(in srgb,var(--lime) 8%,transparent)}.resp{font-size:12px;margin-top:6px;padding:6px 8px;border-left:2px solid var(--line);color:var(--txt)}
@@ -1031,7 +1036,7 @@ async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',
 const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
  lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
  contrato:'mercado',contrato_grande:'mercado',rescisao:'mercado',rumor_patro:'mercado',
- lesao:'elenco',retorno:'elenco',evento:'elenco',jog_elogio:'elenco',jog_critica:'elenco',
+ lesao:'elenco',retorno:'elenco',evento:'elenco',vazamento:'bastidores',jog_elogio:'elenco',jog_critica:'elenco',
  diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores',
  classico_v:'jogo',classico_e:'jogo',classico_d:'jogo',vestiario_racha:'elenco',vestiario_unido:'elenco',jog_reclama:'elenco',vestiario:'elenco',
  tecnico_demitido:'diretoria',tecnico_sondado:'diretoria',tecnico_fica:'diretoria',tecnico_renova:'diretoria',tecnico_ultimato:'diretoria',tecnico_chega:'diretoria',estrutura:'bastidores'};
@@ -1062,7 +1067,7 @@ function midiaNoticia(n){const cat=NCAT[n.tipo]||'bastidores';
   return `<div class="nmedia icon">${escudoImg('wm')}<span>${CATN[cat][1]}</span></div>`}
 function noticiaCard(n,grande,i){const cat=NCAT[n.tipo]||'bastidores';const [cn,ic]=CATN[cat];
   return `<article class="ncard ${grande?'big':''} c-${cat} ${n.destaque?'dest':''}" onclick="abrirMat(${NLIST.indexOf(n)})" style="animation-delay:${Math.min(i||0,12)*30}ms">${midiaNoticia(n)}
-    <div class="ntx"><span class="ntag">${ic} ${cn}</span><h4>${esc(n.titulo)}</h4><small>${esc(n.fonte||'')} · ${dt(n.data)}</small></div></article>`}
+    <div class="ntx"><span class="ntag">${n.vazamento?'🕵️ Vazou':ic+' '+cn}</span><h4>${esc(n.titulo)}</h4><small>${esc(n.fonte||'')} · ${dt(n.data)}</small></div></article>`}
 function rNoticias(){const m=S.mundo||{noticias:[]};const ns=m.noticias||[];
   const cats=['todas',...Object.keys(CATN)].filter(c=>c=='todas'||ns.some(n=>(NCAT[n.tipo]||'bastidores')==c));
   const fil=NF=='todas'?ns:ns.filter(n=>(NCAT[n.tipo]||'bastidores')==NF);
@@ -1084,14 +1089,21 @@ function rFeed(){const m=S.mundo||{posts:[]};const ns=m.noticias||[];const ops=m
   const emo=t>=85?'🔥':t>=65?'😄':t>=45?'😐':t>=25?'😠':'😡';
   const termo=`<div class="termo"><b>${emo}</b><div style="flex:1"><small style="color:var(--mut)">HUMOR DA TORCIDA · ${t}/100</small><div class="bar"><i style="left:calc(${t}% - 2px)"></i></div></div></div>`;
   const nome=(S.gestao||{}).tecnico_nome||m.tecnico||'Técnico';
-  const box=`<div class="postbox"><div style="display:flex;gap:10px;align-items:center">${avatarPost('',true)}<b>${esc(nome)}</b><small style="color:var(--mut)">publicar como técnico</small></div>
-    <select id="postSel" onchange="POSTSEL=this.value">${ops.map((x,i)=>`<option value="${i}" ${String(i)===String(POSTSEL)?'selected':''}>${esc(x)}</option>`).join('')}</select><button class="lime" onclick="postarTecnico()">Publicar</button></div>`;
+  const A=S.assessor;const momC={alta:'var(--lime)',estavel:'#ffd34d',pressao:'#ff9f43',crise:'#ff5c5c'};
+  const box=A?`<div class="asscard"><div class="aav" style="background:${hashCor(A.nome)}">${esc(iniciais(A.nome))}</div>
+    <div style="flex:1;min-width:220px"><b style="font-size:16px">${esc(A.nome)}</b> <small style="color:var(--mut)">Assessor de imprensa · ${esc(A.arroba)} · estilo ${esc(A.estilo)}</small>
+      <div style="font-size:13px;margin-top:4px;color:var(--mut)">${esc(A.perfil)}</div>
+      <div class="ast"><span>Seu momento no clube<b style="color:${momC[A.momento.nivel]}">${esc(A.momento.texto)}</b></span>
+        <span>Relação com você<b>${A.relacao}/100</b></span><span>Seguidores do clube<b>${Number(A.seguidores).toLocaleString('pt-BR')}</b></span>
+        <span>Vazamentos na imprensa<b>${A.vazamentos}</b></span></div>
+      <p style="font-size:12px;color:var(--mut);margin:8px 0 0">As redes oficiais ficam com ele: publica, responde a torcida e decide o que conta aos setoristas. A coletiva é sua.</p>
+      ${A.log&&A.log.length?`<ul class="asslog">${A.log.slice(0,5).map(l=>`<li>${dt(l.data)} · ${esc(l.texto)}</li>`).join('')}</ul>`:''}</div></div>`:'';
   const posts=(m.posts||[]).map((p,i)=>{const rs=p.respostas||[];
     return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico)}<div style="flex:1;min-width:0">
-      <div class="hd"><b>${esc(p.tecnico?nome:nomePost(p.autor))}</b>${p.tecnico||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
+      <div class="hd"><b>${esc(p.tecnico?nome:p.assessor?(S.clube||nomePost(p.autor)):nomePost(p.autor))}</b>${p.tecnico||p.assessor||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
       <p>${esc(p.texto)}</p>${midiaPost(p,ns)}
       <div class="acts"><span>💬 ${rs.length}</span><span>🔁 ${(p.reposts||0).toLocaleString('pt-BR')}</span><span class="lk">♥ ${(p.curtidas||0).toLocaleString('pt-BR')}</span></div>
-      ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp">${avatarPost(r.autor)}<div><b>${esc(nomePost(r.autor))}</b> <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
+      ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp ${r.oficial?'ofc':''}">${avatarPost(r.autor)}<div><b>${esc(r.oficial?(S.clube||nomePost(r.autor)):nomePost(r.autor))}</b>${r.oficial?' <span class="vf">✓</span>':''} <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
     </div></div>`}).join('');
   $('postList').innerHTML=termo+box+(posts||'<div class="empty">Ainda sem posts.</div>')}
 function rNews(){rSala();rNoticias();rFeed()}
@@ -1351,9 +1363,9 @@ async function vis(id,ch){await api('/api/contrato/visual',{id,familia:fam,...ch
 
 let mfold='todas';
 function rMsgs(){
-  const pasta=m=>m.empresa=='__diretoria__'?'diretoria':'patro';
+  const pasta=m=>m.tipo=='assessor'?'assessoria':m.empresa=='__diretoria__'?'diretoria':'patro';
   const N=f=>S.mensagens.filter(m=>(f=='todas'||pasta(m)==f)&&!m.lida).length;
-  $('mFold').innerHTML=[['todas','Caixa de entrada'],['diretoria','Diretoria'],['patro','Patrocinadores']].map(([k,n])=>`<a class="${mfold==k?'on':''}" onclick="mfold='${k}';rMsgs()">${n}${N(k)?' ('+N(k)+')':''}</a>`).join('');
+  $('mFold').innerHTML=[['todas','Caixa de entrada'],['diretoria','Diretoria'],['assessoria','Assessoria'],['patro','Patrocinadores']].map(([k,n])=>`<a class="${mfold==k?'on':''}" onclick="mfold='${k}';rMsgs()">${n}${N(k)?' ('+N(k)+')':''}</a>`).join('');
   const lista=S.mensagens.filter(m=>mfold=='todas'||pasta(m)==mfold);
   $('msgList').innerHTML=lista.length?lista.map(m=>`<div class="msg ${m.lida?'':'nova'} ${selMsg==m.id?'sel':''}" onclick="selMsg=${m.id};rMsgs()">${logo(m.empresa)}
     <div><b>${esc(m.assunto)}</b><small>${esc(m.de)} · ${dt(m.data)}</small></div></div>`).join(''):'<div class="empty" style="margin:12px">Caixa vazia.</div>';

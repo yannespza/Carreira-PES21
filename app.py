@@ -7,6 +7,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
+from core import assessor
 from core.logos import LogoBank
 
 PORT = 8765
@@ -527,6 +528,7 @@ class App:
             self.mundo_processar()
             self.gestao_processar(car, novas, None if novo else antes)
             self.carreira_processar(car, novo)
+            self.assessor_processar(car, novas)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
@@ -592,6 +594,17 @@ class App:
                                                   'humor': 'euforia' if nosso else 'revolta', 'aovivo': True,
                                                   'curtidas': 0, 'reposts': 0, 'respostas': []})
             self.persist()
+
+    def assessor_processar(self, car, novas):
+        """Assessor de imprensa: posts, respostas à torcida, briefing e (talvez) vazamentos."""
+        try:
+            st = self.state
+            ass = assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico')
+            sums = (self.estatisticas or {}).get('sumulas') or []
+            ass.processar(self.engine, novas or [], sums, lambda i: self.names.get(i, f'Time {i}'),
+                          sim.d2s(car.date) if car.date else st.get('data'))
+        except Exception:
+            log(traceback.format_exc())
 
     def rivais_ids(self):
         st = self.state or {}
@@ -1108,6 +1121,7 @@ class App:
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
             'fin_hist': st.get('fin_hist', [])[-60:],
             'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
+            'assessor': assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico').view() if st else None,
             'zerar_pat': st.get('zerar_pat'),
             'estatisticas': self.estatisticas_view(),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])

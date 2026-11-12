@@ -290,13 +290,17 @@ class Gestao:
               'volta': d2s(volta)}
         self.g['eventos'].append(ev)
         self.g['eventos'] = self.g['eventos'][-60:]
-        mundo._torcida(dt_torc)
+        privado = tipo == 'indisciplina'      # punição interna: só chega à imprensa se o assessor deixar vazar
+        if privado:
+            ev['interno'] = True
+        else:
+            mundo._torcida(dt_torc)
         mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + dt_dir)))
         if tipo == 'lesao':
             ev['texto'] += ' Pelo jogo ele ainda aparece disponível: não escale até a volta.'
             mundo.noticia('lesao', ds, r, destaque=dias >= 20, jogador=j['nome'], n=dias)
             mundo.m['noticias'][-1].update(jogador=j['nome'], volta=ev['volta'])
-        else:
+        elif not privado:
             mundo.m['noticias'].append({'data': ds, 'tipo': 'evento', 'destaque': tipo == 'indisciplina',
                                         'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN']),
                                         'jogador': j['nome'], 'titulo': f"{self.clube}: {ev['texto']}"})
