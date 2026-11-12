@@ -220,12 +220,26 @@ class Engine:
                 if c['status'] in ('assinado', 'ativo') and (slot is None or (self._grande(slot) and self._grande(c['slot'])))
                 } - {'outros', None}
 
+    def fator_clube(self):
+        """Porte do clube no mercado (valor do elenco e torcida, ranking real): ~1,0 para Palmeiras e Flamengo,
+        ~0,45 para um clube médio da Série B, ~0,2 para os menores. Marca grande paga menos a clube pequeno."""
+        try:
+            from . import ranking
+            c = ranking.CLUBES.get(self.s.get('time_id'))
+        except Exception:
+            c = None
+        if c:
+            sc = 0.65 * min(1.0, c[3] / 200) ** 0.7 + 0.35 * c[4] / 100
+        else:
+            sc = max(0.05, (self.base_atr - 30) / 60)
+        return round(0.12 + 0.98 * sc, 3)
+
     def valor_justo(self, empresa, slot, atr=None, r=None):
         atr = self.atratividade() if atr is None else atr
         porte = self.s['empresas'][empresa]['porte']
         lo, hi = PORTE_FATOR[porte]
         f = (lo + hi) / 2 if r is None else r.uniform(lo, hi)
-        v = SLOTS[slot]['valor_base'] * f * (0.45 + atr / 100 * 0.9)
+        v = SLOTS[slot]['valor_base'] * f * (0.45 + atr / 100 * 0.9) * self.fator_clube()
         return int(round(v / 50_000) * 50_000) or 50_000
 
     # ---------- partidas ----------
@@ -340,7 +354,7 @@ class Engine:
                 cl = self._clausulas(pd, pm, r)
                 o = {'id': self._id(), 'empresa': nome, 'slot': slot, 'valor': valor, 'anos': anos,
                      'inicio': ds, 'validade': d2s(validade), 'status': 'aberta', 'origem': 'inicio',
-                     'criada': ds, 'rodadas': 0, 'clausulas': cl}
+                     'criada': ds, 'rodadas': 0, 'clausulas': cl, 'porte_ok': True}
                 self.s['ofertas'].append(o)
                 self.msg('oferta', nome, ds, o['id'], posicao=pos_txt(slot), valor=fmt_eur(valor),
                          anos=anos_txt(anos), validade=fmt_data(validade))
@@ -387,7 +401,7 @@ class Engine:
             cl = self._clausulas(pd, pm, r)
             o = {'id': self._id(), 'empresa': nome, 'slot': slot, 'valor': valor, 'anos': anos,
                  'inicio': d2s(inicio), 'validade': d2s(validade), 'status': 'aberta', 'origem': 'empresa',
-                 'criada': ds, 'rodadas': 0, 'clausulas': cl}
+                 'criada': ds, 'rodadas': 0, 'clausulas': cl, 'porte_ok': True}
             self.s['ofertas'].append(o); abertas.append(o)
             self.msg('oferta', nome, ds, o['id'], posicao=pos_txt(slot), valor=fmt_eur(valor),
                      anos=anos_txt(anos), validade=fmt_data(validade))
@@ -491,7 +505,7 @@ class Engine:
         cl = self._clausulas(pd, pm, r)
         o = {'id': self._id(), 'empresa': nome, 'slot': c['slot'], 'valor': valor, 'anos': anos, 'inicio': ds,
              'validade': d2s(dia + dt.timedelta(days=14)), 'status': 'aberta', 'origem': 'investida', 'criada': ds,
-             'rodadas': 0, 'clausulas': cl, 'substitui': c['id'], 'substitui_empresa': c['empresa']}
+             'rodadas': 0, 'clausulas': cl, 'substitui': c['id'], 'substitui_empresa': c['empresa'], 'porte_ok': True}
         self.s['ofertas'].append(o)
         self.s['mensagens'].append({
             'id': self._id(), 'data': ds, 'empresa': nome, 'de': f'{nome} · Diretoria comercial', 'tipo': 'oferta',
@@ -617,7 +631,7 @@ class Engine:
         r = random.Random(_seed('procura', empresa, d2s(hoje)))
         o = {'id': self._id(), 'empresa': empresa, 'slot': slot, 'valor': int(valor), 'pedido': int(valor),
              'anos': int(anos), 'inicio': d2s(hoje), 'validade': d2s(hoje + dt.timedelta(days=30)),
-             'status': 'aguardando', 'origem': 'clube', 'criada': d2s(hoje), 'rodadas': 1,
+             'status': 'aguardando', 'origem': 'clube', 'criada': d2s(hoje), 'rodadas': 1, 'porte_ok': True,
              'resposta_em': d2s(hoje + dt.timedelta(days=r.randint(3, 8))),
              'clausulas_pedidas': {'desempenho': bool((clausulas or {}).get('desempenho', False)),
                                    'multa_pct': int((clausulas or {}).get('multa_pct', 30))}}

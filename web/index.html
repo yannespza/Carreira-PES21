@@ -496,7 +496,7 @@ dialog select,dialog input{width:100%}
     <div id="p-ct" class="hidden"></div>
     <div id="p-hi" class="hidden"></div>
     <div id="p-em" class="hidden">
-    <div style="display:flex;gap:14px;align-items:flex-start;margin-top:-6px;margin-bottom:12px;flex-wrap:wrap"><p style="color:var(--mut);margin:0;flex:1;min-width:280px">Empresas da sua pasta de logos. Você pode procurar uma delas e oferecer um espaço no uniforme. A resposta chega depois de alguns dias da carreira. Para trocar a imagem de uma empresa, passe o mouse no logo e clique em "trocar imagem": o app tira o fundo sozinho.</p>
+    <div style="display:flex;gap:14px;align-items:flex-start;margin-top:-6px;margin-bottom:12px;flex-wrap:wrap"><p style="color:var(--mut);margin:0;flex:1;min-width:280px">Empresas da sua pasta de logos. Quem escolhe e procura patrocinadores é o presidente do clube. Para trocar a imagem de uma empresa, passe o mouse no logo e clique em "trocar imagem": o app tira o fundo sozinho.</p>
       <div style="display:flex;flex-direction:column;gap:6px"><button class="ghost" id="btLogos" onclick="atualizarLogos()">Atualizar imagens</button><button class="ghost" id="btSemImg" onclick="removerSemImagem()" style="display:none"></button></div></div>
     <div id="logosMsg"></div>
     <div class="egrid" id="egrid"></div></div>
@@ -561,7 +561,7 @@ dialog select,dialog input{width:100%}
   <section id="t-fin" class="hidden">
     <div class="crumb">Início / <b>Finanças</b></div>
     <div class="cards" id="finCards" style="margin-bottom:18px"></div>
-    <div class="box" style="margin-bottom:20px"><h3>Distribuir o orçamento <small>passe dinheiro das transferências para os salários (ou o contrário)</small></h3><div id="finDist"></div></div>
+    <div class="box" style="margin-bottom:20px"><h3>Diretor de futebol <small>peça verba ou remanejamento entre transferências e salários</small></h3><div id="finDist"></div></div>
     <div class="grid2">
       <div class="box"><h3>Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
       <div class="box"><h3>Receitas da temporada <small>como aparecem no jogo</small></h3><div id="finRec"></div></div>
@@ -842,6 +842,7 @@ function rDir(){const D=(S.carreira||{}).diretoria;const el=$('dirBox');if(!el)r
    <div class="meter"><h4>CARGO <b style="color:${stc}">${st}</b></h4><div class="bar"><i style="width:${D.confianca}%;background:${cor(D.confianca)}"></i></div><p>Confiança da diretoria: ${D.confianca}/100 · contrato até a temporada ${D.contrato_ate?temp(D.contrato_ate):'—'}</p></div>
    <div class="meter"><h4>META NA LIGA</h4>${M?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.liga.texto)}</p><p>${M.liga_status.pos?`Hoje: <b>${M.liga_status.pos}º</b> · `:''}<span class="pill ${LS[M.liga_status.status][1]}">${LS[M.liga_status.status][0]}</span></p>`:'<p>Definida na primeira leitura da temporada.</p>'}</div>
    <div class="meter"><h4>COPA</h4>${M&&M.copa?`<p style="margin-top:0;font-size:14px;color:var(--txt)">${esc(M.copa.texto)}</p><p><span class="pill ${M.copa_status.status=='cumprida'?'ok':'wait'}">${M.copa_status.status=='cumprida'?'cumprida':'em andamento'}</span></p>`:'<p style="margin-top:0">Sem meta de copa nesta temporada.</p>'}</div></div>`;
+  {const G=S.dirigentes||{};if(G.presidente)h=`<div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:16px">${pessoaCard('presidente',G.presidente)}${pessoaCard('diretor',G.diretor||{})}${pessoaCard('assessor',G.assessor||{})}</div>`+h}
   if(D.ultimato)h+=`<div class="banner err"><p><b>Ultimato da diretoria.</b> Restam ${D.ultimato.restam} jogo(s): faça 7 pontos no período ou recupere a confiança até 40.</p></div>`;
   if(D.sondagem)h+=`<div class="banner"><p><b>O ${esc(D.sondagem.nome)} quer você${D.sondagem.pais?` (${esc(D.sondagem.pais)}, ${D.sondagem.pos}º no ranking)`:''}.</b> Recusar renova o seu contrato e anima a torcida. Aceitar encerra o trabalho aqui: comece uma carreira nova no jogo com o ${esc(D.sondagem.nome)} e o app passa a acompanhar o novo clube, levando a sua carreira de técnico junto.</p><button class="ghost" onclick="sondagem(false)">Recusar e ficar</button><button class="lime" onclick="sondagem(true)">Aceitar</button></div>`;
   if(D.status!='empregado')h+=`<div class="box" style="margin-bottom:16px"><h3>${D.status=='demitido'?'Você foi demitido':'Você deixou o clube'} <small>${esc(D.motivo||'')}</small></h3>
@@ -1117,19 +1118,35 @@ function svgLinhas(pts,series){if(pts.length<2)return '<div class="empty">O grá
     const l=pts.length-1;g+=`<circle cx="${x(l)}" cy="${y(pts[l][s.k]||0)}" r="4" fill="${s.c}"/>`});
   g+=`<text x="${P}" y="${H-10}" fill="#8a93a3" font-size="10">${dt(pts[0].data)}</text><text x="${W-10}" y="${H-10}" fill="#8a93a3" font-size="10" text-anchor="end">${dt(pts[pts.length-1].data)}</text></svg>`;
   return g+`<div style="display:flex;gap:16px;font-size:12px;color:var(--mut)">${series.map(s=>`<span><i style="display:inline-block;width:10px;height:10px;background:${s.c};margin-right:6px"></i>${s.n}</span>`).join('')}<span>valores em ${MO().simbolo} milhões</span></div>`}
-let DIST=0;
-function rDist(){const d=S.dinheiro||{};const t=d.orc_transf||0,sl=d.orc_salario||0;const passo=100000;
-  const mn=-Math.floor(sl/passo)*passo,mx=Math.floor(t/passo)*passo;DIST=Math.max(mn,Math.min(mx,DIST));
-  const h=(S.redistrib||[]).map(r=>`<div style="font-size:12px;color:var(--mut)">${dt(r.data)} · ${r.valor>0?'transferências → salários':'salários → transferências'}: <b>${eurM(Math.abs(r.valor))}</b></div>`).join('');
-  $('finDist').innerHTML=d.orc_transf==null?'<div class="empty">Aparece depois que o app ler o save.</div>':`<div class="dist">
-    <div class="lado2"><small>TRANSFERÊNCIAS</small><b>${eurM(t-DIST)}</b><div class="nv" style="color:${DIST>0?'var(--red)':DIST<0?'var(--green)':'var(--mut)'}">${DIST?(DIST>0?'− ':'+ ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div>
-    <div style="min-width:260px;text-align:center"><input type="range" style="width:100%" min="${mn}" max="${mx}" step="${passo}" value="${DIST}" oninput="DIST=+this.value;rDist()">
-      <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">${[-1000000,-500000,500000,1000000].map(v=>`<button class="ghost" onclick="DIST=DIST+(${v});rDist()">${v>0?'+':'−'}${eurM(Math.abs(v))} sal.</button>`).join('')}</div>
-      <button class="lime" style="margin-top:10px" ${DIST?'':'disabled'} onclick="redistribuir()">Gravar no save</button></div>
-    <div class="lado2"><small>SALÁRIOS (saldo)</small><b>${eurM(sl+DIST)}</b><div class="nv" style="color:${DIST>0?'var(--green)':DIST<0?'var(--red)':'var(--mut)'}">${DIST?(DIST>0?'+ ':'− ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div></div>
-    <p style="font-size:12px;color:var(--mut);margin:12px 0 4px">O app grava no save. No jogo, volte ao menu principal e carregue a carreira de novo (sem salvar antes) para ver os valores novos.</p>${h}`}
-async function redistribuir(){if(!DIST)return;if(!confirm((DIST>0?'Passar '+eurM(DIST)+' das transferências para os salários?':'Passar '+eurM(-DIST)+' dos salários para as transferências?')+'\n\nDepois, recarregue a carreira no jogo sem salvar antes.'))return;
-  try{await api('/api/orcamento/redistribuir',{valor:DIST});DIST=0;toast('Orçamento redistribuído no save. Recarregue a carreira no jogo.');load()}catch(e){}}
+let DIST=0, APORTE=0;
+const EXIG_IC={pontos:'🎯',invicto:'🛡️',posicao:'🏆'};
+function rDist(){const d=S.dinheiro||{};const G=(S.dirigentes||{}).diretor||{};const t=d.orc_transf||0,sl=d.orc_salario||0;const passo=100000;
+  if(d.orc_transf==null){$('finDist').innerHTML='<div class="empty">Aparece depois que o app ler o save.</div>';return}
+  const mn=-Math.floor(Math.max(sl,0)/passo)*passo,mx=Math.floor(t/passo)*passo;DIST=Math.max(mn,Math.min(mx,DIST));
+  const cap=G.capacidade||0;const opts=[0.15,0.3,0.5,0.8,1.2].map(f=>Math.round(cap*f/50000)*50000);
+  const ab=G.aberto;
+  const comp=(G.compromissos||[]).map(c=>`<div class="ev"><div class="ic">${EXIG_IC[c.exigencia.tipo]||'•'}</div><div><b>${esc(c.exigencia.texto)}</b> <span class="pill ${c.status=='ativo'?'wait':c.status=='cumprido'?'ok':'off'}">${{ativo:'em andamento',cumprido:'cumprido',falhou:'não cumprido'}[c.status]}</span><small>${dt(c.data)} · ${c.origem=='mover'?'remanejamento':'verba extra'} de ${eurM(Math.abs(c.valor))} · se falhar: ${esc(c.punicao.texto)}</small></div></div>`).join('');
+  const hist=(G.pedidos||[]).filter(p=>p.status&&p.status!='contra').map(p=>`<div style="font-size:12px;color:var(--mut);margin-top:4px">${dt(p.data)} · ${p.tipo=='mover'?(p.valor>0?'transferências → salários':'salários → transferências'):'verba extra'} de <b>${eurM(Math.abs(p.valor))}</b> · ${{aceito:'aceito',recusado:'negado',contra_recusada:'você recusou a contraproposta'}[p.status]||p.status}</div>`).join('');
+  $('finDist').innerHTML=pessoaCard('diretor',G,`<p style="margin:8px 0 0;font-size:12px;color:var(--mut)">Confiança da diretoria: <b>${G.confianca??'—'}</b>/100 · capacidade de verba extra nesta temporada: <b>${eurM(cap)}</b> · você é visto como técnico <b>${{vencedor:'vencedor',novo:'em início de carreira',medio:'experiente'}[G.tecnico]||'—'}</b></p>`)+
+   (ab?`<div class="banner" style="margin-top:14px"><p><b>Contraproposta do diretor:</b> ${esc(ab.resposta||'')}</p><button class="ghost" onclick="responderDir(false)">Recusar</button><button class="lime" onclick="responderDir(true)">Aceitar o acordo</button></div>`:'')+
+   `<div class="grid2" style="margin-top:14px"><div class="box"><h3>Remanejar <small>transferências ↔ salários</small></h3>
+    <div class="dist" style="gap:10px"><div class="lado2"><small>TRANSFERÊNCIAS</small><b>${eurM(t-DIST)}</b><div class="nv" style="color:${DIST>0?'var(--red)':DIST<0?'var(--green)':'var(--mut)'}">${DIST?(DIST>0?'− ':'+ ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div>
+    <div style="min-width:180px;flex:1;text-align:center"><input type="range" style="width:100%" min="${mn}" max="${mx}" step="${passo}" value="${DIST}" oninput="DIST=+this.value;rDist()">
+     <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap">${[-1000000,-500000,500000,1000000].map(v=>`<button class="ghost" onclick="DIST=DIST+(${v});rDist()">${v>0?'+':'−'}${eurM(Math.abs(v))} sal.</button>`).join('')}</div></div>
+    <div class="lado2"><small>SALÁRIOS</small><b>${eurM(sl+DIST)}</b><div class="nv" style="color:${DIST>0?'var(--green)':DIST<0?'var(--red)':'var(--mut)'}">${DIST?(DIST>0?'+ ':'− ')+eurM(Math.abs(DIST)):'sem mudança'}</div></div></div>
+    <button class="lime" style="margin-top:10px" ${DIST&&!ab&&!G.espera_mover?'':'disabled'} onclick="propor('mover',DIST)">Propor ao diretor</button>${G.espera_mover?`<small style="color:var(--mut);margin-left:8px">pode pedir de novo em ${G.espera_mover} dia(s)</small>`:''}</div>
+   <div class="box"><h3>Pedir verba extra <small>para contratações</small></h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${opts.map(v=>`<button class="${APORTE==v?'lime':'ghost'}" onclick="APORTE=${v};rDist()">${eurM(v)}</button>`).join('')}</div>
+    <label style="margin-top:10px;display:block">Ou digite o valor (em milhões)</label><input type="number" min="0.1" step="0.1" style="width:140px" value="${APORTE?(APORTE*MO().taxa/1e6).toFixed(1):''}" onchange="APORTE=Math.round(+this.value*1e6/MO().taxa/50000)*50000;rDist()">
+    <p style="font-size:12px;color:var(--mut);margin:8px 0">Quanto maior o pedido perto da capacidade do clube, maior a exigência (até título) e mais dura a punição se não cumprir.</p>
+    <button class="lime" ${APORTE>0&&!ab&&!G.espera_aporte?'':'disabled'} onclick="propor('aporte',APORTE)">Pedir ao diretor</button>${G.espera_aporte?`<small style="color:var(--mut);margin-left:8px">pode pedir de novo em ${G.espera_aporte} dia(s)</small>`:''}</div></div>
+   <div class="grid2" style="margin-top:14px"><div class="box"><h3>Compromissos com a diretoria</h3>${comp||'<div class="empty">Nenhum compromisso.</div>'}</div>
+   <div class="box"><h3>Conversas com o diretor</h3>${hist||'<div class="empty">Nenhum pedido ainda.</div>'}
+   <p style="font-size:12px;color:var(--mut);margin:10px 0 0">O app grava no save. No jogo, volte ao menu principal e carregue a carreira de novo (sem salvar antes) para ver os valores novos.</p></div></div>`}
+async function propor(tipo,valor){try{const R=await api('/api/diretor/pedido',{tipo,valor});const p=R.pedido;
+  toast(p.status=='aceito'?'O diretor aceitou. Veja a mensagem dele e recarregue a carreira no jogo.':p.status=='contra'?'O diretor fez uma contraproposta.':'O diretor negou o pedido.',p.status=='recusado');
+  DIST=0;APORTE=0;load()}catch(e){}}
+async function responderDir(a){try{await api('/api/diretor/responder',{aceitar:a});toast(a?'Acordo fechado. Recarregue a carreira no jogo.':'Contraproposta recusada.');load()}catch(e){}}
 function rFin(){const d=S.dinheiro||{};rDist();const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);
   const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
@@ -1158,20 +1175,29 @@ function offerRow(o){
   return `<div class="row">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b>${porteTag(e.porte)}
      <small>${esc(slotName(o.slot))} · ${anos(o.anos)} · início ${dt(o.inicio)}${ped}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${info} ${o.substitui_empresa?`<span class="pill wait">tira a ${esc(o.substitui_empresa)} do espaço · eles pagam a multa</span>`:''} ${clChips(wait?o.clausulas_pedidas:o.clausulas)}</div></div>
      <div class="stat"><b>${eurM(o.valor)}</b><span>por temporada</span></div>
-     <div class="acts">${wait?'':`<button class="lime" onclick="aceitar(${o.id})">Aceitar</button>
-       <button onclick="pedir(${o.id})">Negociar</button><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button>
-       <button class="red" onclick="recusar(${o.id})">Recusar</button>`}</div></div>`;
+     <div class="acts">${wait?'<span class="pill wait">presidente negociando</span>':`<span class="pill">em análise na presidência</span><button class="ghost" onclick="verKit(${o.id})">Ver no uniforme</button>`}</div></div>`;
 }
+function iniciais(n){return (n||'?').replace(/\(.*?\)/g,'').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+function pessoaCard(cargo,P,extra){const nome=P.nome||({presidente:'Presidência',diretor:'Diretoria de futebol'}[cargo]||'');
+  return `<div class="asscard"><div class="aav" style="background:${cargo=='presidente'?'#1d4ed8':cargo=='diretor'?'#047857':'#7c3aed'}">${esc(iniciais(nome))}</div><div style="flex:1;min-width:0">
+   <div class="ast"><b>${esc(nome)}</b> <small>${{presidente:'Presidente',diretor:'Diretor de futebol',assessor:'Assessor de imprensa'}[cargo]}${cargo!='assessor'&&P.perfil?' · perfil '+esc(P.perfil.replace('empresario','empresário').replace('politico','político')):''}${P.postura?' · '+esc(P.postura.replace('cinico','cínico').replace('diplomatico','diplomático')):''}</small>
+   ${cargo!='assessor'?` <a style="color:var(--lime);cursor:pointer;font-size:12px" onclick="editarNome('${cargo}')">${P.real===false&&!P.nome?'informar nome':'editar nome'}</a>`:''}</div>
+   <p style="margin:6px 0 0;color:var(--mut);font-size:13px;line-height:1.5">${esc(P.perfil_txt||P.perfil||'')}</p>${extra||''}</div></div>`}
+async function editarNome(cargo){const G=S.dirigentes||{};const at=(G[cargo]||{}).nome||'';const n=prompt('Nome do '+(cargo=='presidente'?'presidente':'diretor de futebol')+' (deixe vazio para voltar ao padrão):',at);if(n===null)return;
+  await api('/api/dirigentes/nome',{cargo,nome:n});toast('Nome atualizado.');load()}
+function presCard(){const P=(S.dirigentes||{}).presidente;if(!P)return '';
+  const log=(P.log||[]).slice(0,5).map(x=>`<div style="font-size:12px;color:var(--mut)">${dt(x.data)} · ${esc(x.texto)}</div>`).join('');
+  return pessoaCard('presidente',P,`<p style="margin:8px 0 6px;font-size:13px">O presidente escolhe e negocia os patrocínios sozinho; cada contrato fechado sai na imprensa com o motivo da escolha. <b>O visual das marcas na camisa continua com você</b> (aba Uniformes).</p>${log?'<div class="asslog">'+log+'</div>':''}`)+'<div style="height:14px"></div>'}
 const stTxt={assinado:['wait','assinado · começa '],ativo:['ok','ativo'],encerrado:['','encerrado'],rescindido:['off','rescindido']};
 function rPatro(){
   const of=S.ofertas;
-  $('p-of').innerHTML=of.length?of.map(offerRow).join(''):'<div class="empty">Sem propostas abertas. Novas ofertas chegam conforme a carreira avança (a cada semana do jogo), e são melhores quando o time está bem.</div>';
+  $('p-of').innerHTML=presCard()+(of.length?of.map(offerRow).join(''):'<div class="empty">Sem propostas abertas. Novas ofertas chegam conforme a carreira avança (a cada semana do jogo), e são melhores quando o time está bem. O presidente também vai atrás de empresas quando um espaço fica vazio.</div>');
   $('p-ct').innerHTML=S.contratos.length?S.contratos.slice().reverse().map(c=>{const[k,t]=stTxt[c.status]||['',c.status];
     const pg=c.pagamentos.map(p=>`<span class="pill ${p.status=='confirmado'?'ok':p.status=='agendado'?'':'wait'}">${dt(p.data)} · ${eurM(p.valor)} · ${p.status}</span>`).join(' ');
     return `<div class="row">${logo(c.empresa)}<div class="nm"><b>${esc(c.empresa)}</b> <span class="pill ${k}">${t}${c.status=='assinado'?dt(c.inicio):''}</span>
       <small>${esc(slotName(c.slot))} · ${dt(c.inicio)} até ${dt(c.fim)}</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${clChips(c.clausulas)} ${pg}</div></div>
       <div class="stat"><b>${eurM(c.valor)}</b><span>por temporada</span></div>
-      <div class="acts">${c.status=='ativo'||c.status=='assinado'?`<button class="red" onclick="rescindir(${c.id})">Rescindir</button>`:(c.rescindido_por?`<span class="pill off">rompido por: ${esc(c.rescindido_por)}</span>`:'')}</div></div>`}).join(''):'<div class="empty">Nenhum contrato ainda.</div>';
+      <div class="acts">${c.status=='ativo'||c.status=='assinado'?`<button class="ghost" onclick="go('kits')">Ajustar no uniforme</button>`:(c.rescindido_por?`<span class="pill off">rompido por: ${esc(c.rescindido_por)}</span>`:'')}</div></div>`}).join(''):'<div class="empty">Nenhum contrato ainda.</div>';
   const st={aceita:'aceita',recusada:'recusada por você',recusada_empresa:'recusada pela empresa',expirada:'expirou',cancelada:'cancelada'};
   $('p-hi').innerHTML=S.ofertas_hist.length?S.ofertas_hist.map(o=>`<div class="row">${logo(o.empresa)}<div class="nm"><b>${esc(o.empresa)}</b><small>${esc(slotName(o.slot))} · ${eurM(o.valor)} / temporada</small></div><span class="pill">${st[o.status]||o.status}</span></div>`).join(''):'<div class="empty">Sem histórico.</div>';
 }
@@ -1388,7 +1414,7 @@ function rEmps(){
     const vig=S.contratos.some(c=>c.empresa==e.nome&&(c.status=='ativo'||c.status=='assinado'));
     return `<div class="emp">${vig?'':`<button class="rm" title="Remover empresa (não está patrocinando)" onclick="removerEmp('${esc(e.nome)}')">✕</button>`}${(()=>{const sem=(S.empresas_sem_logo||[]).includes(e.nome);return `<div class="lg ${sem?'sem':''}">${sem?'<span class="aviso">sem imagem</span>':`<img src="/logo/${encodeURIComponent(e.nome)}.png?v=${LOGOV}">`}<label class="troca">${sem?'escolher imagem':'trocar imagem'}<input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="enviarLogo('${esc(e.nome)}',this)"></label></div>`})()}<div><b>${esc(e.nome)}</b> ${porteTag(e.porte)} <span class="pill ${e.global?'ok':''}" style="cursor:pointer" title="Marca mundial pode patrocinar clubes de fora do Brasil. Clique para trocar." onclick="togGlobal('${esc(e.nome)}',${!e.global})">${e.global?'🌎 mundial':'🇧🇷 nacional'}</span></div>
     <small>${esc(e.setor)} · perfil ${esc(e.personalidade)}</small>${busy(e.nome)}${bl?`<small>Volta a negociar em ${dt(e.bloqueio_ate)}</small>`:''}
-    <button ${bl||!S.livres.length?'disabled':''} onclick="procurar('${esc(e.nome)}')">Fazer proposta</button></div>`}).join('')+
+    </div>`}).join('')+
     ((S.empresas_removidas||[]).length?`<div class="emp" style="grid-column:1/-1"><b>Removidas</b><small>${S.empresas_removidas.map(n=>`${esc(n)} <a style="color:var(--lime);cursor:pointer" onclick="restaurarEmp('${esc(n)}')">restaurar</a>`).join(' · ')}</small></div>`:'');
 }
 let LOGOV=Date.now();

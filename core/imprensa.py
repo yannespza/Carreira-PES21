@@ -252,7 +252,7 @@ def reportagem(noticia, ctx):
          'jogador': noticia.get('jogador') or ctx.get('jogador') or 'o camisa 10',
          'empresa': noticia.get('empresa') or 'a empresa', 'n': noticia.get('n') or '', 'pos': ctx.get('pos') or ''}
     autor = r.choice(ASSINA.get(sit, ['lacerda']))
-    corpo = _corpo(sit, noticia, v, ctx, r, autor)
+    corpo = list(noticia.get('corpo') or []) or _corpo(sit, noticia, v, ctx, r, autor)
     outros = [k for k in JORNALISTAS if k != autor]
     r.shuffle(outros)
     mesa = []

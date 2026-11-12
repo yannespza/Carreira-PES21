@@ -7,7 +7,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor
+from core import assessor, dirigentes, diretor, presidente
 from core.logos import LogoBank
 
 PORT = 8765
@@ -522,6 +522,7 @@ class App:
             self.engine.avancar(car.date, primeira_leitura=novo)
             if novo:
                 self.engine.ofertas_iniciais(car.date)
+            self.presidente_processar()
             self.ler_elenco(car)
             self.verificar_creditos(car)
             self.aplicar_creditos()
@@ -529,6 +530,8 @@ class App:
             self.gestao_processar(car, novas, None if novo else antes)
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
+            if any(x['status'] == 'pendente' for x in st.get('debitos', [])):
+                self.aplicar_creditos()        # punição do diretor de futebol (verba retirada)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
         self.status['lendo'] = False
@@ -595,6 +598,20 @@ class App:
                                                   'curtidas': 0, 'reposts': 0, 'respostas': []})
             self.persist()
 
+    def pessoas(self):
+        st = self.state or {}
+        return dirigentes.de(self.clube(), self.tid(), st.get('pais') or 'Brasil', st.get('dirigentes_editados'))
+
+    def presidente_processar(self):
+        try:
+            if self.engine is not None and self.state is not None:
+                presidente.Presidente(self.state, self.engine, self.clube(), self.pessoas()).processar()
+        except Exception:
+            log(traceback.format_exc())
+
+    def diretor(self):
+        return diretor.Diretor(self.state, self.engine, self.clube(), self.pessoas())
+
     def assessor_processar(self, car, novas):
         """Assessor de imprensa: posts, respostas à torcida, briefing e (talvez) vazamentos."""
         try:
@@ -617,6 +634,7 @@ class App:
             mu = mundo.Mundo(st, self.clube(), self.tid())
             estrutura.avancar(st, car.date, mu)
             diretoria.processar(st, self.engine, mu, car.date, self.names)
+            self.diretor().processar(mu, car.date, self.names)
             estrutura.registrar_marca(st, car.date)
             medico.processar(st, car.date, mu, self.engine)
             ingame.condicao_gramado(st, car.date, self.tid(), self.names)
@@ -641,6 +659,17 @@ class App:
                                          f"{len(ant)} clube(s) na carreira, {tits} título(s) e prestígio de {nv.lower()}"})
         except Exception:
             log(traceback.format_exc())
+
+    def dirigentes_view(self):
+        p = self.pessoas()
+        try:
+            dv = self.diretor().view()
+        except Exception:
+            log(traceback.format_exc()); dv = None
+        return {'presidente': {**p['presidente'], **presidente.Presidente(self.state, self.engine, self.clube(), p).view()}
+                if self.engine else p['presidente'],
+                'diretor': {**p['diretor'], **(dv or {})}, 'assessor': p['assessor'],
+                'marcas_novas': (self.state.get('marcas_novas') or [])[-6:]}
 
     def carreira_view(self):
         st = self.state or {}
@@ -954,8 +983,13 @@ class App:
             partes.append(f'{sim.fmt_eur(total)} de patrocínio foram colocados no save')
         if total_multa:
             partes.append(f'{sim.fmt_eur(total_multa)} de multa de rescisão foram descontados')
-        if total_deb:
-            partes.append(f'{sim.fmt_eur(total_deb)} das obras de estrutura saíram do orçamento de transferências')
+        saiu = sum(x['valor'] for x in debs if x['valor'] > 0)
+        entrou = -sum(x['valor'] for x in debs if x['valor'] < 0)
+        if saiu:
+            de_onde = 'por decisão da diretoria' if any(x.get('origem') == 'diretor' and x['valor'] > 0 for x in debs) else 'para as obras de estrutura'
+            partes.append(f'{sim.fmt_eur(saiu)} saíram do orçamento de transferências {de_onde}')
+        if entrou:
+            partes.append(f'{sim.fmt_eur(entrou)} de verba extra da diretoria entraram no orçamento de transferências')
         if not partes:
             return
         partes[0] = partes[0][0].upper() + partes[0][1:]
@@ -1123,6 +1157,7 @@ class App:
             'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
             'assessor': assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico').view() if st else None,
             'zerar_pat': st.get('zerar_pat'),
+            'dirigentes': self.dirigentes_view() if st else None,
             'estatisticas': self.estatisticas_view(),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -1577,6 +1612,47 @@ class H(BaseHTTPRequestHandler):
                     import base64
                     dados = base64.b64decode(body['dados'].split(',', 1)[-1])
                     return self.send(200, {'ok': True, 'humores': cena.importar_zip(DATA, dados)})
+                if u.path in ('/api/diretor/pedido', '/api/diretor/responder'):
+                    car = A.career
+                    if car is None or car.fin_off is None:
+                        return self.send(400, {'erro': 'O app ainda não leu o save da carreira.'})
+                    d = A.diretor()
+                    try:
+                        if u.path == '/api/diretor/pedido':
+                            p = d.pedir(body['tipo'], int(body['valor']))
+                        else:
+                            p = d.responder(bool(body.get('aceitar')))
+                        if p['status'] == 'aceito':
+                            valor = (p.get('acordo') or {}).get('valor', p['valor'])
+                            if p['tipo'] == 'mover':
+                                novo = car.redistribuir(valor)
+                                car.write(os.path.join(DATA, 'backups_save'), log)
+                                A.save_mtime = car.mtime
+                                A.state['dinheiro'] = car.money()
+                                A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
+                                A.status['aviso'] = ('Remanejamento gravado no save. No jogo, volte ao menu principal e carregue a '
+                                                     'carreira de novo (sem salvar antes).')
+                            else:
+                                A.state.setdefault('debitos', []).append({'data': A.state.get('data'), 'valor': -valor,
+                                                                          'motivo': 'verba extra da diretoria', 'status': 'pendente',
+                                                                          'origem': 'diretor'})
+                                A.aplicar_creditos()
+                    except ValueError as e:
+                        A.persist()
+                        return self.send(400, {'erro': str(e)})
+                    A.persist()
+                    return self.send(200, {'ok': True, 'pedido': p})
+                if u.path == '/api/dirigentes/nome':
+                    ed = A.state.setdefault('dirigentes_editados', {})
+                    nome = (body.get('nome') or '').strip()[:60]
+                    if body.get('cargo') not in ('presidente', 'diretor'):
+                        return self.send(400, {'erro': 'Cargo inválido.'})
+                    if nome:
+                        ed[body['cargo']] = nome
+                    else:
+                        ed.pop(body['cargo'], None)
+                    A.persist()
+                    return self.send(200, {'ok': True})
                 if u.path == '/api/orcamento/redistribuir':
                     car = A.career
                     if car is None or car.fin_off is None:

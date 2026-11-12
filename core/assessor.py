@@ -239,6 +239,21 @@ BRIEF_TEMA = {'expulsao': 'a expulsão de {jogador}', 'cargo': 'o seu cargo e a 
               'goleada': 'a goleada e as metas do time', 'vitoria': 'a sequência e quem vem pela frente',
               'empate': 'o que faltou para vencer', 'derrota': 'a derrota para o {adv}'}
 
+POSTURA_TXT = {
+    'parceiro': {'bom': L("""Conte comigo para segurar a euforia lá fora.|Grande trabalho, professor. Estou junto."""),
+                 'ruim': L("""Estou do seu lado; vou segurar o que der nas redes.|Pode deixar que eu blindo o vestiário lá fora.""")},
+    'diplomatico': {'bom': L("""Momento bom; vamos manter o discurso equilibrado.|Bom resultado. Discrição ajuda a manter o clima."""),
+                    'ruim': L("""Vamos evitar frases fortes nos próximos dias.|O melhor agora é falar pouco e com calma.""")},
+    'desconfiado': {'bom': L("""Cuidado: tem gente no vestiário falando demais, mesmo na vitória.|Ganhou, mas não confie em todo mundo que te elogia agora."""),
+                    'ruim': L("""Tem informação saindo do vestiário. Fique atento a quem fala com a imprensa.|Desconfio que alguém do elenco está passando coisas para fora.""")},
+    'desafiador': {'bom': L("""Ganhou, mas a escalação inicial não me convenceu.|Resultado bom, mas a imprensa vai cobrar o segundo tempo, e com razão."""),
+                   'ruim': L("""Sinceramente, as mudanças de hoje não ajudaram, e vão perguntar sobre isso.|Vou ser franco: fica difícil defender essa escalação nas redes.""")},
+    'ambicioso': {'bom': L("""Esse momento rende capa. Deixa que eu aproveito.|Quero transformar essa fase numa campanha nas redes."""),
+                  'ruim': L("""A gente precisa de uma boa notícia logo, eu preciso de pauta positiva.|Momento ruim para a imagem do clube, e para a minha também.""")},
+    'cinico': {'bom': L("""Aproveita: no futebol a festa dura pouco.|Hoje todo mundo é seu amigo. Amanhã a gente vê."""),
+               'ruim': L("""Já vi esse filme com outros técnicos. Reaja rápido.|Nessa altura, a imprensa já escolheu o culpado.""")},
+}
+
 # vazamentos
 VAZ_MANCHETE = {
     'lesao': L("""Lesão de {jogador} é mais séria do que o {clube} admite; volta só em {volta}, diz fonte|
@@ -297,9 +312,14 @@ class Assessor:
         self.m.setdefault('posts', [])
         self.m.setdefault('noticias', [])
         a = state.setdefault('assessor', {})
-        if 'persona' not in a:
-            r = random.Random(_seed('assessor', state.get('carreira_id') or clube, clube))
-            a['persona'] = r.choice(PERSONAS)['id']
+        from . import dirigentes
+        pessoa = dirigentes.de(clube, team_id, state.get('pais') or 'Brasil', state.get('dirigentes_editados'))['assessor']
+        if a.get('persona') != pessoa['id']:
+            antigo = a.get('persona')
+            a['persona'] = pessoa['id']
+            if antigo and a.get('log') is not None:
+                a.setdefault('log', []).append({'data': state.get('data'),
+                                                'texto': f"{pessoa['nome']} assumiu a assessoria de imprensa do {clube}."})
         a.setdefault('relacao', 60)
         a.setdefault('vistos_partidas', None)
         a.setdefault('respondidos', [])
@@ -309,7 +329,7 @@ class Assessor:
         a.setdefault('log', [])
         a.setdefault('seguidores', None)
         self.a = a
-        self.p = next(p for p in PERSONAS if p['id'] == a['persona'])
+        self.p = pessoa
         self.mem = Memoria(state)
 
     # ----- identidade -----
@@ -436,12 +456,21 @@ class Assessor:
         v = {'jogador': expulsos[0] if expulsos else '', 'adv': adv}
         self._msg(engine, p['data'], f'Briefing pós-jogo: {adv}',
                   f"{self.mem.escolher('a:ba:' + est, BRIEF_ABRE[est], r)} Clima nas redes: {self._clima()}. "
-                  f"Na coletiva, devem perguntar sobre {fmt(BRIEF_TEMA[k], v)}. {self.mem.escolher('a:bd:' + k, BRIEF_DICA[k], r)}")
+                  f"Na coletiva, devem perguntar sobre {fmt(BRIEF_TEMA[k], v)}. {self.mem.escolher('a:bd:' + k, BRIEF_DICA[k], r)}"
+                  + self._comentario(k, r))
 
     def _clima(self):
         t = self.m.get('torcida', 50)
         return ('euforia total' if t >= 85 else 'torcida animada' if t >= 65 else 'torcida dividida' if t >= 45
                 else 'torcida impaciente' if t >= 25 else 'revolta da torcida')
+
+    def _comentario(self, k, r):
+        """O jeito do assessor com o técnico aparece no fim do briefing (nem sempre)."""
+        if r.random() > 0.55:
+            return ''
+        bom = k in ('vitoria', 'goleada')
+        banco = POSTURA_TXT[self.p.get('postura', 'diplomatico')]['bom' if bom else 'ruim']
+        return ' ' + self.mem.escolher(f"a:pos:{self.p.get('postura')}:{bom}", banco, r)
 
     def _briefing(self, p, gp, gc, adv, expulsos):
         mom = self.momento()['nivel']
@@ -603,6 +632,7 @@ class Assessor:
         mom = self.momento()
         vaz = sum(1 for n in self.m.get('noticias', []) if n.get('vazamento'))
         return {'nome': self.p['nome'], 'perfil': self.p['perfil'], 'estilo': ESTILO_NOME[self.p['estilo']],
+                'postura': self.p.get('postura'),
                 'arroba': self.arroba(), 'relacao': self.a['relacao'], 'momento': mom,
                 'seguidores': self.a.get('seguidores') or 0, 'vazamentos': vaz,
                 'discricao': int(round(100 * (1 - self.p['vaza'] * 2))),
