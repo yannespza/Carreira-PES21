@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 EXTS = ('.png', '.webp', '.jpg', '.jpeg')
-VERSAO_CACHE = 2
+VERSAO_CACHE = 3
 JUNK = re.compile(r'\b(png|svg|webp|jpe?g|logo|logos|logotipo|logomarca|hd|transparent|transparente|background|'
                   r'no|sem|fundo|clipart|text|seeklogo|wine|mobile|phones|others|miscellaneous|black|blue|white|'
                   r'vertical|horizontal|vector|vetor|site|simbolo|símbolo|symbol|icon|icone|thumb|digital|pharma|'
@@ -82,6 +82,30 @@ def _componentes_borda(m):
         alcan = novo
 
 
+def _miolos(lab, pequenos, fundo):
+    """Dos buracos pequenos com a cor do fundo, quais são miolos de letra (O, A, R...) e saem.
+    Letra branca dentro de uma faixa colorida (Brahma, Crystal) também aparece como "buraco", mas ela tem
+    os próprios miolos coloridos dentro (o miolo do B, do R): essa é parte do desenho e fica."""
+    from .limpeza import _rotular
+    ok = np.zeros(len(pequenos), bool)
+    tam = np.bincount(lab.ravel(), minlength=len(pequenos))
+    ok[(tam < 40) & pequenos] = True          # pontinhos: não dá para ter letra dentro
+    for l in np.nonzero(pequenos & (tam >= 40))[0]:
+        if l == 0:
+            continue
+        ys, xs = np.nonzero(lab == l)
+        if not len(ys):
+            continue
+        sub = lab[ys.min():ys.max() + 1, xs.min():xs.max() + 1] == l
+        sub = np.pad(sub, 1)
+        ilhas = _rotular(~sub)
+        borda = set(np.unique(np.concatenate([ilhas[0], ilhas[-1], ilhas[:, 0], ilhas[:, -1]]).tolist()))
+        tam = np.bincount(ilhas.ravel())
+        dentro = [k for k in range(1, len(tam)) if k not in borda and tam[k] >= max(4, 0.003 * sub.sum())]
+        ok[l] = not dentro          # sem ilhas dentro: é miolo, vira transparente
+    return ok[lab]
+
+
 def remove_background(im: Image.Image) -> Image.Image:
     """Tira o fundo do logo: transparência que já existe, fundo liso (branco, cinza, colorido) e o xadrez de
     "transparência falsa" que vem em muitos PNG da internet. Buracos pequenos das letras (miolo do O, do A)
@@ -106,13 +130,14 @@ def remove_background(im: Image.Image) -> Image.Image:
                 lab = _rotular(dentro)
                 tam = np.bincount(lab.ravel()); tam[0] = 0
                 lim = 0.015 * dentro.size
-                fora |= dentro & (tam[lab] < lim)
+                liso = _miolos(lab, tam > 0, fora | transp)    # sem miolos coloridos dentro (não é letra)
+                fora |= dentro & (tam[lab] < lim) & liso
                 if len(cores) >= 2:     # xadrez de transparência falsa dentro do logo: sempre é fundo
                     perto = [np.abs(rgb - c).max(axis=2) < 34 for c in cores[:2]]
                     n0 = np.bincount(lab[dentro & perto[0]], minlength=len(tam))
                     n1 = np.bincount(lab[dentro & perto[1]], minlength=len(tam))
                     xadrez = (n0 >= 0.2 * tam) & (n1 >= 0.2 * tam) & (tam > 0)
-                    fora |= dentro & xadrez[lab]
+                    fora |= dentro & xadrez[lab] & liso
             # borda suave: pixels de transição entre o logo e o fundo ficam meio transparentes
             mask = Image.fromarray((fora * 255).astype(np.uint8)).resize((w0, h0), Image.BILINEAR)
             m = np.array(mask).astype(np.float32) / 255
