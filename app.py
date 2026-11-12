@@ -977,8 +977,10 @@ class App:
             return ['voltar ao normal depois do teste (contratos que ainda não começaram saem do uniforme)']
         mud_est = json.dumps(self.state.get('estudio') or {}, sort_keys=True) != \
             json.dumps(self.state.get('estudio_aplicado') or {}, sort_keys=True)
+        desenho = [] if self.state.get('kits_desenho', 1) == kits.VERSAO_DESENHO else \
+            ['logos redesenhados (letras brancas e placas como a da Condor não somem mais)']
         if self.assinatura(atual) == aplicado:
-            return ['cores, estrelas ou número do Estúdio de uniformes'] if mud_est else []
+            return (['cores, estrelas ou número do Estúdio de uniformes'] if mud_est else []) + desenho
         antes = {c[0]: c for c in json.loads(aplicado)}
         mud = []
         for c in atual:
@@ -990,7 +992,7 @@ class App:
         for cid, c in antes.items():
             if cid not in ids:
                 mud.append(f"sai {c[2]} ({kits.SLOTS.get(c[1], {}).get('nome', c[1])})")
-        return mud or ['atualização dos uniformes']
+        return (mud or ['atualização dos uniformes']) + desenho
 
     def aplicar_kits(self):
         if self.kit_thread and self.kit_thread.is_alive():
@@ -1012,6 +1014,7 @@ class App:
                 kits.install(APP_DIR, self.time['pasta'], cs, self.logos.load, log, prog)
                 with LOCK:
                     self.state['kits_aplicados'] = sig
+                    self.state['kits_desenho'] = kits.VERSAO_DESENHO
                     self.state['estudio_aplicado'] = est
                     self.persist()
                 self.status['kits'] = 'ok'

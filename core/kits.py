@@ -94,6 +94,9 @@ def _lum(rgb):
     return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
 
 
+# sobe quando a forma de desenhar os logos no uniforme muda: o app pede para reaplicar
+VERSAO_DESENHO = 2
+
 CORES = {'branco': (255, 255, 255), 'verde': (0, 100, 55), 'vermelho': (220, 30, 40), 'azul': (15, 60, 145),
          'preto': (25, 25, 25)}
 
@@ -104,13 +107,19 @@ def colorize(logo: Image.Image, mode: str, bg_rgb):
     if mode == 'original':
         return logo
     if mode == 'auto':
-        # cor média do logo vs. fundo: se contrastar bem, mantém original; senão branco ou escuro
-        px = [p for p in logo.getdata() if p[3] > 128]
-        if px:
-            avg = tuple(sum(p[i] for p in px) / len(px) for i in range(3))
-            if abs(_lum(avg) - _lum(bg_rgb)) > 70:
+        # logo com contraste próprio (placa com texto, escudo colorido) aparece em qualquer camisa: fica original.
+        # Se for de uma cor só, compara com o fundo: contrastando, fica; senão vira branco ou escuro.
+        import numpy as np
+        a = np.asarray(logo)
+        px = a[a[..., 3] > 128][:, :3].astype(np.float32)
+        if len(px):
+            lum = px @ np.array([0.299, 0.587, 0.114], np.float32)
+            claro, escuro = (lum > 170).mean(), (lum < 110).mean()
+            if min(claro, escuro) > 0.08 and np.percentile(lum, 90) - np.percentile(lum, 10) > 90:
                 return logo
-        mode = 'branco' if _lum(bg_rgb) < 140 else 'verde'
+            if abs(float(lum.mean()) - _lum(bg_rgb)) > 70:
+                return logo
+        mode = 'branco' if _lum(bg_rgb) < 140 else 'preto'
     col = CORES.get(mode)
     if col is None and mode.startswith('#') and len(mode) == 7:
         col = tuple(int(mode[i:i + 2], 16) for i in (1, 3, 5))
