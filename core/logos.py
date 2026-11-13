@@ -160,11 +160,27 @@ class LogoBank:
         self.cache_dir = os.path.join(app_dir, 'data', 'logos_cache')
         os.makedirs(self.cache_dir, exist_ok=True)
         self.map_path = os.path.join(app_dir, 'data', 'logos_map.json')
-        self.map = json.load(open(self.map_path, encoding='utf-8')) if os.path.exists(self.map_path) else {}
+        self.map = {}
+        if os.path.exists(self.map_path):
+            try:
+                with open(self.map_path, encoding='utf-8') as f:
+                    self.map = json.load(f)
+            except Exception:
+                # arquivo estragado (ex.: PC desligou no meio da gravação): guarda a cópia e refaz do zero
+                try:
+                    os.replace(self.map_path, self.map_path + '.estragado')
+                except OSError:
+                    pass
+                self.map = {}
         self._mem = {}
 
     def save_map(self):
-        json.dump(self.map, open(self.map_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        tmp = self.map_path + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(self.map, f, ensure_ascii=False, indent=1)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, self.map_path)
 
     def _assinatura(self, caminho):
         try:

@@ -36,7 +36,10 @@ def jload(p, default):
 
 def jsave(p, obj):
     tmp = p + '.tmp'
-    json.dump(obj, open(tmp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=str)
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1, default=str)
+        f.flush()
+        os.fsync(f.fileno())          # grava de verdade no disco (PC desligado no meio não estraga o arquivo)
     os.replace(tmp, p)
 
 
