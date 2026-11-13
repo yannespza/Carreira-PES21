@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
+from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import assessor, dirigentes, diretor, presidente
 from core.logos import LogoBank
@@ -612,6 +612,27 @@ class App:
     def diretor(self):
         return diretor.Diretor(self.state, self.engine, self.clube(), self.pessoas())
 
+    def marketing(self):
+        return marketing.Marketing(self.state, self.clube(), self.tid(), self.pessoas(), self.engine,
+                                   CFG.get('tecnico_nome') or 'Técnico')
+
+    def marketing_view(self):
+        try:
+            st = self.state
+            return self.marketing().view(sim.s2d(st['data']) if st.get('data') else None)
+        except Exception:
+            log(traceback.format_exc()); return None
+
+    def marketing_processar(self, mu, hoje):
+        """Campanhas de cor no 3º/4º uniforme: sugere, encerra e devolve as cores de antes."""
+        if not (self.time and self.time.get('preparado')):
+            return
+        def paleta_de(fam):
+            v = next(x for x in kits.VARIANTS if x[2] == fam)
+            return estudio.paleta(kits.base_image(APP_DIR, v[0], v[1]))
+        self.marketing().processar(mu, hoje, kits.VARIANTS, paleta_de, estudio.PRESETS)
+        self.sync_estudio()
+
     def assessor_processar(self, car, novas):
         """Assessor de imprensa: posts, respostas à torcida, briefing e (talvez) vazamentos."""
         try:
@@ -635,6 +656,10 @@ class App:
             estrutura.avancar(st, car.date, mu)
             diretoria.processar(st, self.engine, mu, car.date, self.names)
             self.diretor().processar(mu, car.date, self.names)
+            try:
+                self.marketing_processar(mu, car.date)
+            except Exception:
+                log(traceback.format_exc())
             estrutura.registrar_marca(st, car.date)
             medico.processar(st, car.date, mu, self.engine)
             ingame.condicao_gramado(st, car.date, self.tid(), self.names)
@@ -1158,6 +1183,7 @@ class App:
             'assessor': assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico').view() if st else None,
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
+            'marketing': self.marketing_view() if st else None,
             'estatisticas': self.estatisticas_view(),
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -1612,6 +1638,17 @@ class H(BaseHTTPRequestHandler):
                     import base64
                     dados = base64.b64decode(body['dados'].split(',', 1)[-1])
                     return self.send(200, {'ok': True, 'humores': cena.importar_zip(DATA, dados)})
+                if u.path == '/api/marketing/responder':
+                    if A.state is None:
+                        return self.send(400, {'erro': 'O app ainda não leu o save da carreira.'})
+                    try:
+                        hoje = sim.s2d(A.state['data']) if A.state.get('data') else None
+                        mu = mundo.Mundo(A.state, A.clube(), A.tid())
+                        A.marketing().responder(body['id'], bool(body.get('aprovar')), mu, hoje)
+                        A.sync_estudio(); A.persist()
+                    except ValueError as e:
+                        return self.send(400, {'erro': str(e)})
+                    return self.send(200, {'ok': True})
                 if u.path in ('/api/diretor/pedido', '/api/diretor/responder'):
                     car = A.career
                     if car is None or car.fin_off is None:

@@ -12,6 +12,9 @@ PRESETS = {
     'rosa': {'nome': 'Outubro Rosa', 'cores': ['#f06fa3', '#ffffff', '#b8326e']},
     'azul': {'nome': 'Novembro Azul', 'cores': ['#2b6fd6', '#ffffff', '#163e7a']},
     'aniversario': {'nome': 'Aniversário do clube', 'cores': [None, '#c9a227', None]},
+    'amarelo': {'nome': 'Setembro Amarelo', 'cores': ['#f2c230', '#ffffff', '#a8801a']},
+    'vermelho': {'nome': 'Dezembro Vermelho', 'cores': ['#d32f2f', '#ffffff', '#8e1b1b']},
+    'natal': {'nome': 'Edição de Natal', 'cores': ['#c1272d', '#ffffff', '#14532d']},
     'treino': {'nome': 'Edição especial escura', 'cores': ['#1d2430', '#3a4556', None]},
 }
 

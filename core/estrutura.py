@@ -172,7 +172,8 @@ def marca(state):
     reb = sum(1 for t in temps if t.get('rebaixado'))
     torc = (state.get('mundo') or {}).get('torcida', 60)
     mkt = BONUS_MKT[nivel(state, 'marketing') - 1]
-    v = base + 6 * tit + 4 * ac - 9 * reb + (torc - 60) / 4 + mkt
+    camp = (state.get('marketing') or {}).get('marca_bonus', 0)       # campanhas de uniforme (só marca do clube)
+    v = base + 6 * tit + 4 * ac - 9 * reb + (torc - 60) / 4 + mkt + camp
     return int(max(5, min(100, round(v))))
 
 

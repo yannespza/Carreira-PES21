@@ -302,6 +302,12 @@ dialog select,dialog input{width:100%}
 @media (max-width:900px){.tecgrid{grid-template-columns:1fr}}
 .estcor{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px}.estcor .sw{width:26px;height:26px;border-radius:6px;border:1px solid var(--line)}
 .estcor input[type=color]{width:46px;height:30px;padding:0;border:none;background:none}.estcor a{color:var(--mut);cursor:pointer;font-size:12px}
+.mkt{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;background:var(--card,rgba(255,255,255,.03))}
+.mkt h3{margin:0 0 4px}.mkt .mksub{color:var(--mut);font-size:12px}.mkcard{display:grid;grid-template-columns:240px 1fr;gap:14px;margin-top:12px;align-items:start}
+.mkcard img{width:100%;border-radius:10px;background:#0b0f14;min-height:150px}.mkcard .txt{font-size:13px;line-height:1.55}
+.mkcard .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.mkrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}
+.mkrow b{font-weight:600}.mkpos{color:var(--lime,#b6f23a)}.mkneg{color:#ff6b6b}
+@media(max-width:700px){.mkcard{grid-template-columns:1fr}}
 .presets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.presets button{display:flex;align-items:center;gap:8px;text-align:left;font-size:12px}
 .presets i{display:inline-block;width:26px;height:16px;border-radius:4px;flex:none}
 .moral{position:absolute;top:30px;right:10px;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-weight:900;color:#111;font-size:15px}
@@ -426,7 +432,7 @@ dialog select,dialog input{width:100%}
   <nav id="nav">
     <a data-t="clube" class="on">◆ Clube</a>
     <a data-t="patro">◆ Comercial <span class="badge hidden" id="bOf"></span></a>
-    <a data-t="kits">◆ Uniformes</a>
+    <a data-t="kits">◆ Uniformes <span class="badge hidden" id="bMkt"></span></a>
     <a data-t="elenco">◆ Elenco</a>
     <a data-t="fin">◆ Finanças</a>
     <a data-t="news">◆ Mídia</a>
@@ -435,7 +441,7 @@ dialog select,dialog input{width:100%}
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
 <div class="tl" id="timeline"><small>LINHA DO TEMPO</small></div>
-<div class="sub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
+<div class="mksub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
 
 <div id="setup" class="hidden" style="position:fixed;inset:0;z-index:200;background:rgba(10,12,16,.92);overflow:auto;padding:40px 16px"><div class="box" style="max-width:760px;margin:0 auto" id="setupBox"></div></div>
 <main>
@@ -505,6 +511,7 @@ dialog select,dialog input{width:100%}
   <!-- UNIFORMES -->
   <section id="t-kits" class="hidden">
     <div class="crumb">Início / Uniformes / <b>Patrocinadores, estúdio e limpeza</b></div>
+    <div id="mktBox"></div>
     <div class="tabs2" data-grp="u"><a data-sub="pat" class="on">Patrocinadores no uniforme</a><a data-sub="est">Estúdio</a><a data-sub="limp">Limpeza dos originais</a></div>
     <div id="u-est" class="hidden"><div id="estudio"></div></div>
     <div id="u-pat">
@@ -689,6 +696,25 @@ function trocaCor(src,dst){estCfg.trocas=(estCfg.trocas||[]).filter(t=>t[0]!=src
 function preset(k){const p=EST.presets[k];estCfg.trocas=[];(p.cores||[]).forEach((c,i)=>{if(c&&EST.paleta[i])estCfg.trocas.push([EST.paleta[i].cor,c])});estCfg.retro=!!p.retro;desenharEstudio(!!EST.cfg)}
 function previaEst(){clearTimeout(estT);estT=setTimeout(()=>{const im=$('estImg');if(!im)return;im.style.opacity=.5;
   im.onload=()=>im.style.opacity=1;im.src='/api/estudio/previa?familia='+encodeURIComponent(estFam)+'&w=640&cfg='+encodeURIComponent(JSON.stringify({...estCfg,ativo:true}))},250)}
+const REC={otima:'torcida adorou',boa:'boa aceitação',dividida:'torcida dividida',ruim:'torcida não gostou',recusada:'recusada'};
+function mktSinal(d){return d==null?'':`<span class="${d>0?'mkpos':d<0?'mkneg':''}">marca ${d>0?'+':''}${d}</span>`}
+function rMarketing(){const b=$('mktBox');if(!b)return;const mk=S.marketing;if(!mk){b.innerHTML='';return}
+  const sg=mk.sugestoes||[],at=mk.ativas||[],hi=mk.hist||[];
+  if(!sg.length&&!at.length&&!hi.length){b.innerHTML=`<div class="mkt"><h3>Marketing <small>${esc(mk.nome||'')}</small></h3><div class="mksub">O marketing sugere camisas de campanha (Outubro Rosa, Novembro Azul, aniversário do clube...) sempre no 3º ou 4º uniforme. Quando houver uma sugestão, ela aparece aqui para você aprovar ou recusar.</div></div>`;return}
+  const key=JSON.stringify([sg.map(x=>x.id),at.map(x=>x.id+x.dias),hi.length,mk.marca_bonus]);if(b.dataset.k==key)return;b.dataset.k=key;
+  b.innerHTML=`<div class="mkt"><h3>Marketing <small>${esc(mk.nome||'')} · campanhas no 3º/4º uniforme</small></h3>
+   <div class="mksub">Aprovar ou recusar sai na imprensa e nas redes. O efeito é só na marca do clube (hoje ${mk.marca_bonus>0?'+':''}${mk.marca_bonus||0} pelas campanhas), nunca no seu prestígio.</div>
+   ${sg.map(x=>`<div class="mkcard"><img alt="prévia da camisa de campanha" src="/api/estudio/previa?familia=${encodeURIComponent(x.familia)}&w=480&cfg=${encodeURIComponent(JSON.stringify(x.cfg))}">
+     <div class="txt"><b>${esc(x.nome)}</b> · ${esc(x.uniforme)} (${esc((S.familias||{})[x.familia]||x.familia)}) · ${dt(x.ini)} a ${dt(x.fim)}
+       <p style="margin:6px 0 0">${esc(x.texto)}</p>
+       <div class="acts"><button class="lime" onclick="mktResp('${x.id}',true)">Aprovar campanha</button><button class="ghost" onclick="mktResp('${x.id}',false)">Recusar</button>
+       <span class="mksub" style="align-self:center">Sem resposta até ${dt(x.fim)}, a campanha passa em branco (e a torcida comenta).</span></div></div></div>`).join('')}
+   ${at.map(x=>`<div class="mkrow"><span>🟢 <b>${esc(x.nome)}</b> no ${esc(x.uniforme)} · até ${dt(x.fim)} (${x.dias} dia${x.dias==1?'':'s'})</span><span>${esc(REC[x.recepcao]||'')} · ${mktSinal(x.delta_marca)}</span></div>`).join('')}
+   ${hi.map(x=>`<div class="mkrow"><span>${x.status=='encerrada'?'✔':'✖'} ${esc(x.nome)} · ${esc(x.status)} em ${dt(x.em)}</span><span>${esc(x.status=='encerrada'?(REC[x.recepcao]||''):'')} ${mktSinal(x.delta_marca)}</span></div>`).join('')}
+  </div>`}
+async function mktResp(id,ap){try{await api('/api/marketing/responder',{id,aprovar:ap});
+  toast(ap?'Campanha aprovada. As cores entram no Estúdio; clique em “Aplicar no jogo” para gravar no PES.':'Campanha recusada. A imprensa e a torcida já estão comentando.');
+  $('mktBox').dataset.k='';await load()}catch(e){}}
 async function salvarEstudio(){await api('/api/estudio/salvar',{familia:estFam,cfg:estCfg});toast('Cores salvas. Clique em “Aplicar no jogo” para gravar no PES.');await load();rEstudio()}
 async function removerEstudio(){await api('/api/estudio/remover',{familia:estFam});toast('Uniforme volta às cores originais na próxima aplicação.');await load();rEstudio()}
 function abrirSub(g,k){document.querySelectorAll(`.tabs2[data-grp="${g}"] a`).forEach(x=>x.classList.toggle('on',x.dataset.sub==k));
@@ -748,6 +774,9 @@ function render(){
   $('somBtn').textContent=somOn?'🔔':'🔕';
   // banners
   let bn='';
+  {const mk=S.marketing||{},ns=(mk.sugestoes||[]).length;$('bMkt').textContent=ns;$('bMkt').classList.toggle('hidden',!ns);
+   if(ns)bn+=`<div class="banner"><p><b>O marketing sugere ${ns>1?ns+' campanhas':'uma campanha'} nos uniformes:</b> ${(mk.sugestoes||[]).map(x=>esc(x.nome)).join(' · ')}</p><button class="lime" onclick="go('kits')">Ver e decidir</button></div>`;
+   rMarketing()}
   if(ATU&&ATU.tem) bn+=`<div class="banner"><p><b>Nova versão disponível (${esc(ATU.nova)}).</b> Você está na ${esc(ATU.atual)}. Sua carreira, contratos e uniformes não são apagados.</p><button class="lime" onclick="atualizarApp()">Atualizar</button></div>`;
   if(ks.erro) bn+=`<div class="banner err"><p>${esc(ks.erro)}</p></div>`;
   if(ks.aviso) bn+=`<div class="banner"><p><b>Dinheiro no save.</b> ${esc(ks.aviso)}</p><button class="lime" onclick="api('/api/aviso/ok',{}).then(load)">Entendi</button></div>`;
@@ -1036,7 +1065,7 @@ function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
 const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
  lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
- contrato:'mercado',contrato_grande:'mercado',rescisao:'mercado',rumor_patro:'mercado',
+ contrato:'mercado',contrato_grande:'mercado',campanha:'diretoria',rescisao:'mercado',rumor_patro:'mercado',
  lesao:'elenco',retorno:'elenco',evento:'elenco',vazamento:'bastidores',jog_elogio:'elenco',jog_critica:'elenco',
  diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores',
  classico_v:'jogo',classico_e:'jogo',classico_d:'jogo',vestiario_racha:'elenco',vestiario_unido:'elenco',jog_reclama:'elenco',vestiario:'elenco',
