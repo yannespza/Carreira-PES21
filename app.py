@@ -347,9 +347,20 @@ class App:
             except Exception:
                 log(traceback.format_exc())
                 self.energia = {}
+            # o save guarda a energia do fim do último jogo; o jogo soma a recuperação dos dias seguintes
+            self.ultimo_jogo = {}
+            try:
+                for p_ in sumulas.partidas(bytes(car.sf.data)):
+                    if car.team_id in (p_['mandante'], p_['visitante']):
+                        for x in p_['escalacao_mandante'] + p_['escalacao_visitante']:
+                            if x['min'] and x['id'] in self.energia:
+                                self.ultimo_jogo[x['id']] = p_['data']
+            except Exception:
+                log(traceback.format_exc())
+            self.energia_data = car.date
             for j in el:
                 if j['id'] in self.energia:
-                    j['energia'] = int(round(self.energia[j['id']] * 100 / 255))
+                    j['energia'] = self.energia_pct(j['id'])
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
             posicao.registrar(self.elenco)
             self._fichas(car, nomes)
@@ -457,7 +468,8 @@ class App:
                     self.persist()
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
             if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
-                    x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))):
+                    x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))
+                    or (self.state or {}).get('energia_pend') or (self.state or {}).get('energia_set')):
                 with LOCK:
                     self.aplicar_creditos()
                     self.persist()
@@ -563,7 +575,7 @@ class App:
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
             self.escalacao_processar(car)
-            if any(x['status'] == 'pendente' for x in st.get('debitos', [])):
+            if any(x['status'] == 'pendente' for x in st.get('debitos', [])) or st.get('energia_pend') or st.get('energia_set'):
                 self.aplicar_creditos()        # punição do diretor de futebol (verba retirada)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
             self.persist()
@@ -580,6 +592,21 @@ class App:
             mu.processar(self.engine, lambda i: self.names.get(i, f'Time {i}'))
         except Exception:
             log(traceback.format_exc())
+
+    def energia_pct(self, pid):
+        """Energia estimada como o jogo mostra: base do save + recuperação desde o último jogo do jogador.
+        Quem teve a energia definida pelo app (volta de lesão) fica com o valor gravado."""
+        base = (getattr(self, 'energia', {}) or {}).get(pid)
+        if base is None:
+            return None
+        b = base * 100 / 255
+        uj = (getattr(self, 'ultimo_jogo', {}) or {}).get(pid)
+        fx = ((self.state or {}).get('energia_fixa') or {}).get(str(pid))
+        fixo = bool(fx and (not uj or uj <= fx))      # voltou de lesão e ainda não jogou
+        if base < 255 and uj and getattr(self, 'energia_data', None) and not fixo:
+            dias = max(0, (self.energia_data - sim.s2d(uj)).days)
+            b += (100 - b) * (1 - 0.45 ** dias)
+        return int(round(min(100, b)))
 
     def recuperacao_processar(self, car):
         """Programa de recuperação do DM: mensalidade e energia extra depois de cada jogo (gravada no save)."""
@@ -1236,7 +1263,9 @@ class App:
         oi = self.state.get('orc_inicial')
         definir = bool(oi and oi.get('status') == 'pendente')
         debs = [x for x in self.state.get('debitos', []) if x['status'] == 'pendente']
-        ener = {int(k): v for k, v in (self.state.get('energia_pend') or {}).items()}
+        ener_pend = {int(k): v for k, v in (self.state.get('energia_pend') or {}).items()}
+        ener_set = {int(k): v for k, v in (self.state.get('energia_set') or {}).items()}
+        ener = {**ener_pend, **ener_set}
         if (not pend and not multas and not zerar and not definir and not debs and not ener) or self.career is None or self.career.fin_off is None:
             return
         car = self.career
@@ -1264,7 +1293,9 @@ class App:
         for x in debs:
             car.debitar(x['valor'])
             total_deb += x['valor']
-        ener_antes = car.definir_energia(ener) if ener else {}
+        ener_antes = car.definir_energia(ener_pend) if ener_pend else {}
+        for k_, v_ in (car.definir_energia(ener_set, so_sobe=False) if ener_set else {}).items():
+            ener_antes.setdefault(k_, v_)
         try:
             bk = car.write(os.path.join(DATA, 'backups_save'), log)
         except Exception as e:
@@ -1317,12 +1348,16 @@ class App:
             x['status'] = 'aplicado'; x['aplicado_em'] = hoje
         if ener:
             self.state['energia_pend'] = {}
+            self.state['energia_set'] = {}
+            fixa = self.state.setdefault('energia_fixa', {})
+            for pid in ener_set:
+                fixa[str(pid)] = self.state.get('data')
             for pid, v in ener.items():
                 if hasattr(self, 'energia') and pid in self.energia:
-                    self.energia[pid] = max(self.energia[pid], v)
+                    self.energia[pid] = v if pid in ener_set else max(self.energia[pid], v)
             for j in self.elenco or []:
                 if j['id'] in (getattr(self, 'energia', {}) or {}):
-                    j['energia'] = int(round(self.energia[j['id']] * 100 / 255))
+                    j['energia'] = self.energia_pct(j['id'])
             log('energia gravada no save:', len(ener_antes), 'jogadores')
         if zerar:
             z.update(status='aplicado' if zerado else 'confirmado', valor=zerado, em=hoje)

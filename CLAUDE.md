@@ -33,7 +33,7 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 - Dinheiro em unidades de €100. Cotação do jogo: 4,3 R$/€. Bloco de finanças: `savedata.FIN`.
 - Elenco: `savedata.elenco(data, team_index)`, com registros de 8 bytes.
 - **Energia** (cansaço do plano de jogo): tabela de registros de 12 bytes: `pid u32 | energia u8 (255 = ciano/100%) | marca u8 | 0 u16 | nº u32`.
-  Use `savedata.energia(data, pids)`; para gravar, use `Career.definir_energia` (só sobe).
+  Use `savedata.energia(data, pids)`; para gravar, use `Career.definir_energia` (por padrão só sobe). O save guarda a energia do fim do último jogo e o jogo SOMA a recuperação dos dias seguintes. A estimativa fica em `App.energia_pct`.
 - Contratos: registros de 48 bytes. Use `contratos_clube`.
 - Formação ativa: lista −0x1E0.
 - Partidas: registros 0x254 (`sumulas`).
@@ -46,7 +46,8 @@ Toda gravação passa por `App.aplicar_creditos()`. Ela junta as pendências e g
 - créditos de patrocínio;
 - multas;
 - `state['debitos']` (gastos do app);
-- `state['energia_pend']`.
+- `state['energia_pend']` (só sobe);
+- `state['energia_set']` (valor exato, volta de lesão).
 
 Para criar um gasto novo, coloque um `{'valor', 'motivo', 'status': 'pendente'}` em `debitos` e chame `aplicar_creditos`.
 

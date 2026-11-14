@@ -23,6 +23,12 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.11.1:
+- Energia mostrada como no jogo: o save guarda a energia do fim do último jogo e o app soma a recuperação dos
+  dias seguintes (estimativa).
+- Volta de lesão sem ritmo: quando o jogador recebe alta, o app grava a energia baixa no save. Quanto mais tempo
+  parado, menos energia (1 semana ~55%, 2 semanas ~43%, 1 mês ~30%, 2 meses ~18%, 3 meses ~11%, mínimo 8%).
+
 Novidades da 3.11.0:
 - Energia dos jogadores lida do save (a mesma barra do plano de jogo: ciano = 100%). Aparece em Elenco >
   Departamento médico e numa barrinha em cima de cada carta do elenco.

@@ -103,6 +103,7 @@ def processar(state, hoje, mundo, engine=None):
             continue
         quem = e['jogador']
         if e.get('tipo') == 'lesao':
+            retorno_sem_ritmo(state, e)
             if not e.get('voltou'):
                 e['voltou'] = True
                 mundo.noticia('retorno', e['volta'], random.Random(_seed('ret', e['id'])), jogador=quem)
@@ -111,6 +112,29 @@ def processar(state, hoje, mundo, engine=None):
                  'e está liberado para jogar.')
         else:
             _msg(engine, e['volta'], f'{quem} de volta', f'{quem} cumpriu o afastamento ({e["titulo"].lower()}) e está à disposição.')
+
+
+def energia_retorno(dias):
+    """Energia (0..100%) de quem volta de lesão: sem ritmo de jogo nem de treino. Quanto mais tempo parado, menos.
+    3 dias = 70%, 1 semana = 55%, 2 semanas = 43%, 1 mês = 30%, 2 meses = 18%, 3 meses = 11%, 6 meses = 8%."""
+    import math
+    if dias < 3:
+        return None
+    return int(max(8, min(70, round(70 - 12 * math.log2(dias / 3)))))
+
+
+def retorno_sem_ritmo(state, e):
+    """Marca a energia baixa para gravar no save quando o jogador recebe alta."""
+    if e.get('energia_retorno') is not None or not e.get('jogador_id'):
+        return
+    dias = (s2d(e['volta']) - s2d(e['data'])).days
+    pct = energia_retorno(dias)
+    if pct is None:
+        return
+    e['energia_retorno'] = pct
+    state.setdefault('energia_set', {})[str(e['jogador_id'])] = int(round(pct * 255 / 100))
+    e.setdefault('historico', []).append({'data': e['volta'], 'texto': f'Volta sem ritmo: energia em {pct}% '
+                                          f'depois de {dias} dias parado'})
 
 
 def custo_tratamento(e, hoje):
@@ -241,7 +265,10 @@ def recuperar(state, energia, ultima_partida):
 def view_energia(state, energia, elenco):
     rec = (state.get('gestao') or {}).get('recuperacao') or {}
     nomes = {j['id']: j for j in elenco or []}
+    fixa = state.get('energia_fixa') or {}
     lista = [{'id': pid, 'nome': (nomes.get(pid) or {}).get('nome', str(pid)), 'pos': (nomes.get(pid) or {}).get('pos', ''),
-              'energia': int(round(v * 100 / 255))} for pid, v in energia.items()]
+              'energia': (nomes.get(pid) or {}).get('energia', int(round(v * 100 / 255))),
+              'base': int(round(v * 100 / 255)), 'sem_ritmo': str(pid) in fixa and (nomes.get(pid) or {}).get('energia', 100) < 100}
+             for pid, v in energia.items()]
     lista.sort(key=lambda x: x['energia'])
     return {'jogadores': lista, 'programas': RECUPERACAO, 'nivel': rec.get('nivel', 0), 'desde': rec.get('desde')}

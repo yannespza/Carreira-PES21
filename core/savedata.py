@@ -322,8 +322,9 @@ class Career:
         if t2 == t1:
             struct.pack_into('<i', self.sf.data, o2, t2 - u)
 
-    def definir_energia(self, valores):
-        """valores: {id: 0..255}. Grava a energia dos jogadores (só sobe; nunca deixa ninguém mais cansado)."""
+    def definir_energia(self, valores, so_sobe=True):
+        """valores: {id: 0..255}. Grava a energia dos jogadores. so_sobe: nunca deixa ninguém mais cansado
+        (programa de recuperação); False grava o valor exato (volta de lesão sem ritmo)."""
         d = bytes(self.sf.data)
         ti = team_index(d, self.team_id)
         tab = energia(d, elenco(d, ti)) if ti is not None else {}
@@ -331,7 +332,9 @@ class Career:
         for pid, v in valores.items():
             if pid in tab:
                 off, atual = tab[pid]
-                novo = int(max(atual, min(255, v)))
+                novo = int(max(0, min(255, v)))
+                if so_sobe:
+                    novo = max(atual, novo)
                 if novo != atual:
                     antes[pid] = atual
                     self.sf.data[off] = novo
