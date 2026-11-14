@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
-from core import campeonatos, escudos
+from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import assessor, dirigentes, diretor, presidente, escalacao, posicao
@@ -260,6 +260,7 @@ class App:
                 log(traceback.format_exc())
         self.elenco = []
         self.campeonatos = []
+        self.juniores = []
         self.moral_data = None
         self.estatisticas = None   # súmulas da temporada lidas do save (gols, assistências, minutos, notas)
         self.escalacao = None      # plano de jogo lido do save (ordem dos 40 jogadores)
@@ -343,6 +344,7 @@ class App:
                     log(traceback.format_exc())
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
             posicao.registrar(self.elenco)
+            self._fichas(car, nomes)
             try:
                 self.estatisticas = sumulas.do_clube(bytes(car.sf.data), car.team_id, nomes)
             except Exception:
@@ -506,6 +508,7 @@ class App:
                 if not car.results and CFG.get('zerar_patrocinio_novo', False):
                     st['zerar_pat'] = {'status': 'pendente'}
             st['atr_base'] = self.time.get('atratividade_base', 60)
+            self._cotacao_do_jogo(st, car)
             self.engine = sim.Engine(st, self.clube(), self.time.get('atratividade_base', 60))
             for velho, novo_nome in (self.logos.map.get('_renomeados') or {}).items():
                 self.engine.renomear_empresa(velho, novo_nome)
@@ -925,6 +928,43 @@ class App:
         log('escalação gravada pela tela')
         return True
 
+    def _fichas(self, car, nomes):
+        """Atributos, habilidades, idade, CGJ, salário e rescisão de cada jogador; e o time de juniores."""
+        try:
+            d = bytes(car.sf.data)
+            cres = jogadores.crescimento(d)
+            cont = savedata.contratos_clube(d, [j['id'] for j in self.elenco])
+            for j in self.elenco:
+                f = jogadores.ficha(savedata.FICHAS.get(j['id']))
+                if f:
+                    j['ficha'] = f
+                c = cres.get(j['id']) or {}
+                if c:
+                    j['idade'], j['cgj'], j['curva'] = c['idade'], c['cgj'], c['curva'][-8:]
+                k = cont.get(j['id']) or {}
+                if k:
+                    j['salario'], j['rescisao'] = k['salario'], k['rescisao']
+            jr = []
+            todos = jogadores.juniores(d)
+            cgj_atual = {x['id']: x['cgj'] for x in todos}
+            for j in self.elenco:          # CGJ atual do jogo (a tabela do clube tem todos)
+                if cgj_atual.get(j['id']):
+                    j['cgj'] = cgj_atual[j['id']]
+            no_elenco = {j['id'] for j in self.elenco}
+            for x in todos:
+                if x['id'] in no_elenco:          # o resto da tabela do clube é o time de juniores
+                    continue
+                n = nomes.get(x['id']) or {}
+                c = cres.get(x['id']) or {}
+                cgj = x['cgj'] or c.get('cgj')
+                jr.append({'id': x['id'], 'nome': n.get('nome') or f"Jogador {x['id']}", 'pos': n.get('pos', ''),
+                           'idade': c.get('idade'), 'cgj': cgj, 'curva': (c.get('curva') or [])[-8:],
+                           'valor': jogadores.valor_estimado(cgj, c.get('idade')),
+                           'ficha': jogadores.ficha(savedata.FICHAS.get(x['id']))})
+            self.juniores = sorted(jr, key=lambda j: -(j['cgj'] or 0))
+        except Exception:
+            log(traceback.format_exc())
+
     def elenco_view(self):
         st = self.state or {}
         el = [dict(j) for j in (self.elenco or [])]
@@ -1098,6 +1138,38 @@ class App:
                         'O jogo salvou antes de você recarregar a carreira. Vou creditar o patrocínio de novo.')
                 else:
                     pg['status'] = 'confirmado'  # virou a temporada
+
+    def _cotacao_do_jogo(self, st, car):
+        """3.9.0 passou a usar a cotação do jogo (R$ 4,30 por euro em vez de 6,20). Os contratos que já existiam
+        foram fechados na cotação antiga: sobe o valor deles na mesma proporção e paga a diferença das
+        parcelas já recebidas (o dinheiro entra no save no próximo crédito)."""
+        if st.get('cotacao_jogo'):
+            return
+        st['cotacao_jogo'] = 4.3
+        f = 6.2 / 4.3
+        hoje = sim.d2s(car.date) if car.date else st.get('data')
+        n, extra = 0, 0
+        for c in st.get('contratos', []):
+            if c.get('status') not in ('ativo', 'assinado'):
+                continue
+            antigo = c['valor']
+            c['valor'] = int(round(antigo * f, -4))
+            n += 1
+            novos = []
+            for pg in c.get('pagamentos', []):
+                if pg.get('status') == 'agendado':
+                    pg['valor'] = int(round(pg['valor'] * f, -4))
+                elif pg.get('status') in ('confirmado', 'creditado') and pg.get('tipo') != 'multa':
+                    dif = int(round(pg['valor'] * f, -4)) - pg['valor']
+                    if dif > 0 and hoje:
+                        novos.append({'data': hoje, 'valor': dif, 'status': 'pendente', 'tipo': 'ajuste'})
+                        extra += dif
+            c['pagamentos'].extend(novos)
+        if n:
+            log(f'contratos atualizados para a cotação do jogo: {n} contrato(s), diferença a creditar {extra}')
+            st.setdefault('avisos', []).append(
+                f'{n} contrato(s) de patrocínio atualizados para os valores reais na cotação do jogo. '
+                f'A diferença das parcelas já pagas entra no save no próximo crédito.')
 
     FIN_CHAVES = ('orc_transf', 'orc_salario', 'rec_transmissao', 'rec_patrocinio', 'rec_socios', 'rec_bilheteria',
                   'salario_anual')
@@ -1410,6 +1482,7 @@ class App:
             'fin_hist': st.get('fin_hist', [])[-60:],
             'fin_saves': st.get('fin_saves', [])[-15:][::-1],
             'proximos': st.get('proximos', [])[:8],
+            'juniores': self.juniores,
             'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
             'assessor': assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico').view() if st else None,
             'zerar_pat': st.get('zerar_pat'),

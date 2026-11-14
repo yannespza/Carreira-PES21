@@ -240,6 +240,14 @@ dialog select,dialog input{width:100%}
 .eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
 .eschip small{opacity:.7;margin-right:4px}
 .fintab td,.fintab th{padding:6px 4px}
+.cgj{position:absolute;top:84px;left:calc(50% + 18px);background:#0e1116;color:var(--lime);font-family:var(--head);font-size:15px;padding:1px 7px;border-radius:6px;z-index:2}
+.fichah{display:flex;gap:16px;align-items:center;margin-bottom:6px}.ftg img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:#222}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 22px}
+.atl{display:grid;grid-template-columns:140px 1fr 28px;align-items:center;gap:8px;font-size:12px;margin:3px 0}.atl i{height:6px;border-radius:3px;display:block}.atl b{text-align:right}
+.pchip{display:inline-block;padding:2px 7px;margin:2px;border-radius:5px;background:var(--panel2);font-size:11px;color:var(--mut)}.pchip.b{color:var(--onlime);background:var(--lime)}
+.hchip{display:inline-block;padding:4px 10px;margin:3px;border-radius:14px;background:var(--panel2);font-size:12px}
+#dlg{max-width:880px;width:92vw}
+
 .escT{width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px}
 .escG{width:42px;height:42px;object-fit:contain;vertical-align:middle;margin:0 8px}
 .timeN{display:inline-flex;align-items:center;gap:0}
@@ -574,9 +582,11 @@ dialog select,dialog input{width:100%}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Escalação</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="jun">Juniores</a><a data-e="pran">Escalação</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div id="elCtr"></div><div class="cards-el" id="elList"></div>
-      <p style="font-size:12px;color:var(--mut);margin-top:14px">Overall, lesão e suspensão do jogo ainda não foram localizados no save. Os cartões mostram posição, altura, foto, moral e fim de contrato (esses dois vêm do arquivo "Dados do time", que o jogo grava quando você salva o elenco) e os afastamentos criados pelo app.</p></div></div>
+      <p style="font-size:12px;color:var(--mut);margin-top:14px">CGJ e idade vêm do save; atributos, habilidades e estilo de jogo da base de dados do patch; moral e fim de contrato do arquivo "Dados do time" (o jogo grava quando você salva o elenco). Clique num jogador para ver a ficha completa.</p></div></div>
+    <div id="e-jun" class="hidden"><div class="box"><h3>Time de juniores <small id="junInfo"></small></h3><div class="cards-el" id="junList"></div>
+      <p style="font-size:12px;color:var(--mut);margin-top:14px">Lido do save: idade e CGJ como no jogo; atributos, habilidades e estilo da base de dados do patch. O valor é uma estimativa do app pelo CGJ e pela idade. Clique num jogador para ver a ficha completa.</p></div></div>
     <div id="e-dm" class="hidden"><div id="dmBox"></div></div>
     <div id="e-stats" class="hidden"><div class="cards" id="stCards" style="margin-bottom:14px;flex-wrap:wrap"></div>
       <div class="box"><h3>Jogadores na temporada <small id="stInfo"></small></h3><div style="overflow-x:auto"><table class="tabcl" id="stTab"></table></div>
@@ -1256,7 +1266,7 @@ function rFin(){const d=S.dinheiro||{};rDist();const at=S.contratos.filter(c=>c.
         return `<tr><td style="text-align:left">${NOMEF[k]}</td><td>${f.mud[k]?sv(f.mud[k]):'—'}</td><td>${f.jogo[k]?sv(f.jogo[k]):'—'}</td><td>${ap?sv(ap):'—'}</td></tr>`}).join('')}</table>`:'<small style="color:var(--mut)">nada mudou no dinheiro</small>'}
       ${(f.app||[]).length?`<div style="font-size:12px;color:var(--mut);margin-top:4px">Feito pelo app: ${f.app.map(a=>esc(a.texto)+' ('+Object.entries(a.campos).map(([k,v])=>NOMEF[k]+' '+(v<0?'−':'+')+eur(Math.abs(v))).join(', ')+')').join('; ')}</div>`:''}</div>`}).join(''):
     '<div class="empty">Aparece a partir do próximo save que o jogo gravar.</div>';
-  const mov=[...S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status!='agendado'&&p.status!='cancelado').map(p=>({data:p.creditado_em||p.data,t:(p.tipo=='multa'?'Multa paga por ':'Pagamento de ')+c.empresa,v:p.valor,s:p.status}))),
+  const mov=[...S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status!='agendado'&&p.status!='cancelado').map(p=>({data:p.creditado_em||p.data,t:(p.tipo=='multa'?'Multa paga por ':p.tipo=='ajuste'?'Ajuste para a cotação do jogo · ':'Pagamento de ')+c.empresa,v:p.valor,s:p.status}))),
     ...(S.multas||[]).map(m=>({data:m.aplicada_em||m.data,t:'Multa de rescisão paga à '+m.empresa,v:-m.valor,s:m.status}))].sort((a,b)=>b.data.localeCompare(a.data));
   const stx={pendente:'aguardando gravar',creditado:'no save · recarregue a carreira',confirmado:'confirmado no jogo',aplicada:'descontado no save'};
   $('finMov').innerHTML=mov.length?mov.map(m=>`<div class="match" style="grid-template-columns:110px 1fr 160px 220px"><small>${dt(m.data)}</small><span>${esc(m.t)}</span><b style="color:${m.v<0?'var(--red)':'var(--green)'};text-align:right">${m.v<0?'−':'+'} ${eur(Math.abs(m.v))}</b><small style="text-align:right">${stx[m.s]||m.s}</small></div>`).join(''):'<div class="empty">Nenhum movimento ainda.</div>'}
@@ -1358,7 +1368,7 @@ document.addEventListener('click',e=>{const a=e.target.closest('.tabs2 a');if(!a
   if(b&&sec.id!='t-patro'&&sec.id!='t-kits')b.textContent=a.textContent.trim()});
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['cartas','pran','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+  ['cartas','jun','pran','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function fimContrato(p){if(!p.contrato_ate||!S.data)return false;const h=new Date(S.data),f=new Date(p.contrato_ate);return f>=h&&(f-h)<=366*864e5}
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
@@ -1367,10 +1377,13 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
   const ult=el.filter(fimContrato);$('elCtr').innerHTML=ult.length?`<div class="banner" style="margin-bottom:12px"><p><b>📝 Contrato terminando até o fim da temporada:</b> ${ult.map(p=>esc(p.nome)).join(', ')}. Renove no jogo ou planeje a reposição.</p></div>`:'';
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral e contratos de '+S.moral_data+' (Dados do time)':' · para ver a moral e os contratos, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}" onclick="abrirFicha(${p.id})" style="cursor:pointer">${p.cgj?`<div class="cgj">${p.cgj}</div>`:''}<div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
   return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
       <div class="nm">${esc(p.nome)}</div>${p.contrato_ate?`<small class="ctr ${fimContrato(p)?'fim':''}" title="Fim do contrato (do arquivo Dados do time)">contrato até ${p.contrato_ate.slice(5,7)}/${p.contrato_ate.slice(0,4)}</small>`:''}${fimContrato(p)?'<span class="tg ctrfim">ÚLTIMO ANO</span>':''}${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rEscalacao();
+  if(etab=='jun'){const J=S.juniores||[];$('junInfo').textContent=J.length?J.length+' jogadores':'';
+    $('junList').innerHTML=J.length?J.map(p=>`<div class="carta" onclick="abrirFicha(${p.id},1)" style="cursor:pointer">${p.cgj?`<div class="cgj">${p.cgj}</div>`:''}<div class="av2 pos-${esc(p.pos||'')}">${esc(posJogo(p.pos)||'')}</div><div class="alt">${p.idade?p.idade+' anos':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>
+      <div class="nm">${esc(p.nome)}</div><small class="ctr">${esc((p.ficha||{}).estilo||'')}${p.valor?' · ~'+eurM(p.valor):''}</small></div>`).join(''):'<div class="empty">O time de juniores aparece depois que o app ler o save.</div>'}
   if(etab=='transf'){const tr=G.transferencias||[];
     const card=(t,cls,selo)=>`<div class="kcard ${cls}"><span class="selo">${selo}</span><b>${esc(t.nome)}</b><small>${dt(t.data)}${t.valor!=null?' · '+(t.tipo=='chegada'?'custou ~ ':'rendeu ~ ')+eurM(Math.abs(t.valor)):''}</small></div>`;
     $('kNeg').innerHTML='<div class="empty" style="font-size:12px">O app ainda não sabe ler quem está em negociação no jogo.</div>';
@@ -1502,6 +1515,25 @@ async function rCamp(){
     (c.fases||[]).map(f=>`<h4 style="margin:14px 0 6px">${esc(f.nome)}</h4>${f.jogos.map(jogo).join('')}`).join('')||'<div class="empty">Sem jogos.</div>';
   $('campMeus').innerHTML=(c.meus_jogos||[]).length?c.meus_jogos.map(jogo).join(''):'<div class="empty">O clube não disputa esta competição.</div>';
 }
+// ficha do jogador: atributos, habilidades, estilo, posições
+const GRUPOS_AT={'Ataque':[0,10],'Físico':[10,17],'Defesa':[17,20],'Goleiro':[20,25]};
+function corAt(v){return v>=90?'#00e0c6':v>=80?'#7ee04a':v>=70?'#f2c230':v>=60?'#ff9f43':'#ff5c5c'}
+function abrirFicha(id,jun){const p=(jun?S.juniores:S.elenco).find(x=>x.id==id)||(S.juniores||[]).find(x=>x.id==id);if(!p)return;const f=p.ficha;
+  $('dTitle').textContent=p.nome;$('dOk').classList.add('hidden');
+  if(!f){$('dBody').innerHTML='<p>Ficha não encontrada na base de dados do patch.</p>';dlg.showModal();return}
+  const at=Object.entries(f.atributos);
+  const grupo=(n,[a,b])=>`<div><h4 style="margin:10px 0 6px">${n}</h4>${at.slice(a,b).map(([k,v])=>`<div class="atl"><span>${esc(k)}</span><i style="width:${v}%;background:${corAt(v)}"></i><b style="color:${corAt(v)}">${v}</b></div>`).join('')}</div>`;
+  const pos=Object.entries(f.posicoes||{}).map(([k,v])=>`<span class="pchip ${v==2?'b':''}">${k}</span>`).join('');
+  $('dBody').innerHTML=`<div class="fichah"><div class="ftg"><img src="/foto/${p.id}.png" onerror="this.remove()"></div>
+     <div><div style="font-size:30px;font-family:var(--head)">${p.cgj||'—'} <small style="font-size:14px;color:var(--mut)">CGJ</small> · ${esc(f.posicao)}</div>
+     <div style="color:var(--mut);font-size:13px">${p.idade?p.idade+' anos · ':''}${f.altura} cm · ${f.peso} kg · pé ${f.pe} · pé ruim ${f.pe_ruim_uso}/4 uso, ${f.pe_ruim_precisao}/4 precisão · forma ${f.forma}/8 · resistência a lesão ${f.resistencia_lesao}/3</div>
+     <div style="margin-top:6px"><b>Estilo de jogo:</b> ${esc(f.estilo||'—')}</div>
+     <div style="margin-top:4px">${pos}</div>
+     ${p.salario?`<div style="margin-top:4px;font-size:13px">Salário anual ${eur(p.salario)}${p.rescisao?' · rescisão '+eur(p.rescisao):''}</div>`:''}${p.valor?`<div style="margin-top:4px;font-size:13px">Valor estimado ~${eurM(p.valor)}</div>`:''}
+     ${(p.curva||[]).length>1?`<div style="margin-top:4px;font-size:12px;color:var(--mut)">Evolução do CGJ: ${p.curva.join(' → ')}</div>`:''}</div></div>
+   <div class="fgrid">${Object.entries(GRUPOS_AT).filter(([n])=>n!='Goleiro'||f.posicao=='GO').map(([n,r])=>grupo(n,r)).join('')}</div>
+   <h4 style="margin:12px 0 6px">Habilidades especiais</h4><div>${f.habilidades.length?f.habilidades.map(h=>`<span class="hchip">${esc(h)}</span>`).join(''):'<small style="color:var(--mut)">nenhuma</small>'}</div>`;
+  dlg.showModal()}
 // minifaces dos jogadores citados num texto (redes sociais)
 function rostosNoTexto(t){const el=S.elenco||[];if(!t||!el.length)return '';const T=t.toLowerCase();
   const achados=el.filter(p=>{const n=(p.nome||'').toLowerCase();if(!n)return false;if(T.includes(n))return true;const ult=n.split(' ').slice(-1)[0];return ult.length>=5&&new RegExp('\\b'+ult.replace(/[.*+?^${}()|[\]\\]/g,'')+'\\b').test(T)}).slice(0,3);

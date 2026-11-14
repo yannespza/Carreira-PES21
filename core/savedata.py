@@ -40,25 +40,38 @@ FIN = {
 BONUS = ('bonus_bilheteria', 'bonus_produtos', 'bonus_favorito')
 
 
-def salarios(data: bytes, pids):
-    """Salário anual de cada jogador do elenco (euros). A tabela de contratos do clube segue a mesma ordem do
-    elenco, um registro de 48 bytes por jogador: id, salário (em €100)..."""
+def contratos_clube(data: bytes, pids):
+    """Tabela de contratos do clube: {id: {'salario': euros/ano, 'rescisao': euros}}. Registros de 48 bytes
+    (id, salário em €100, taxa de rescisão em €100...), quase na ordem do elenco: jogador recém-chegado entra
+    no meio. Acha o começo pelos dois primeiros do elenco e lê enquanto os ids forem do clube."""
     pids = [p for p in pids if p]
     if len(pids) < 3:
         return {}
-    b0, b1, b2 = (struct.pack('<I', p) for p in pids[:3])
+    alvo = set(pids)
+    b0, b1 = struct.pack('<I', pids[0]), struct.pack('<I', pids[1])
     q = data.find(b0)
     while q != -1:
-        if data[q + 48:q + 52] == b1 and data[q + 96:q + 100] == b2:
+        if data[q + 48:q + 52] == b1 or data[q + 96:q + 100] == b1:
+            # volta até o começo da tabela (pode haver ids do clube antes do primeiro do elenco)
+            while q >= 48 and struct.unpack_from('<I', data, q - 48)[0] in alvo:
+                q -= 48
             out = {}
-            for i, p in enumerate(pids):
-                o = q + 48 * i
-                if data[o:o + 4] != struct.pack('<I', p):
+            o = q
+            while o + 12 <= len(data) and len(out) < len(alvo):
+                pid = struct.unpack_from('<I', data, o)[0]
+                if pid not in alvo:
                     break
-                out[p] = struct.unpack_from('<I', data, o + 4)[0] * UNIT
+                out[pid] = {'salario': struct.unpack_from('<I', data, o + 4)[0] * UNIT,
+                            'rescisao': struct.unpack_from('<I', data, o + 8)[0] * UNIT}
+                o += 48
             return out
         q = data.find(b0, q + 1)
     return {}
+
+
+def salarios(data: bytes, pids):
+    """Salário anual de cada jogador do elenco (euros)."""
+    return {p: c['salario'] for p, c in contratos_clube(data, pids).items()}
 
 
 def find_results(data: bytes, team_id: int):
@@ -142,6 +155,7 @@ def elenco(data: bytes, team_index: int):
 
 
 _NOMES = {}
+FICHAS = {}          # id -> bytes de dados do jogador no EDIT (atributos, habilidades...)
 # posição registrada do jogador (ordem do PES: GK, CB, LB, RB, DMF, CMF, LMF, RMF, AMF, LWF, RWF, SS, CF)
 POSICOES = ['GL', 'ZAG', 'LE', 'LD', 'VOL', 'MEI', 'ME', 'MD', 'MEI', 'PE', 'PD', 'ATA', 'ATA']
 ORDEM_POS = {p: i for i, p in enumerate(['GL', 'ZAG', 'LD', 'LE', 'VOL', 'MEI', 'MD', 'ME', 'PD', 'PE', 'ATA'])}
@@ -177,6 +191,7 @@ def nomes_jogadores(edit_path):
                 pos = (int.from_bytes(d[o + 0x21:o + 0x23], 'little') >> 5) & 15
                 nomes[pid] = {'nome': nm.decode('utf-8').strip(), 'altura': d[o + 0x0a],
                               'pos': POSICOES[pos] if pos < len(POSICOES) else ''}
+                FICHAS[pid] = d[o:o + 0x36]
             except UnicodeDecodeError:
                 pass
         o += R

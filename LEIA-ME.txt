@@ -23,6 +23,18 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.10.0:
+- Patrocínios vigentes atualizados para os valores reais na cotação do jogo (R$ 4,30 por euro). A diferença das
+  parcelas que já tinham sido pagas entra no save no próximo crédito (aparece em Finanças como "Ajuste para a
+  cotação do jogo").
+- Nova aba Elenco > Juniores: todo o time de juniores lido do save, com idade, CGJ, estilo de jogo, valor
+  estimado e a ficha completa de cada um.
+- Ficha do jogador (clique em qualquer jogador do elenco ou dos juniores): CGJ, os 25 atributos, habilidades
+  especiais, estilo de jogo, posições em que joga, pé, pé ruim, forma, resistência a lesão, salário, taxa de
+  rescisão e a evolução do CGJ.
+- Cartões do elenco mostram o CGJ atual do jogo.
+- Correção: o salário anual não era somado inteiro quando um jogador novo chegava ao elenco.
+
 Novidades da 3.9.0:
 - Dinheiro igual ao do jogo: o PES usa R$ 4,30 por euro (o app usava 6,20). Orçamentos, receitas e salário anual
   agora batem centavo por centavo com as telas do jogo. Os valores de patrocínio e das obras foram recalculados
