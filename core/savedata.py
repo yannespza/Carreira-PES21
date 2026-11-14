@@ -34,7 +34,31 @@ FIN = {
     'orc_transf': 0x00, 'orc_transf_2': 0x10, 'teto_salario': 0x14, 'orc_salario': 0x1c,
     'rec_transmissao': 0x2c, 'rec_patrocinio': 0x30, 'rec_socios': 0x34,
     'rec_bilheteria': 0x4c,
+    # relatório de orçamento do último mês (bônus que o jogo soma no fim de cada mês)
+    'bonus_bilheteria': 0x26c4, 'bonus_produtos': 0x26c8, 'bonus_favorito': 0x26d8,
 }
+BONUS = ('bonus_bilheteria', 'bonus_produtos', 'bonus_favorito')
+
+
+def salarios(data: bytes, pids):
+    """Salário anual de cada jogador do elenco (euros). A tabela de contratos do clube segue a mesma ordem do
+    elenco, um registro de 48 bytes por jogador: id, salário (em €100)..."""
+    pids = [p for p in pids if p]
+    if len(pids) < 3:
+        return {}
+    b0, b1, b2 = (struct.pack('<I', p) for p in pids[:3])
+    q = data.find(b0)
+    while q != -1:
+        if data[q + 48:q + 52] == b1 and data[q + 96:q + 100] == b2:
+            out = {}
+            for i, p in enumerate(pids):
+                o = q + 48 * i
+                if data[o:o + 4] != struct.pack('<I', p):
+                    break
+                out[p] = struct.unpack_from('<I', data, o + 4)[0] * UNIT
+            return out
+        q = data.find(b0, q + 1)
+    return {}
 
 
 def find_results(data: bytes, team_id: int):
@@ -198,7 +222,18 @@ class Career:
     def money(self):
         if self.fin_off is None:
             return {}
-        return {k: struct.unpack_from('<i', self.sf.data, self.fin_off + o)[0] * UNIT for k, o in FIN.items()}
+        out = {k: struct.unpack_from('<i', self.sf.data, self.fin_off + o)[0] * UNIT for k, o in FIN.items()}
+        for k in BONUS:                # fora do bloco principal: só vale se parecer um bônus de verdade
+            if not (0 <= out.get(k, -1) <= 10 ** 9):
+                out[k] = None
+        try:
+            d = bytes(self.sf.data)
+            ti = team_index(d, self.team_id)
+            sal = salarios(d, elenco(d, ti)) if ti is not None else {}
+            out['salario_anual'] = sum(sal.values()) if sal else None
+        except Exception:
+            out['salario_anual'] = None
+        return out
 
     def definir_orcamento(self, euros: int):
         """Define o dinheiro de transferências do clube (as duas cópias, se a segunda já estiver em uso)."""

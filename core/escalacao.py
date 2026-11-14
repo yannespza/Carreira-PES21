@@ -21,13 +21,14 @@ N_TIT = 11
 N_RES = 12
 ID_TECNICO = b'\xf5\xff\xff\xff'
 OFF_ID = 0x3c          # do início da lista até o código do técnico
-OFF_FORM = 0xa0        # da formação até o início da lista
+OFF_FORM = 0xa0        # da formação até o início da lista (3º bloco do plano; reserva)
+OFF_FORM_ATIVA = 0x1e0  # 1º bloco, logo depois do nome do técnico: é a formação em vigor no jogo
 
 GRUPO = {'GL': 'G', 'ZAG': 'D', 'LE': 'D', 'LD': 'D', 'VOL': 'M', 'MEI': 'M', 'ME': 'M', 'MD': 'M',
          'PE': 'A', 'PD': 'A', 'ATA': 'A'}
 PAPEL = savedata.POSICOES          # código de posição do PES -> sigla do app (usada para achar substituto)
-# sigla exata da vaga na formação (o mapinha do plano de jogo distingue meia central, meia-atacante e segundo atacante)
-PAPEL_EXATO = ['GL', 'ZAG', 'LE', 'LD', 'VOL', 'MC', 'ME', 'MD', 'MEI', 'PE', 'PD', 'SA', 'ATA']
+# sigla exata da vaga na formação, igual ao mapinha do plano de jogo do PES em português
+PAPEL_EXATO = ['GO', 'ZC', 'LE', 'LD', 'VOL', 'MLG', 'MLE', 'MLD', 'MAT', 'PTE', 'PTD', 'SA', 'CA']   # como o jogo escreve
 
 
 def lista_valida(a):
@@ -50,9 +51,7 @@ def localizar(d: bytes):
     return None
 
 
-def formacao(d: bytes, off):
-    """Papel e lugar no campo de cada um dos 11 titulares (None se o bloco não parecer uma formação)."""
-    f = off - OFF_FORM
+def _bloco(d: bytes, f):
     if f < 0:
         return None
     cod = d[f:f + N_TIT]
@@ -63,30 +62,44 @@ def formacao(d: bytes, off):
     out = []
     for i in range(N_TIT):
         prof, lado = xy[2 * i], xy[2 * i + 1]
-        out.append({'papel': PAPEL[cod[i]], 'sigla': PAPEL_EXATO[cod[i]], 'prof': prof, 'lado': lado})
+        out.append({'papel': PAPEL[cod[i]], 'sigla': PAPEL_EXATO[cod[i]], 'cod': cod[i], 'prof': prof, 'lado': lado})
     return out
 
 
+def formacao(d: bytes, off):
+    """Papel e lugar no campo de cada um dos 11 titulares, como está no plano de jogo em vigor.
+    O plano guarda 3 formações; a que vale é a primeira (logo depois do nome do técnico)."""
+    return _bloco(d, off - OFF_FORM_ATIVA) or _bloco(d, off - OFF_FORM)
+
+
+# linhas da formação pelo tipo de posição (é assim que o jogo dá nome: 4-2-3-1, 3-2-3-2, 4-1-2-3...)
+_LINHA = {1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 3, 7: 3, 8: 3, 9: 4, 10: 4, 11: 4, 12: 4}
+
+
 def nome_formacao(form):
-    """Nome da formação pela altura de cada jogador no campo (sem o goleiro): ex. 4-2-3-1, 4-3-3, 3-5-2.
-    Devolve (nome detalhado, nome curto); o curto junta as linhas de meio-campo (ex.: 4-1-2-3 -> 4-3-3)."""
+    """Nome da formação: zagueiros e laterais / volantes / meias centrais / meias abertos e armador /
+    atacantes. Meias centrais na mesma altura dos abertos (4-4-2) contam numa linha só.
+    Devolve (nome detalhado, nome curto em 3 linhas)."""
     if not form:
         return None, None
-    profs = sorted(x['prof'] for x in form if x['papel'] != 'GL')
-    if len(profs) != 10:
+    linhas = [[] for _ in range(5)]
+    for x in form:
+        c = x.get('cod')
+        if c is None:
+            c = PAPEL_EXATO.index(x['sigla']) if x.get('sigla') in PAPEL_EXATO else None
+        if c in _LINHA:
+            linhas[_LINHA[c]].append(x['prof'])
+    if sum(len(l) for l in linhas) != 10:
         return None, None
-    linhas, atual = [], [profs[0]]
-    for p in profs[1:]:
-        if p - atual[-1] >= 5:
-            linhas.append(atual); atual = [p]
-        else:
-            atual.append(p)
-    linhas.append(atual)
-    detalhado = '-'.join(str(len(l)) for l in linhas)
-    defesa = sum(1 for p in profs if p < 17)
-    ataque = sum(1 for p in profs if p >= 38)
-    meio = 10 - defesa - ataque
-    curto = '-'.join(str(n) for n in (defesa, meio, ataque) if n)
+    med = lambda l: sum(l) / len(l)
+    if linhas[2] and linhas[3] and abs(med(linhas[2]) - med(linhas[3])) <= 4:
+        linhas[3] += linhas[2]; linhas[2] = []
+    if linhas[1] and linhas[2] and abs(med(linhas[1]) - med(linhas[2])) <= 3:
+        linhas[2] += linhas[1]; linhas[1] = []
+    usadas = [len(l) for l in linhas if l]
+    detalhado = '-'.join(str(n) for n in usadas)
+    d, a = len(linhas[0]), len(linhas[4])
+    curto = '-'.join(str(n) for n in (d, 10 - d - a, a) if n)
     return detalhado, curto
 
 

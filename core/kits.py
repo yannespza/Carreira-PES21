@@ -8,20 +8,20 @@ from . import ftex
 # Cada posição pode ter mais de um lugar na textura (pares e lados repetidos do molde).
 # cx, cy = centro; w, h = tamanho máximo (no sentido de leitura do logo); rot = giro em graus (anti-horário)
 SLOTS = {
-    'peito':        {'nome': 'Peito (master)',          'valor_base': 14_000_000,
+    'peito':        {'nome': 'Peito (master)',          'valor_base': 20_200_000,
                      'lugares': [(1024, 1330, 430, 150, 0)], 'vista': 'frente'},
-    'barra':        {'nome': 'Barra da camisa (frente)', 'valor_base': 1_700_000,
+    'barra':        {'nome': 'Barra da camisa (frente)', 'valor_base': 2_450_000,
                      'lugares': [(1024, 1690, 300, 90, 0)], 'vista': 'frente'},
-    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 1_700_000, 'inclinacao_padrao': 0,  # aprovado no jogo
+    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 2_450_000, 'inclinacao_padrao': 0,  # aprovado no jogo
                      # manga direita: frente (3R) e trás (1R) · manga esquerda: frente (7R) e trás (6R)
                      # o último número espelha a inclinação entre os lados
                      'lugares': [(651, 1010, 150, 62, 0, 1), (651, 780, 150, 62, 0, 1),
                                  (1394, 1010, 150, 62, 0, -1), (1394, 890, 150, 62, 0, -1)], 'vista': 'mangas'},
-    'costas':       {'nome': 'Costas (alto)',            'valor_base': 3_100_000,
+    'costas':       {'nome': 'Costas (alto)',            'valor_base': 4_470_000,
                      'lugares': [(1024, 805, 320, 56, 180)], 'vista': 'costas'},
-    'calcao':       {'nome': 'Calção – pernas (par)',    'valor_base': 1_150_000,
+    'calcao':       {'nome': 'Calção – pernas (par)',    'valor_base': 1_660_000,
                      'lugares': [(146, 1388, 210, 66, -90), (1902, 1400, 190, 66, 90)], 'vista': 'calcao'},
-    'calcao_tras':  {'nome': 'Calção – trás',            'valor_base': 500_000,
+    'calcao_tras':  {'nome': 'Calção – trás',            'valor_base': 720_000,
                      'lugares': [(1846, 1732, 190, 48, 90)], 'vista': 'calcao'},
 }
 # Preço de referência de cada espaço (em euro, a moeda do save), calibrado com contratos reais de 2025/26
@@ -29,10 +29,11 @@ SLOTS = {
 # master ~R$ 100 mi (Sportingbet), costas ~R$ 20-25 mi (Leapmotor/FictorAgro), omoplata ~R$ 20 mi (Cimed),
 # mangas ~R$ 11-12 mi (Sil, Shopee), barra traseira ~R$ 10 mi (Assist Card), calção ~R$ 5-12 mi,
 # trás do calção ~R$ 3-4 mi (MotoChefe, D'Italia). Clubes menores recebem proporcionalmente menos (sim.fator_clube).
+# valores-base em euro, calibrados pelo mercado brasileiro real convertido à cotação do próprio jogo (R$ 4,30 por euro)
 VALOR_BASE = {
-    'peito': 14_000_000, 'acima_peito': 600_000, 'barra': 1_700_000, 'gola': 2_100_000,
-    'laterais_frente': 430_000, 'costas': 3_100_000, 'costas_baixo': 1_300_000, 'costas_laterais': 350_000,
-    'mangas': 1_700_000, 'calcao': 1_150_000, 'calcao_tras': 500_000,
+    'peito': 20_200_000, 'acima_peito': 865_000, 'barra': 2_450_000, 'gola': 3_030_000,
+    'laterais_frente': 620_000, 'costas': 4_470_000, 'costas_baixo': 1_875_000, 'costas_laterais': 505_000,
+    'mangas': 2_450_000, 'calcao': 1_660_000, 'calcao_tras': 720_000,
 }
 
 SLOT_ORDER = ['peito', 'barra', 'mangas', 'costas', 'calcao', 'calcao_tras']

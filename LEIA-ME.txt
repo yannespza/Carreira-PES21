@@ -23,6 +23,22 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.9.0:
+- Dinheiro igual ao do jogo: o PES usa R$ 4,30 por euro (o app usava 6,20). Orçamentos, receitas e salário anual
+  agora batem centavo por centavo com as telas do jogo. Os valores de patrocínio e das obras foram recalculados
+  para continuarem com os valores reais do mercado brasileiro.
+- Finanças: "Saldo da conta do clube" e "Relatório de orçamento" iguais aos do jogo (com salário anual e os bônus
+  do mês) e o quadro "O que entrou e saiu de um save para o outro", separando o que foi o jogo e o que foi o app.
+  Tudo que o app gasta (obras, gramado, multas, remanejamentos) continua sendo gravado no save.
+- Escalação: o app agora lê a formação que está valendo no plano de jogo (antes lia uma das formações guardadas
+  de reserva). Nome da formação e siglas iguais ao jogo (GO, ZC, VOL, MLE, MAT, SA, CA...).
+- Nova aba Campeonatos: tabela de cada competição (Série A, B, C, D, Libertadores e Sul-Americana por grupo,
+  Copa do Brasil por fase e as ligas e copas dos outros países), os jogos do clube em cada uma e os próximos jogos.
+- Escudos dos clubes em tabelas, jogos, placares e calendário (do patch ou recortados do uniforme 1 do clube);
+  minifaces dos jogadores citados nos posts das redes sociais; próximos jogos também na visão geral do clube.
+- Foto da coletiva: o escudo agora tem o tamanho e a proporção de um escudo de uniforme (antes ficava pequeno e
+  achatado).
+
 Novidades da 3.8.0 (correções e verificações):
 - Uniformes de goleiro: os 3 do Palmeiras (azul, vermelho, azul e areia) agora recebem os patrocínios.
   Em Uniformes eles ficam na aba "Goleiro", separados dos de linha. Os originais do jogo ficam guardados

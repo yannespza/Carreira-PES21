@@ -72,7 +72,7 @@ def s2d(s): return dt.date.fromisoformat(s)
 
 # moedas que o jogo pode mostrar. O save guarda tudo em euro; o app só converte para mostrar.
 # taxas aproximadas (ajustáveis em data/config.json -> "taxas_moeda")
-MOEDAS = {'EUR': ('€', 1.0), 'BRL': ('R$', 6.2), 'USD': ('US$', 1.08), 'GBP': ('£', 0.85), 'JPY': ('¥', 165.0)}
+MOEDAS = {'EUR': ('€', 1.0), 'BRL': ('R$', 4.3), 'USD': ('US$', 1.08), 'GBP': ('£', 0.85), 'JPY': ('¥', 165.0)}
 MOEDA = {'cod': 'EUR'}
 
 

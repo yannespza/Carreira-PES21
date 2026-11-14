@@ -5,6 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
+from core import campeonatos, escudos
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import assessor, dirigentes, diretor, presidente, escalacao, posicao
@@ -258,6 +259,7 @@ class App:
             except Exception:
                 log(traceback.format_exc())
         self.elenco = []
+        self.campeonatos = []
         self.moral_data = None
         self.estatisticas = None   # súmulas da temporada lidas do save (gols, assistências, minutos, notas)
         self.escalacao = None      # plano de jogo lido do save (ordem dos 40 jogadores)
@@ -512,6 +514,14 @@ class App:
             st['save_info'] = {'arquivo': path, 'slot': car.slot_name, 'clube': car.club_line,
                                'lido_em': time.strftime('%d/%m %H:%M:%S')}
             st['dinheiro'] = car.money()
+            self._fin_delta(st, car)
+            try:
+                nm_save = savedata.nomes_clubes(bytes(car.sf.data))
+                nomes_c = {**{k: v.title() for k, v in nm_save.items()}, **self.names}
+                self.campeonatos, st['proximos'] = campeonatos.ler(bytes(car.sf.data), car.team_id or self.tid(),
+                                                                   nomes_c, self.mapa)
+            except Exception:
+                log(traceback.format_exc())
             if car.tabela:
                 st['tabela'] = {'linhas': car.tabela, 'data': sim.d2s(car.date) if car.date else None}
             # histórico financeiro (um ponto por data da carreira)
@@ -881,9 +891,7 @@ class App:
             return {'vaga': s, 'id': pid, 'nome': self._nome(pid), 'pos': pos(pid), 'fora': indisp(pid)}
         tit, res, fora = escalacao.grupos(esc['ordem'])
         det, curto = escalacao.nome_formacao(esc.get('formacao'))
-        conhecidas = {'4-2-3-1', '4-1-4-1', '4-3-2-1', '4-4-1-1', '3-4-2-1', '4-3-3', '4-4-2', '3-5-2', '3-4-3', '5-3-2',
-                      '5-4-1', '4-5-1', '4-1-2-1-2'}
-        nome_f = det if (det in conhecidas or not curto or curto == det) else f'{det} (variação do {curto})'
+        nome_f = det or curto          # o mesmo nome que o jogo mostra no mapinha (ex.: 3-2-3-2)
         return {'titulares': [item(s) for s in tit], 'reservas': [item(s) for s in res], 'formacao_nome': nome_f,
                 'fora': [item(s) for s in fora if s < len(esc['vagas']) and esc['vagas'][s] is not None],
                 'ordem': esc['ordem'], 'formacao': esc.get('formacao'), 'auto': CFG.get('escalacao_auto', True),
@@ -1091,6 +1099,39 @@ class App:
                 else:
                     pg['status'] = 'confirmado'  # virou a temporada
 
+    FIN_CHAVES = ('orc_transf', 'orc_salario', 'rec_transmissao', 'rec_patrocinio', 'rec_socios', 'rec_bilheteria',
+                  'salario_anual')
+
+    def _mov_app(self, texto, campos):
+        """Guarda o que o próprio app mexeu no dinheiro do save, para separar do que o jogo fez entre dois saves."""
+        if self.state is None:
+            return
+        self.state.setdefault('fin_app_pend', []).append(
+            {'data': self.state.get('data'), 'texto': texto, 'campos': {k: int(v) for k, v in campos.items() if v}})
+
+    def _fin_delta(self, st, car):
+        """Compara o dinheiro deste save com o do save anterior: o que entrou e saiu, separando o que foi o app."""
+        novo = st.get('dinheiro') or {}
+        base = st.get('fin_base')
+        data = sim.d2s(car.date) if car.date else None
+        if base and base.get('mtime') == car.mtime:
+            return
+        if base:
+            mud = {k: novo[k] - base[k] for k in self.FIN_CHAVES
+                   if novo.get(k) is not None and base.get(k) is not None and novo[k] != base[k]}
+            app = st.pop('fin_app_pend', [])
+            app_tot = {}
+            for m in app:
+                for k, v in m['campos'].items():
+                    app_tot[k] = app_tot.get(k, 0) + v
+            jogo = {k: mud.get(k, 0) - app_tot.get(k, 0) for k in set(mud) | set(app_tot)}
+            jogo = {k: v for k, v in jogo.items() if v}
+            if mud or app:
+                st.setdefault('fin_saves', []).append({'de': base.get('data'), 'ate': data, 'lido': time.strftime('%d/%m %H:%M'),
+                                                      'mud': mud, 'app': app, 'jogo': jogo})
+                st['fin_saves'] = st['fin_saves'][-40:]
+        st['fin_base'] = {'data': data, 'mtime': car.mtime, **{k: novo.get(k) for k in self.FIN_CHAVES}}
+
     def aplicar_creditos(self):
         pend = self.engine.pagamentos_pendentes()
         multas = [m for m in self.state.get('multas', []) if m['status'] == 'pendente']
@@ -1151,6 +1192,14 @@ class App:
             return
         self.save_mtime = car.mtime
         self.status['erro'] = None
+        for c, pg in pend:
+            self._mov_app(f"patrocínio {c.get('empresa', '')}", {'orc_transf': pg['valor'], 'rec_patrocinio': pg['valor']})
+        for m in multas:
+            self._mov_app(f"multa de rescisão ({m.get('empresa', '')})", {'orc_transf': -m['valor'], 'rec_patrocinio': -m['valor']})
+        for x in debs:
+            self._mov_app(x.get('motivo') or 'gasto do app', {'orc_transf': -x['valor']})
+        if zerado:
+            self._mov_app('patrocínio original do jogo zerado', {'rec_patrocinio': -zerado})
         money = car.money()
         hoje = self.state['data']
         for c, pg in pend:
@@ -1359,6 +1408,8 @@ class App:
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
             'fin_hist': st.get('fin_hist', [])[-60:],
+            'fin_saves': st.get('fin_saves', [])[-15:][::-1],
+            'proximos': st.get('proximos', [])[:8],
             'mundo': mundo.Mundo(st, self.clube(), self.tid()).view() if st else None, 'jornalistas': imprensa.lista(),
             'assessor': assessor.Assessor(st, self.clube(), self.tid(), CFG.get('tecnico_nome') or 'Técnico').view() if st else None,
             'zerar_pat': st.get('zerar_pat'),
@@ -1488,6 +1539,17 @@ class H(BaseHTTPRequestHandler):
                 if os.path.exists(p) and nome.lower().endswith('.png'):
                     return self.send(200, open(p, 'rb').read(), 'image/png')
                 return self.send(404, {'erro': 'sem imagem'})
+            if u.path.startswith('/escudo/') and u.path.endswith('.png'):
+                try:
+                    tid_ = int(os.path.basename(u.path)[:-4])
+                except ValueError:
+                    return self.send(404, {'erro': 'id'})
+                b = escudos.png(DATA, CFG.get('pasta_jogo', ''), A.mapa, tid_, log)
+                return self.send(200, b, 'image/png') if b else self.send(404, {'erro': 'sem escudo'})
+            if u.path == '/api/campeonatos':
+                with LOCK:
+                    return self.send(200, {'comps': A.campeonatos, 'proximos': (A.state or {}).get('proximos', []),
+                                           'meu': A.tid()})
             if u.path == '/escudo.png':
                 b = A.escudo_png()
                 return self.send(200, b, 'image/png') if b else self.send(404, {'erro': 'sem escudo'})
@@ -1848,6 +1910,8 @@ class H(BaseHTTPRequestHandler):
                                 A.save_mtime = car.mtime
                                 A.state['dinheiro'] = car.money()
                                 A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
+                                A._mov_app('remanejamento transferências → salários' if valor > 0 else 'remanejamento salários → transferências',
+                                           {'orc_transf': -valor, 'orc_salario': valor})
                                 A.status['aviso'] = ('Remanejamento gravado no save. No jogo, volte ao menu principal e carregue a '
                                                      'carreira de novo (sem salvar antes).')
                             else:
@@ -1884,6 +1948,8 @@ class H(BaseHTTPRequestHandler):
                     A.save_mtime = car.mtime
                     A.state['dinheiro'] = car.money()
                     A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
+                    A._mov_app('remanejamento transferências → salários' if valor > 0 else 'remanejamento salários → transferências',
+                               {'orc_transf': -valor, 'orc_salario': valor})
                     A.persist()
                     return self.send(200, {'ok': True, **novo})
                 if u.path == '/api/empresa/remover_sem_imagem':

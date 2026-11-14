@@ -277,14 +277,15 @@ def estampar(frente, logo, cx, cy, larg, alt, m, rel, curva=1.0, giro=0.0, borda
     enc_e, enc_d = (1 - max(0, -k)), (1 - max(0, k))
     quad = (0, H2 * (1 - enc_e) / 2 - 2 * max(0, -k) * 10, 0, H2 - H2 * (1 - enc_e) / 2,
             W2, H2 - H2 * (1 - enc_d) / 2, W2, H2 * (1 - enc_d) / 2 - 2 * max(0, k) * 10)
-    tela = tela.transform((W2, H2), Image.QUAD, quad, Image.BICUBIC)
-    # compressão horizontal suave (cilindro)
-    xs = np.linspace(-1, 1, W2)
-    src = np.sin(xs * 1.05) / np.sin(1.05)            # amostra mais perto da borda: as bordas encolhem
-    tel = np.array(tela).astype(np.float32)
-    idx = np.clip(((src + 1) / 2 * (W2 - 1)).round().astype(int), 0, W2 - 1)
-    tel = tel[:, idx]
-    tela = Image.fromarray(tel.astype(np.uint8), 'RGBA')
+    if curva:
+        tela = tela.transform((W2, H2), Image.QUAD, quad, Image.BICUBIC)
+        # compressão horizontal suave (cilindro); o escudo não passa por aqui para não perder a proporção
+        xs = np.linspace(-1, 1, W2)
+        src = np.sin(xs * 1.05) / np.sin(1.05)            # amostra mais perto da borda: as bordas encolhem
+        tel = np.array(tela).astype(np.float32)
+        idx = np.clip(((src + 1) / 2 * (W2 - 1)).round().astype(int), 0, W2 - 1)
+        tel = tel[:, idx]
+        tela = Image.fromarray(tel.astype(np.uint8), 'RGBA')
     if giro:
         tela = tela.rotate(giro, Image.BICUBIC, expand=True)
     W2, H2 = tela.size
@@ -320,7 +321,7 @@ def compor(data_dir, humor, cor1, cor2, escudo, patro, logos, clube, largura=900
     if humor not in meta:
         humor = next(iter(meta))
     m = meta[humor]
-    chave = hashlib.md5(json.dumps([humor, cor1, cor2, clube, [n for n, _ in logos], bool(escudo), bool(patro), largura, 9]).encode()).hexdigest()[:16]
+    chave = hashlib.md5(json.dumps([humor, cor1, cor2, clube, [n for n, _ in logos], bool(escudo), bool(patro), largura, 10]).encode()).hexdigest()[:16]
     cdir = os.path.join(p, 'cache')
     os.makedirs(cdir, exist_ok=True)
     cf = os.path.join(cdir, chave + '.jpg')
@@ -340,8 +341,10 @@ def compor(data_dir, humor, cor1, cor2, escudo, patro, logos, clube, largura=900
     peito = int(y1 + (y1 - y0) * 0.40)
     gir = float(m.get('giro', 0))                    # inclinação do tronco na foto (graus)
     # escudo: no peito, em tecido livre (sem haste, microfone ou mão na frente); procura primeiro para dentro
-    ex = cx + fw * 0.60
-    r = int(fw * 0.13)
+    ex = cx + fw * 0.66
+    # tamanho do escudo como no uniforme: uns 8 cm de altura, metade da largura do rosto
+    esc_l, esc_a = int(fw * 0.40), int(fw * 0.46)
+    r = int(fw * 0.23)
     def livre(x):
         y_a, x_a = max(0, peito - r), max(0, int(x - r))
         return m_tec[y_a:peito + r, x_a:int(x + r)].mean() if x_a < int(x + r) else 0
@@ -350,8 +353,7 @@ def compor(data_dir, humor, cor1, cor2, escudo, patro, logos, clube, largura=900
         ok = [x for x in cands if livre(x) >= 0.93]
         ex = ok[0] if ok else max([ex] + cands, key=livre)
     if escudo is not None:
-        estampar(frente, escudo, ex, peito, int(fw * 0.24), int(fw * 0.22), m_tec, rel,
-                 curva=1.0, giro=gir, bordado=True)
+        estampar(frente, escudo, ex, peito, esc_l, esc_a, m_tec, rel, curva=0, giro=gir, bordado=True)
     if patro is not None:
         estampar(frente, patro, cx - fw * 0.60, peito + int(fw * 0.02), int(fw * 0.46), int(fw * 0.26), m_tec, rel,
                  curva=-1.0, giro=gir)

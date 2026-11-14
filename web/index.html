@@ -239,6 +239,24 @@ dialog select,dialog input{width:100%}
 /* escalação */
 .eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
 .eschip small{opacity:.7;margin-right:4px}
+.fintab td,.fintab th{padding:6px 4px}
+.escT{width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px}
+.escG{width:42px;height:42px;object-fit:contain;vertical-align:middle;margin:0 8px}
+.timeN{display:inline-flex;align-items:center;gap:0}
+.match .t2 .timeN{flex-direction:row-reverse}.match .t2 .timeN .escT{margin:0 0 0 6px}
+.proxg{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.proxj{background:var(--panel2);border-radius:10px;padding:10px 12px}.proxj small{color:var(--mut);display:block;margin-bottom:6px}
+.proxj div{display:flex;align-items:center;gap:8px;font-weight:600}.proxj div b{color:var(--mut)}
+.campg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.campg small{color:var(--mut);width:110px;font-size:11px;text-transform:uppercase}
+.campg a{padding:6px 10px;border-radius:14px;background:var(--panel2);cursor:pointer;font-size:12px}.campg a.on{background:var(--lime);color:var(--onlime)}
+.campj.meu{background:rgba(200,240,49,.08)}
+.citados{display:flex;gap:10px;margin:6px 0 4px;flex-wrap:wrap}
+.citado{display:flex;align-items:center;gap:6px;background:var(--panel2);border-radius:20px;padding:3px 10px 3px 3px;font-size:12px}
+.citado img{width:30px;height:30px;border-radius:50%;object-fit:cover;background:#222}.citado b{display:none}
+.citado.semf b{display:flex;width:30px;height:30px;border-radius:50%;background:#333;align-items:center;justify-content:center;font-size:11px}
+
+.eschip small.posG,.eschip small.posD,.eschip small.posM,.eschip small.posA{opacity:1;font-weight:700;padding:0 4px;border-radius:4px;background:#1b1e24}
+.posG{color:#f2c400}.posD{color:#45a8ff}.posM{color:#3ddc84}.posA{color:#ff5a8e}
 .escl{display:flex;flex-wrap:wrap;gap:6px}
 .escl .eschip{position:static;transform:none;background:var(--panel2);color:var(--txt,inherit);box-shadow:none}
 .eschip.lock{background:#5a1f24!important;color:#ffd7d7!important;cursor:not-allowed}
@@ -440,6 +458,7 @@ dialog select,dialog input{width:100%}
   <div class="club"><small>Clube comandado</small><b id="clubName">—</b></div>
   <nav id="nav">
     <a data-t="clube" class="on">◆ Clube</a>
+    <a data-t="camp">◆ Campeonatos</a>
     <a data-t="patro">◆ Comercial <span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits">◆ Uniformes <span class="badge hidden" id="bMkt"></span></a>
     <a data-t="elenco">◆ Elenco</a>
@@ -582,14 +601,26 @@ dialog select,dialog input{width:100%}
     <div id="e-evt" class="hidden"><div id="vestBox"></div><div class="box"><h3>Acontecimentos <small>afastamentos, lesões e o que rola no vestiário</small></h3><div id="evList"></div></div></div>
   </section>
 
+  <section id="t-camp" class="hidden">
+    <div class="crumb">Início / <b>Campeonatos</b></div>
+    <div class="box" style="margin-bottom:18px"><h3>Próximos jogos do clube <small>tabela de jogos gravada no save</small></h3><div id="campProx"></div></div>
+    <div id="campChips"></div>
+    <div class="grid2" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)">
+      <div class="box"><h3 id="campNome">—</h3><div id="campTab"></div></div>
+      <div class="box"><h3>Jogos do clube nesta competição</h3><div id="campMeus"></div></div>
+    </div>
+  </section>
+
   <section id="t-fin" class="hidden">
     <div class="crumb">Início / <b>Finanças</b></div>
     <div class="cards" id="finCards" style="margin-bottom:18px"></div>
     <div class="box" style="margin-bottom:20px"><h3>Diretor de futebol <small>peça verba ou remanejamento entre transferências e salários</small></h3><div id="finDist"></div></div>
     <div class="grid2">
-      <div class="box"><h3>Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
-      <div class="box"><h3>Receitas da temporada <small>como aparecem no jogo</small></h3><div id="finRec"></div></div>
+      <div class="box"><h3>Saldo da conta do clube <small>igual à tela do jogo, na cotação do jogo</small></h3><div id="finRec"></div></div>
+      <div class="box"><h3>Relatório de orçamento <small>bônus do último mês, como no jogo</small></h3><div id="finRel"></div>
+        <h3 style="margin-top:18px">Evolução do caixa <small>a cada save lido</small></h3><div id="finChart"></div></div>
     </div>
+    <div class="box" style="margin-top:20px"><h3>O que entrou e saiu de um save para o outro <small>separando o que foi o jogo e o que foi o app</small></h3><div id="finSaves"></div></div>
     <div class="box" style="margin-top:20px"><h3>De onde vem o dinheiro <small>receitas da temporada</small></h3><div id="finDonut"></div></div>
     <div class="box" style="margin-top:20px"><h3>Movimentos de patrocínio <small>feitos pelo app no save</small></h3><div id="finMov"></div></div>
   </section>
@@ -821,7 +852,7 @@ function render(){
   if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
   aplicarCores();rTimeline();
   if(editando()&&!render.forcar){clearTimeout(render.t);render.t=setTimeout(()=>{render.forcar=1;render();render.forcar=0},4000);return}
-  ({clube:rClube,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco})[tab]();
+  ({clube:rClube,camp:rCamp,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco})[tab]();
 }
 
 function rTabela(){
@@ -831,9 +862,9 @@ function rTabela(){
   $('tabInfo').textContent=T.data?'até '+dt(T.data):'';
   {const i=T.linhas.findIndex(l=>l.id==meu);const ini=Math.max(0,Math.min(i-2,n-5));
    const hp=$('hPos');if(i>=0){hp.style.display='';hp.textContent=T.linhas[i].pos+'º · '+T.linhas[i].pts+' pts'}else hp.style.display='none';
-   $('tabMini').innerHTML=i<0?'':`<table class="tabcl">`+T.linhas.slice(ini,ini+5).map(l=>`<tr class="${l.id==meu?'eu':''}"><td>${l.pos}º</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b> pts</td><td>${l.j} j</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`).join('')+'</table>';}
+   $('tabMini').innerHTML=i<0?'':`<table class="tabcl">`+T.linhas.slice(ini,ini+5).map(l=>`<tr class="${l.id==meu?'eu':''}"><td>${l.pos}º</td><td style="text-align:left">${timeN(l.id,l.nome)}</td><td><b>${l.pts}</b> pts</td><td>${l.j} j</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`).join('')+'</table>';}
   el.innerHTML=`<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>`+
-    T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${esc(l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
+    T.linhas.map((l,i)=>{const z=i<4?'sobe':i>=n-4?'cai':'';return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${timeN(l.id,l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')+'</table>';
 }
 function rIngame(){const g=S.ingame;const el=$('ingameBox');if(!el)return;
   if(!g){el.innerHTML='<div class="empty">O app prepara o estádio depois de ler o save.</div>';return}
@@ -855,8 +886,9 @@ function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();rRank(
   $('cTransf').textContent=eurM(d.orc_transf);$('cSal').textContent=salTxt(d);$('cSal').title=salDica(d);$('cPat').textContent=eurM(d.rec_patrocinio);
   $('forma').innerHTML=(S.forma||'').split('').map(r=>`<span class="res ${r}">${r}</span>`).join('');
   $('matches').innerHTML=S.partidas.length?S.partidas.map(p=>`<div class="match"><small>${esc(p.torneio_nome)}</small>
-    <span class="t1">${esc(p.mandante_nome)}</span><span class="sc">${p.gm} - ${p.gv}</span><span class="t2">${esc(p.visitante_nome)}</span></div>`).join('')
+    <span class="t1">${timeN(p.mandante,p.mandante_nome)}</span><span class="sc">${p.gm} - ${p.gv}</span><span class="t2">${timeN(p.visitante,p.visitante_nome)}</span></div>`).join('')
     :'<div class="empty">Nenhuma partida lida ainda.</div>';
+  $('matches').insertAdjacentHTML('beforeend',(S.proximos||[]).length?`<h4 style="margin:14px 0 6px;font-size:13px;color:var(--mut)">PRÓXIMOS JOGOS</h4>`+S.proximos.slice(0,4).map(j=>`<div class="match"><small>${dt(j.data)} · ${esc(j.comp)}</small><span class="t1">${timeN(j.m,j.mn)}</span><span class="sc">x</span><span class="t2">${timeN(j.v,j.vn)}</span></div>`).join(''):'');
   rTabela();
   const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);$('contSum').textContent=at.length?`${eurM(tot)} / temporada`:'';
@@ -975,7 +1007,7 @@ const gtxt=c=>c>=82?'Impecável':c>=60?'Bom':c>=45?'Regular':c>=25?'Castigado':'
 function rGramado(E){const G=E.gramado||{};const c=G.cond??80;
   return `<div class="box" style="margin-bottom:16px"><h3>🌱 Gramado do estádio <small>${G.desgaste_jogo?'cada jogo em casa tira cerca de '+G.desgaste_jogo+'% (mais no verão chuvoso)':''}</small></h3>
    <div class="gbar"><i style="width:${c}%;background:${gcor(c)}"></i><span>${Math.round(c)}% · ${gtxt(c)}</span></div>
-   <p style="font-size:12px;color:var(--mut);margin:8px 0 0">O gramado não se recupera sozinho: só volta com investimento. A partir de 82% fica impecável no jogo; abaixo de 45% aparece castigado. Valores baseados em estádios brasileiros reais (manutenção de R$ 30 mil a R$ 60 mil por mês; troca completa por cerca de R$ 2 milhões), convertidos a R$ 6,20 por euro.</p>
+   <p style="font-size:12px;color:var(--mut);margin:8px 0 0">O gramado não se recupera sozinho: só volta com investimento. A partir de 82% fica impecável no jogo; abaixo de 45% aparece castigado. Valores baseados em estádios brasileiros reais (manutenção de R$ 30 mil a R$ 60 mil por mês; troca completa por cerca de R$ 2 milhões), convertidos a R$ 4,30 por euro, a cotação do próprio jogo.</p>
    ${G.obra?`<div class="banner" style="margin-top:12px"><p>🚧 <b>${esc(G.obra.nome)}</b> em andamento: fica pronto em ${dt(G.obra.fim)}.</p></div>`:''}
    <div class="acoes">${(G.acoes||[]).map(a=>`<div class="acao"><b>${esc(a.nome)}</b><small>${esc(a.texto)}</small><span class="pr">${eurM(a.custo)}</span><span style="font-size:12px;color:var(--mut)">R$ ${a.reais.toLocaleString('pt-BR')} · ${a.ganho>=100?'deixa em 100%':'+'+a.ganho+'%'}</span><button class="lime" ${G.obra||c>=100?'disabled':''} onclick="gramadoInv('${a.id}','${esc(a.nome)}',${a.custo})">Contratar</button></div>`).join('')}</div>
    <h4 style="margin:18px 0 6px;font-size:12px;letter-spacing:.06em;color:var(--mut)">ESTADO DEPOIS DE CADA PARTIDA E INVESTIMENTO</h4>
@@ -1104,7 +1136,7 @@ const escudoImg=c=>`<img class="${c}" src="/escudo.png" onerror="this.style.disp
 function hashCor(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return `hsl(${Math.abs(h)%360} 52% 40%)`}
 const advBadge=n=>`<div class="advb" style="background:${hashCor(n)}">${esc(iniciais(n||'?'))}</div>`;
 function placarHTML(n){const eu=esc(S.clube),adv=esc(n.adv||'');const c=n.casa;const r=n.gp>n.gc?'V':n.gp==n.gc?'E':'D';
-  const A=[`${escudoImg('esc')}<span>${eu}</span>`,`${advBadge(n.adv)}<span>${adv}</span>`];if(!c)A.reverse();
+  const A=[`${escudoImg('esc')}<span>${eu}</span>`,`${n.adv_id?`<img class="esc" src="/escudo/${n.adv_id}.png" onerror="this.style.display='none'">`:advBadge(n.adv)}<span>${adv}</span>`];if(!c)A.reverse();
   const G=c?[n.gp,n.gc]:[n.gc,n.gp];
   return `<div class="placar ${r}"><div class="lado">${A[0]}</div><div class="pl">${G[0]}<i>×</i>${G[1]}</div><div class="lado">${A[1]}</div></div>`}
 function midiaNoticia(n){const cat=NCAT[n.tipo]||'bastidores';
@@ -1148,7 +1180,7 @@ function rFeed(){const m=S.mundo||{posts:[]};const ns=m.noticias||[];const ops=m
   const posts=(m.posts||[]).map((p,i)=>{const rs=p.respostas||[];
     return `<div class="tw ${p.tecnico?'ptec':''}" style="animation-delay:${Math.min(i,10)*25}ms">${avatarPost(p.autor,p.tecnico,p.nome)}<div style="flex:1;min-width:0">
       <div class="hd"><b>${esc(p.tecnico?nome:p.assessor?(S.clube||nomePost(p.autor)):(p.nome||nomePost(p.autor)))}</b>${p.tecnico||p.assessor||verificado(p.autor)?'<span class="vf">✓</span>':''}<small>${esc(p.autor)} · ${dt(p.data)}</small></div>
-      <p>${esc(p.texto)}</p>${midiaPost(p,ns)}
+      <p>${esc(p.texto)}</p>${rostosNoTexto(p.texto)}${midiaPost(p,ns)}
       <div class="acts"><span>💬 ${rs.length}</span><span>🔁 ${(p.reposts||0).toLocaleString('pt-BR')}</span><span class="lk">♥ ${(p.curtidas||0).toLocaleString('pt-BR')}</span></div>
       ${rs.length?`<details><summary>ver ${rs.length} resposta${rs.length>1?'s':''}</summary>${rs.map(r=>`<div class="rp ${r.oficial?'ofc':''}">${avatarPost(r.autor,false,r.nome)}<div><b>${esc(r.oficial?(S.clube||nomePost(r.autor)):(r.nome||nomePost(r.autor)))}</b>${r.oficial?' <span class="vf">✓</span>':''} <small style="color:var(--mut)">${esc(r.autor)}</small><div>${esc(r.texto)}</div><small style="color:var(--mut)">♥ ${r.curtidas}</small></div></div>`).join('')}</details>`:''}
     </div></div>`}).join('');
@@ -1208,7 +1240,22 @@ function rFin(){const d=S.dinheiro||{};rDist();const at=S.contratos.filter(c=>c.
       <text x="80" y="76" text-anchor="middle" fill="var(--mut)" font-size="10">TOTAL</text><text x="80" y="94" text-anchor="middle" fill="var(--txt)" font-size="15" font-weight="700">${eurM(tt)}</text></svg>
       <div>${linhas.map((l,i)=>`<div style="margin:6px 0;font-size:13px"><i style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${cor[i]};margin-right:8px"></i>${l[0]}: <b>${eurM(l[1]||0)}</b> (${Math.round(100*(l[1]||0)/tt)}%)</div>`).join('')}</div></div>`}
   else $('finDonut').innerHTML='<div class="empty">Sem receitas na temporada ainda.</div>';
-  $('finRec').innerHTML=linhas.map(([n,v])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${n}</span><b>${eur(v)}</b></div><div class="bar" style="margin-top:5px"><i style="width:${100*(v||0)/mx}%;background:var(--lime)"></i></div></div>`).join('')+'<p style="font-size:12px;color:var(--mut)">Vendas de produtos, prêmios, taxa de transferência e salário anual ainda não foram localizados no save.</p>';
+  const so='<small style="color:var(--mut)">só no jogo</small>';
+  const conta=[['Taxa de direitos de transmissão',d.rec_transmissao,1],['Receita de patrocínio',d.rec_patrocinio,1],['Receita com sócios torc.',d.rec_socios,1],
+    ['Vendas de produtos',null,1],['Receita da bilheteria',d.rec_bilheteria,1],['Prêmio de competição',null,1],['Taxa de transferência',null,1],['Salário anual',d.salario_anual,-1]];
+  $('finRec').innerHTML='<table class="tabcl fintab">'+conta.map(([n,v,sg])=>`<tr><td style="text-align:left">${n}</td><td style="text-align:right;font-weight:700;color:${v==null?'':sg<0?'var(--red)':'var(--green)'}">${v==null?so:(sg<0?'− ':'+ ')+eur(Math.abs(v))}</td></tr>`).join('')+'</table>'+
+    '<p style="font-size:12px;color:var(--mut);margin-top:8px">Vendas de produtos, prêmio de competição e taxa de transferência o jogo calcula na hora e não deixa gravado como total no save; por isso aparecem só lá.</p>';
+  const rel=[['Orçamento de transferências',d.orc_transf,[['Bônus de favorito da torcida',d.bonus_favorito]]],['Orçamento de salário',d.orc_salario,[['Bônus de receita da bilheteria',d.bonus_bilheteria],['Bônus por venda de produtos',d.bonus_produtos]]]];
+  $('finRel').innerHTML=`<div class="grid2" style="gap:14px">${rel.map(([n,v,b])=>`<div><small style="color:var(--mut)">${n}</small><div style="font-size:22px;font-weight:700">${eur(v)}</div>
+    ${b.map(([bn,bv])=>`<div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--line);padding-top:4px;margin-top:4px"><span>${bn}</span><b style="color:var(--green)">${bv==null?'—':'+ '+eur(bv)}</b></div>`).join('')}</div>`).join('')}</div>`;
+  const NOMEF={orc_transf:'Orç. transferências',orc_salario:'Orç. salários',rec_transmissao:'Transmissão',rec_patrocinio:'Patrocínio',rec_socios:'Sócios torcedores',rec_bilheteria:'Bilheteria',salario_anual:'Salário anual'};
+  const sv=v=>`<b style="color:${v<0?'var(--red)':'var(--green)'}">${v<0?'−':'+'} ${eur(Math.abs(v))}</b>`;
+  $('finSaves').innerHTML=(S.fin_saves||[]).length?(S.fin_saves||[]).map(f=>{const ks=Object.keys(NOMEF).filter(k=>f.mud[k]||f.jogo[k]||(f.app||[]).some(a=>a.campos[k]));
+    return `<div style="border-bottom:1px solid var(--line);padding:10px 2px"><div style="display:flex;justify-content:space-between"><b>${f.de?dt(f.de)+' → ':''}${dt(f.ate)}</b><small style="color:var(--mut)">save lido ${esc(f.lido||'')}</small></div>
+      ${ks.length?`<table class="tabcl fintab" style="margin-top:6px"><tr><th style="text-align:left">Conta</th><th>Total</th><th>Pelo jogo</th><th>Pelo app</th></tr>${ks.map(k=>{const ap=(f.app||[]).reduce((a,m)=>a+(m.campos[k]||0),0);
+        return `<tr><td style="text-align:left">${NOMEF[k]}</td><td>${f.mud[k]?sv(f.mud[k]):'—'}</td><td>${f.jogo[k]?sv(f.jogo[k]):'—'}</td><td>${ap?sv(ap):'—'}</td></tr>`}).join('')}</table>`:'<small style="color:var(--mut)">nada mudou no dinheiro</small>'}
+      ${(f.app||[]).length?`<div style="font-size:12px;color:var(--mut);margin-top:4px">Feito pelo app: ${f.app.map(a=>esc(a.texto)+' ('+Object.entries(a.campos).map(([k,v])=>NOMEF[k]+' '+(v<0?'−':'+')+eur(Math.abs(v))).join(', ')+')').join('; ')}</div>`:''}</div>`}).join(''):
+    '<div class="empty">Aparece a partir do próximo save que o jogo gravar.</div>';
   const mov=[...S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status!='agendado'&&p.status!='cancelado').map(p=>({data:p.creditado_em||p.data,t:(p.tipo=='multa'?'Multa paga por ':'Pagamento de ')+c.empresa,v:p.valor,s:p.status}))),
     ...(S.multas||[]).map(m=>({data:m.aplicada_em||m.data,t:'Multa de rescisão paga à '+m.empresa,v:-m.valor,s:m.status}))].sort((a,b)=>b.data.localeCompare(a.data));
   const stx={pendente:'aguardando gravar',creditado:'no save · recarregue a carreira',confirmado:'confirmado no jogo',aplicada:'descontado no save'};
@@ -1359,11 +1406,13 @@ function rStats(){const E=S.estatisticas;
   $('stSum').innerHTML=E.sumulas.map((p,i)=>{const meu=p.em_casa?p.gols_mandante:p.gols_visitante,dele=p.em_casa?p.gols_visitante:p.gols_mandante,r=meu>dele?'V':meu<dele?'D':'E';
     return `<div style="border-bottom:1px solid var(--line);padding:8px 2px"><div style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="STABERTA=STABERTA===${i}?null:${i};rStats()">
       <b style="width:22px;text-align:center;color:${r=='V'?'var(--green)':r=='D'?'var(--red)':'var(--mut)'}">${r}</b><span style="color:var(--mut);width:80px">${dt(p.data)}</span>
-      <span style="flex:1">${esc(p.mandante_nome)} <b>${p.gols_mandante} x ${p.gols_visitante}</b> ${esc(p.visitante_nome)}</span><small style="color:var(--mut)">${esc(p.torneio_nome)}</small><span>${STABERTA===i?'▴':'▾'}</span></div>
+      <span style="flex:1">${timeN(p.mandante,p.mandante_nome)} <b>${p.gols_mandante} x ${p.gols_visitante}</b> ${timeN(p.visitante,p.visitante_nome)}</span><small style="color:var(--mut)">${esc(p.torneio_nome)}</small><span>${STABERTA===i?'▴':'▾'}</span></div>
       ${STABERTA===i?`<table class="tabcl" style="margin-top:8px"><tr><th style="text-align:left">Jogador</th><th>Min</th><th>Gols</th><th>Assist.</th><th>Nota</th></tr>${p.jogadores.map(j=>`<tr><td style="text-align:left">${esc(j.nome)}${j.amarelo?' 🟨':''}${j.vermelho?' 🟥':''}${sumTroca(p,j)}</td><td>${j.min}</td><td>${j.gols?'⚽'.repeat(Math.min(j.gols,4)):''}</td><td>${j.assist||''}</td><td style="${notaCls(j.nota)}">${nota1(j.nota)}</td></tr>`).join('')}</table>`:''}</div>`}).join('')||'<div class="empty">Nenhuma partida ainda.</div>';
 }
 // escalação: plano de jogo lido do save (ordem de 40 vagas); arrastar um jogador sobre outro troca os dois
 let ESC=null,ESCO=null,ESCARR=null;
+const posJogo=p=>({GL:'GO',ZAG:'ZC',MEI:'MAT',ME:'MLE',MD:'MLD',PE:'PTE',PD:'PTD',ATA:'CA'})[p]||p||'';
+const posGrupo=g=>g=='GO'?'G':['ZC','LE','LD'].includes(g)?'D':['VOL','MLG','MLE','MLD','MAT'].includes(g)?'M':'A';
 function escItens(){const E=S.escalacao;if(!E)return {};const m={};[...E.titulares,...E.reservas,...E.fora].forEach(x=>m[x.vaga]=x);return m}
 function rEscalacao(){const E=S.escalacao;
   if(!E){$('escCampo').querySelectorAll('.eschip').forEach(f=>f.remove());$('escBanco').innerHTML='<div class="empty">A escalação aparece depois que o app ler o save.</div>';$('escFora').innerHTML='';return}
@@ -1371,7 +1420,7 @@ function rEscalacao(){const E=S.escalacao;
   const M=escItens(),F=E.formacao;
   const chip=(i,campo)=>{const x=M[ESC[i]]||{};if(!x.id)return '';const lk=x.fora;
     const st=campo&&F?`left:${Math.max(7,Math.min(93,F[i].lado/1.04))}%;top:${Math.max(5,Math.min(94,97-F[i].prof*1.95))}%`:'';
-    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small>${esc(campo&&F?(F[i].sigla||F[i].papel):x.pos||'')}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
+    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small class="pos${posGrupo(campo&&F?F[i].sigla:posJogo(x.pos))}">${esc(campo&&F?(F[i].sigla||F[i].papel):posJogo(x.pos))}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
   const c=$('escCampo');c.querySelectorAll('.eschip').forEach(f=>f.remove());
   c.insertAdjacentHTML('beforeend',[...Array(11).keys()].map(i=>chip(i,true)).join(''));
   $('escBanco').innerHTML=[...Array(12).keys()].map(i=>chip(11+i)).join('');
@@ -1431,8 +1480,32 @@ function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCore
 function rTimeline(){const ps=S.linha_tempo||[];const k=ps.map(p=>p.chave).join();if(rTimeline.k==k)return;rTimeline.k=k;
   $('timeline').innerHTML='<small>LINHA DO TEMPO</small>'+(ps.length?ps.map((p,i)=>`<i class="${p.res}" title="${esc(p.mandante_nome)} ${p.gm} x ${p.gv} ${esc(p.visitante_nome)}" onclick="verPartida(${i})"></i>`).join(''):'<small style="opacity:.7">os jogos aparecem aqui conforme o app lê o save</small>')}
 function verPartida(i){const p=S.linha_tempo[i];const R={V:'Vitória',E:'Empate',D:'Derrota'}[p.res];
-  $('dTitle').textContent=R;$('dBody').innerHTML=`<p style="font-size:22px;font-family:var(--head);text-align:center;margin:10px 0">${esc(p.mandante_nome)} <b style="color:var(--lime)">${p.gm} x ${p.gv}</b> ${esc(p.visitante_nome)}</p>
+  $('dTitle').textContent=R;$('dBody').innerHTML=`<p style="font-size:22px;font-family:var(--head);text-align:center;margin:10px 0">${timeN(p.mandante,p.mandante_nome,'escG')} <b style="color:var(--lime)">${p.gm} x ${p.gv}</b> ${timeN(p.visitante,p.visitante_nome,'escG')}</p>
   <p style="text-align:center;color:var(--mut)">${esc(p.torneio_nome)} · ${dt(p.data)}</p>`;$('dOk').classList.add('hidden');dlg.showModal()}
+// escudos dos clubes (do patch ou recortados do uniforme 1) e minifaces
+const escT=(id,cls)=>id?`<img class="${cls||'escT'}" src="/escudo/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`:'';
+const timeN=(id,nome,cls)=>`<span class="timeN">${escT(id,cls)}${esc(nome||'')}</span>`;
+let CAMP=null,CAMPT=0,CAMPSEL=null;
+async function rCamp(){
+  if(!CAMP||Date.now()-CAMPT>60000||CAMP._lido!=(S.save||{}).lido_em){try{CAMP=await (await fetch('/api/campeonatos')).json();CAMP._lido=(S.save||{}).lido_em;CAMPT=Date.now()}catch(e){return}}
+  const C=CAMP.comps||[],meu=CAMP.meu;
+  if(!C.length){$('campChips').innerHTML='';$('campTab').innerHTML='<div class="empty">Os campeonatos aparecem depois que o app ler o save.</div>';$('campMeus').innerHTML='';$('campProx').innerHTML='';return}
+  if(CAMPSEL==null||!C.some(c=>c.id==CAMPSEL))CAMPSEL=C[0].id;
+  $('campProx').innerHTML=(CAMP.proximos||[]).length?`<div class="proxg">${CAMP.proximos.slice(0,8).map(j=>`<div class="proxj"><small>${dt(j.data)} · ${esc(j.comp)}</small><div>${timeN(j.m,j.mn)}<b>x</b>${timeN(j.v,j.vn)}</div></div>`).join('')}</div>`:'<div class="empty">Sem jogos marcados.</div>';
+  const grupos=[['Do seu clube',C.filter(c=>c.meu)],['Brasil',C.filter(c=>!c.meu&&c.pais=='Brasil')],['Internacionais',C.filter(c=>!c.meu&&c.pais=='Internacional')],['Outros países',C.filter(c=>!c.meu&&c.pais!='Brasil'&&c.pais!='Internacional')]];
+  $('campChips').innerHTML=grupos.filter(g=>g[1].length).map(([n,l])=>`<div class="campg"><small>${n}</small>${l.map(c=>`<a class="${c.id==CAMPSEL?'on':''}" onclick="CAMPSEL=${c.id};rCamp()">${esc(c.nome)}</a>`).join('')}</div>`).join('');
+  const c=C.find(x=>x.id==CAMPSEL);$('campNome').innerHTML=`${esc(c.nome)} <small>${c.jogados} de ${c.jogos_total} jogos disputados · ${c.times} clubes</small>`;
+  const tab=(t,n)=>`${t.nome?`<h4 style="margin:14px 0 6px">${esc(t.nome)}</h4>`:''}<table class="tabcl"><tr><th>#</th><th style="text-align:left">Clube</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr>${t.linhas.map((l,i)=>{const z=c.tipo=='liga'&&c.id==17?(i<4?'sobe':i>=n-4?'cai':''):c.tipo=='grupos'&&i<2?'sobe':'';
+    return `<tr class="${l.id==meu?'eu':''} ${z}"><td>${l.pos}</td><td style="text-align:left">${timeN(l.id,l.nome)}</td><td><b>${l.pts}</b></td><td>${l.j}</td><td>${l.v}</td><td>${l.e}</td><td>${l.d}</td><td>${l.gp}</td><td>${l.gc}</td><td>${l.sg>0?'+':''}${l.sg}</td></tr>`}).join('')}</table>`;
+  const jogo=j=>`<div class="match campj ${j.m==meu||j.v==meu?'meu':''}"><small>${dt(j.data)}</small><span class="t1">${timeN(j.m,j.mn)}</span><span class="sc">${j.jogada?j.gm+' - '+j.gv:'x'}</span><span class="t2">${timeN(j.v,j.vn)}</span></div>`;
+  $('campTab').innerHTML=c.tabelas.length?(c.tipo=='grupos'?`<div class="grid2" style="gap:12px">${c.tabelas.map(t=>`<div>${tab(t,t.linhas.length)}</div>`).join('')}</div>`:tab(c.tabelas[0],c.tabelas[0].linhas.length)):
+    (c.fases||[]).map(f=>`<h4 style="margin:14px 0 6px">${esc(f.nome)}</h4>${f.jogos.map(jogo).join('')}`).join('')||'<div class="empty">Sem jogos.</div>';
+  $('campMeus').innerHTML=(c.meus_jogos||[]).length?c.meus_jogos.map(jogo).join(''):'<div class="empty">O clube não disputa esta competição.</div>';
+}
+// minifaces dos jogadores citados num texto (redes sociais)
+function rostosNoTexto(t){const el=S.elenco||[];if(!t||!el.length)return '';const T=t.toLowerCase();
+  const achados=el.filter(p=>{const n=(p.nome||'').toLowerCase();if(!n)return false;if(T.includes(n))return true;const ult=n.split(' ').slice(-1)[0];return ult.length>=5&&new RegExp('\\b'+ult.replace(/[.*+?^${}()|[\]\\]/g,'')+'\\b').test(T)}).slice(0,3);
+  return achados.length?`<div class="citados">${achados.map(p=>`<span class="citado"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.parentNode.classList.add('semf');this.remove()"><b>${esc(iniciais(p.nome))}</b><small>${esc(p.nome)}</small></span>`).join('')}</div>`:''}
 // uniformes de linha e de goleiro em abas separadas
 const ehGoleiro=k=>/^g\d+$/.test(k);
 function famAbas(atual,acao,cls){

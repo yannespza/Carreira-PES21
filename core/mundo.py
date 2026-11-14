@@ -357,7 +357,7 @@ class Mundo:
             self._torcida(round(delta * 0.6) + {'V': 3, 'E': 0, 'D': -3}[p['res']])
             self.m['diretoria'] = int(max(0, min(100, self.m['diretoria'] + {'V': 4, 'E': 0, 'D': -4}[p['res']])))
             self.noticia('classico_' + p['res'].lower(), p['data'], r, destaque=True, adv=adv, placar=placar, classico=nome_c)
-            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
+            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa, adv_id=adv_id)
             if p['res'] != 'E':
                 moral_ajuste(self.s, '*', 1 if p['res'] == 'V' else -1, p['data'],
                              ('venceu' if p['res'] == 'V' else 'perdeu') + f' o {nome_c}', 10)
@@ -365,7 +365,7 @@ class Mundo:
         self._torcida(delta)
         if not classico:       # no clássico a manchete própria já saiu
             self.noticia(tipo, p['data'], r, destaque=tipo in ('goleada', 'vexame'), adv=adv, placar=placar)
-            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa)
+            self.m['noticias'][-1].update(gp=gp, gc=gc, casa=casa, adv_id=adv_id)
         if tipo in ('goleada', 'vexame'):
             from .gestao import moral_ajuste
             moral_ajuste(self.s, '*', 1 if tipo == 'goleada' else -1, p['data'],

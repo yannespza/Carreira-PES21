@@ -287,23 +287,23 @@ def desenhar(img: Image.Image, caixas, marcadas=None, largura=900):
 # Posições padrão do molde GUITAKITMAKER (usado na maioria dos uniformes do GOGOSZ).
 # Para cada posição: áreas de busca (x0,y0,x1,y1) na textura 2048 e o giro do logo em cada uma.
 MOLDE = {
-    'peito':           {'nome': 'Peito (master)', 'valor_base': 14_000_000, 'busca': [((800, 1260, 1250, 1530), 0)]},
-    'acima_peito':     {'nome': 'Acima do master', 'valor_base': 600_000, 'busca': [((935, 1115, 1110, 1275), 0)]},
-    'barra':           {'nome': 'Barra da camisa (frente)', 'valor_base': 1_700_000, 'busca': [((780, 1610, 1270, 1750), 0)]},
-    'gola':            {'nome': 'Perto da gola (par)', 'valor_base': 2_100_000,
+    'peito':           {'nome': 'Peito (master)', 'valor_base': 20_200_000, 'busca': [((800, 1260, 1250, 1530), 0)]},
+    'acima_peito':     {'nome': 'Acima do master', 'valor_base': 865_000, 'busca': [((935, 1115, 1110, 1275), 0)]},
+    'barra':           {'nome': 'Barra da camisa (frente)', 'valor_base': 2_450_000, 'busca': [((780, 1610, 1270, 1750), 0)]},
+    'gola':            {'nome': 'Perto da gola (par)', 'valor_base': 3_030_000,
                         'busca': [((790, 1035, 940, 1140), 0), ((1110, 1035, 1265, 1140), 0)]},
-    'laterais_frente': {'nome': 'Laterais da frente (par)', 'valor_base': 430_000,
+    'laterais_frente': {'nome': 'Laterais da frente (par)', 'valor_base': 620_000,
                         'busca': [((760, 1360, 845, 1640), 90), ((1190, 1370, 1290, 1650), -90)]},
-    'costas':          {'nome': 'Costas (alto)', 'valor_base': 3_100_000, 'busca': [((840, 760, 1210, 950), 180)]},
-    'costas_baixo':    {'nome': 'Costas (baixo)', 'valor_base': 1_300_000, 'busca': [((840, 100, 1180, 440), 180)]},
-    'costas_laterais': {'nome': 'Laterais das costas (par)', 'valor_base': 350_000,
+    'costas':          {'nome': 'Costas (alto)', 'valor_base': 4_470_000, 'busca': [((840, 760, 1210, 950), 180)]},
+    'costas_baixo':    {'nome': 'Costas (baixo)', 'valor_base': 1_875_000, 'busca': [((840, 100, 1180, 440), 180)]},
+    'costas_laterais': {'nome': 'Laterais das costas (par)', 'valor_base': 505_000,
                         'busca': [((735, 390, 850, 640), 90), ((1185, 390, 1300, 640), -90)]},
-    'mangas':          {'nome': 'Mangas (par)', 'valor_base': 1_700_000,
+    'mangas':          {'nome': 'Mangas (par)', 'valor_base': 2_450_000,
                         'busca': [((550, 740, 740, 935), 0), ((550, 935, 740, 1110), 0),
                                   ((1315, 740, 1505, 935), 0), ((1315, 935, 1505, 1110), 0)]},
-    'calcao':          {'nome': 'Calção – pernas (par)', 'valor_base': 1_150_000,
+    'calcao':          {'nome': 'Calção – pernas (par)', 'valor_base': 1_660_000,
                         'busca': [((110, 1240, 250, 1540), -90), ((1795, 1220, 1935, 1535), 90)]},
-    'calcao_tras':     {'nome': 'Calção – trás', 'valor_base': 500_000, 'busca': [((1800, 1620, 1890, 1850), 90)]},
+    'calcao_tras':     {'nome': 'Calção – trás', 'valor_base': 720_000, 'busca': [((1800, 1620, 1890, 1850), 90)]},
 }
 
 

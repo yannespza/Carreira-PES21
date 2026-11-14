@@ -70,12 +70,12 @@ def desgaste_gramado(state):
 
 
 # ---------------- investimentos no gramado ----------------
-# Valores reais de estádios brasileiros, convertidos a R$ 6,20 por euro (cotação usada pelo Lance! em 2026):
+# Valores reais de estádios brasileiros, convertidos a R$ 4,30 por euro (a cotação do próprio jogo):
 # - manutenção mensal de gramado natural: cerca de R$ 30 mil (Mané Garrincha) a R$ 60 mil (Arena da Amazônia);
 # - troca completa de gramado natural padrão Fifa: cerca de R$ 2 milhões (Arena da Amazônia);
 # - reforma do gramado da Neo Química Arena para jogo da NFL: R$ 2,7 milhões.
 # Replantio parcial e tratamento intensivo são estimativas entre esses extremos.
-TAXA_REAL = 6.2
+TAXA_REAL = 4.3          # cotação que o PES 2021 usa para o real (conferida na tela de finanças do jogo)
 GRAMADO_ACOES = {
     'rotina': {'nome': 'Manutenção de rotina', 'reais': 45_000, 'ganho': 8, 'dias': 0,
                'texto': 'Um mês de equipe: corte, irrigação, adubação e marcação.'},
