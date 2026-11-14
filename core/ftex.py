@@ -33,6 +33,15 @@ def write(img: Image.Image, template_path, out_path):
     t = open(template_path, 'rb').read()
     pf, w, h, dep, mips = struct.unpack_from('<HHHHB', t, 8)
     hdr = bytearray(t[:0x40])
+    # compressão em blocos de 4x4: tamanho arredondado para múltiplo de 4 e só os níveis de mipmap que
+    # continuam múltiplos de 4 (texturas de faixa de alguns estádios têm medidas quebradas)
+    w, h = (w + 3) // 4 * 4, (h + 3) // 4 * 4
+    n = 1
+    while n < mips and (w >> n) >= 4 and (h >> n) >= 4 and (w >> n) % 4 == 0 and (h >> n) % 4 == 0:
+        n += 1
+    mips = n
+    struct.pack_into('<HH', hdr, 10, w, h)
+    hdr[16] = mips
     bc7 = pf == 11 and hasattr(etcpak, 'compress_bc7')
     struct.pack_into('<H', hdr, 8, 11 if bc7 else 4)  # BC7 quando o original é BC7; senão DXT5
     img = img.convert('RGBA')
