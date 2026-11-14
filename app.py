@@ -466,6 +466,10 @@ class App:
                 with LOCK:
                     self.escalacao_processar(self.career)
                     self.persist()
+            # lesionado no DM sem a energia baixa gravada ainda (ex.: lesão criada agora ou versão nova do app)
+            if self.state and self.state.get('data') and medico.energia_lesionados(self.state, sim.s2d(self.state['data'])):
+                with LOCK:
+                    self.persist()
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
             if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
                     x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))

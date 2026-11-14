@@ -83,6 +83,7 @@ def processar(state, hoje, mundo, engine=None):
         return
     g = state.setdefault('gestao', {})
     evs = g.get('eventos', [])
+    energia_lesionados(state, hoje)
     # nível do departamento mudou: quem está no DM volta antes (ou depois)
     fat = estrutura.duracao_lesao(state)
     for e in evs:
@@ -135,6 +136,25 @@ def retorno_sem_ritmo(state, e):
     state.setdefault('energia_set', {})[str(e['jogador_id'])] = int(round(pct * 255 / 100))
     e.setdefault('historico', []).append({'data': e['volta'], 'texto': f'Volta sem ritmo: energia em {pct}% '
                                           f'depois de {dias} dias parado'})
+
+
+def energia_lesionados(state, hoje):
+    """Quem está no DM com lesão fica com a energia baixa no save (o jogo não sabe da lesão). Valor pelo tempo
+    total de afastamento. Devolve True se marcou alguém novo para gravar."""
+    if not hoje:
+        return False
+    novo = False
+    for e in (state.get('gestao') or {}).get('eventos', []):
+        if e.get('tipo') != 'lesao' or not e.get('jogador_id') or e.get('energia_baixa') is not None:
+            continue
+        if not s2d(e['data']) <= hoje < s2d(e['volta']):
+            continue
+        dias = (s2d(e['volta']) - s2d(e['data'])).days
+        pct = energia_retorno(max(3, dias))
+        e['energia_baixa'] = pct
+        state.setdefault('energia_set', {})[str(e['jogador_id'])] = int(round(pct * 255 / 100))
+        novo = True
+    return novo
 
 
 def custo_tratamento(e, hoje):
