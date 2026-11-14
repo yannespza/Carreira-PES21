@@ -576,6 +576,8 @@ class App:
             self.mundo_processar()
             self.gestao_processar(car, novas, None if novo else antes)
             self.recuperacao_processar(car)
+            if car.date:
+                medico.energia_lesionados(st, car.date, getattr(self, 'energia', {}))
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
             self.escalacao_processar(car)

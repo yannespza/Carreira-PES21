@@ -126,7 +126,7 @@ def energia_retorno(dias):
 
 def retorno_sem_ritmo(state, e):
     """Marca a energia baixa para gravar no save quando o jogador recebe alta."""
-    if e.get('energia_retorno') is not None or not e.get('jogador_id'):
+    if not GRAVAR_ENERGIA or e.get('energia_retorno') is not None or not e.get('jogador_id'):
         return
     dias = (s2d(e['volta']) - s2d(e['data'])).days
     pct = energia_retorno(dias)
@@ -138,19 +138,23 @@ def retorno_sem_ritmo(state, e):
                                           f'depois de {dias} dias parado'})
 
 
-def energia_lesionados(state, hoje):
+def energia_lesionados(state, hoje, energia=None):
     """Quem está no DM com lesão fica com a energia baixa no save (o jogo não sabe da lesão). Valor pelo tempo
     total de afastamento. Devolve True se marcou alguém novo para gravar."""
-    if not hoje:
+    if not hoje or not GRAVAR_ENERGIA:
         return False
     novo = False
     for e in (state.get('gestao') or {}).get('eventos', []):
-        if e.get('tipo') != 'lesao' or not e.get('jogador_id') or e.get('energia_baixa') is not None:
+        if e.get('tipo') != 'lesao' or not e.get('jogador_id'):
             continue
         if not s2d(e['data']) <= hoje < s2d(e['volta']):
             continue
         dias = (s2d(e['volta']) - s2d(e['data'])).days
         pct = energia_retorno(max(3, dias))
+        # já gravado: só grava de novo se o jogo devolveu a energia (ex.: depois de um jogo sem ele)
+        atual = (energia or {}).get(e['jogador_id'])
+        if e.get('energia_baixa') is not None and (atual is None or atual <= round(pct * 255 / 100)):
+            continue
         e['energia_baixa'] = pct
         state.setdefault('energia_set', {})[str(e['jogador_id'])] = int(round(pct * 255 / 100))
         novo = True
@@ -208,6 +212,9 @@ def view(state, hoje, elenco_ids=None):
 
 
 # ---------------- energia (cansaço) e programa de recuperação ----------------
+# Teste no jogo (14/11): o PES recalcula a energia ao carregar a carreira (pelos minutos do último jogo e os dias
+# de descanso). O valor gravado no save é ignorado, então a gravação fica desligada até achar a fonte certa.
+GRAVAR_ENERGIA = False
 # A energia vem do save (0..255, 255 = barra ciano). O programa de recuperação, pago todo mês, devolve parte da
 # energia que falta depois de cada jogo: o jogador volta ao 100% mais rápido. A alteração é gravada no save.
 RECUPERACAO = [
@@ -232,6 +239,8 @@ def contratar_recuperacao(state, nivel, hoje):
     nivel = int(nivel)
     if not 0 <= nivel < len(RECUPERACAO):
         raise ValueError('Programa inválido.')
+    if nivel and not GRAVAR_ENERGIA:
+        raise ValueError('O programa de recuperação está em teste: o jogo ainda não aceita a energia gravada pelo app.')
     g = state.setdefault('gestao', {})
     rec = g.setdefault('recuperacao', {'nivel': 0})
     if rec.get('nivel', 0) == nivel:
@@ -268,7 +277,7 @@ def recuperar(state, energia, ultima_partida):
     Devolve {id: valor novo} para gravar no save."""
     rec = (state.get('gestao') or {}).get('recuperacao') or {}
     pct = RECUPERACAO[rec.get('nivel', 0)]['pct']
-    if not pct or not ultima_partida:
+    if not GRAVAR_ENERGIA or not pct or not ultima_partida:
         return {}
     feitos = rec.setdefault('feitos', {})
     out = {}
@@ -291,4 +300,5 @@ def view_energia(state, energia, elenco):
               'base': int(round(v * 100 / 255)), 'sem_ritmo': str(pid) in fixa and (nomes.get(pid) or {}).get('energia', 100) < 100}
              for pid, v in energia.items()]
     lista.sort(key=lambda x: x['energia'])
-    return {'jogadores': lista, 'programas': RECUPERACAO, 'nivel': rec.get('nivel', 0), 'desde': rec.get('desde')}
+    return {'jogadores': lista, 'programas': RECUPERACAO if GRAVAR_ENERGIA else [], 'nivel': rec.get('nivel', 0),
+            'desde': rec.get('desde'), 'gravavel': GRAVAR_ENERGIA}
