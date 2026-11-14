@@ -166,7 +166,7 @@ class Presidente:
                  f"{fmt_eur(c['valor'])} por temporada, num contrato de {anos}. {neg}",
                  f"\"{motivo_p}\", explicou {pres}.", motivo_e]
         titulo = self.mem.escolher('pres:tit', TITULO, r, v)
-        self.s['mundo']['noticias'].append({'data': ds, 'tipo': 'contrato', 'titulo': titulo, 'empresa': o['empresa'],
+        self.s.setdefault('mundo', {}).setdefault('noticias', []).append({'data': ds, 'tipo': 'contrato', 'titulo': titulo, 'empresa': o['empresa'],
                                             'fonte': r.choice(['Globo Esporte', 'Lance!', 'Máquina do Esporte', 'ESPN']),
                                             'destaque': SLOTS.get(c['slot'], {}).get('valor_base', 0) >= 2_500_000,
                                             'corpo': corpo, 'presidente': True})

@@ -235,6 +235,14 @@ dialog select,dialog input{width:100%}
 .ficha{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .banco{display:flex;flex-wrap:wrap;gap:6px;max-height:640px;overflow:auto;align-content:flex-start}
 .banco span{background:var(--panel2);padding:5px 9px;border-radius:12px;font-size:12px;cursor:grab;user-select:none}
+/* escalação */
+.eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
+.eschip small{opacity:.7;margin-right:4px}
+.escl{display:flex;flex-wrap:wrap;gap:6px}
+.escl .eschip{position:static;transform:none;background:var(--panel2);color:var(--txt,inherit);box-shadow:none}
+.eschip.lock{background:#5a1f24!important;color:#ffd7d7!important;cursor:not-allowed}
+.eschip.alvo{outline:2px solid var(--gold)}
+.eschip.mov{outline:2px dashed var(--lime)}
 /* kanban */
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .kcol{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:12px;min-height:160px}
@@ -546,7 +554,7 @@ dialog select,dialog input{width:100%}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Prancheta</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="pran">Escalação</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div id="elCtr"></div><div class="cards-el" id="elList"></div>
       <p style="font-size:12px;color:var(--mut);margin-top:14px">Overall, lesão e suspensão do jogo ainda não foram localizados no save. Os cartões mostram posição, altura, foto, moral e fim de contrato (esses dois vêm do arquivo "Dados do time", que o jogo grava quando você salva o elenco) e os afastamentos criados pelo app.</p></div></div>
     <div id="e-dm" class="hidden"><div id="dmBox"></div></div>
@@ -555,10 +563,18 @@ dialog select,dialog input{width:100%}
         <p style="font-size:12px;color:var(--mut);margin-top:12px">Números lidos da súmula que o jogo grava no save a cada partida: gols, assistências, cartões, minutos e nota (cartões e substituições só aparecem nas partidas que você joga; nas simuladas o jogo não registra). Clique no título de uma coluna para ordenar. Atualiza quando você salva a carreira.</p></div>
       <div class="box" style="margin-top:14px"><h3>Súmulas <small>últimas partidas do clube · clique para abrir</small></h3><div id="stSum"></div></div></div>
     <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
-      <div class="box"><h3>Prancheta <small>arraste os jogadores para o campo</small></h3><div class="campo" id="campo"><div class="area t"></div><div class="area b"></div></div>
-        <div style="display:flex;gap:6px;margin-top:10px"><button class="ghost" onclick="limparPrancheta()">Limpar campo</button></div></div>
-      <div class="box"><h3>Elenco <small>arraste para o campo · arraste de volta para tirar</small></h3><div class="banco" id="banco"></div>
-        <p style="font-size:12px;color:var(--mut);margin-top:12px">A prancheta é só para planejar: não muda a escalação do jogo.</p></div></div></div>
+      <div class="box"><h3>Plano de jogo <small id="escInfo">titulares no campo · lido do save</small></h3>
+        <div class="campo" id="escCampo"><div class="area t"></div><div class="area b"></div></div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <button class="lime" id="escAplicar" onclick="escAplicar()" disabled>Aplicar no jogo</button>
+          <button class="ghost" onclick="escDesfazer()">Desfazer</button>
+          <button class="ghost" onclick="escExportar()">Exportar JSON</button></div></div>
+      <div class="box"><h3>Banco <small>12 reservas · arraste um jogador em cima de outro para trocar</small></h3><div class="escl" id="escBanco"></div>
+        <h3 style="margin-top:16px">Não relacionados</h3><div class="escl" id="escFora"></div>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:16px;font-size:13px"><input type="checkbox" id="escAuto" onchange="escAuto(this.checked)">
+          Ajuste automático: quando o app afasta um jogador (lesão, indisciplina, problema pessoal), ele sai do plano de jogo e entra um reserva da mesma posição</label>
+        <div id="escHist" style="margin-top:12px"></div>
+        <p style="font-size:12px;color:var(--mut);margin-top:12px">O app grava a escalação direto no save. Depois de aplicar, no jogo volte ao menu principal e carregue a carreira de novo (não salve antes). Jogadores com 🔒 estão afastados pelo app e não podem ser relacionados. Suspensão por cartão o próprio jogo já controla.</p></div></div></div>
     <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
       <div class="kanban"><div class="kcol"><h4>NEGOCIANDO</h4><div id="kNeg"></div></div><div class="kcol"><h4>CHEGADAS</h4><div id="kIn"></div></div><div class="kcol"><h4>SAÍDAS</h4><div id="kOut"></div></div></div>
       <p style="font-size:12px;color:var(--mut);margin-top:12px">O valor é estimado pela variação do orçamento de transferências entre dois saves. Se você fizer várias negociações antes de salvar, o valor fica dividido entre elas.</p></div></div>
@@ -779,7 +795,7 @@ function render(){
    rMarketing()}
   if(ATU&&ATU.tem) bn+=`<div class="banner"><p><b>Nova versão disponível (${esc(ATU.nova)}).</b> Você está na ${esc(ATU.atual)}. Sua carreira, contratos e uniformes não são apagados.</p><button class="lime" onclick="atualizarApp()">Atualizar</button></div>`;
   if(ks.erro) bn+=`<div class="banner err"><p>${esc(ks.erro)}</p></div>`;
-  if(ks.aviso) bn+=`<div class="banner"><p><b>Dinheiro no save.</b> ${esc(ks.aviso)}</p><button class="lime" onclick="api('/api/aviso/ok',{}).then(load)">Entendi</button></div>`;
+  if(ks.aviso) bn+=`<div class="banner"><p><b>${/^Escala/.test(ks.aviso)?'Escalação no save.':/Escalação ajustada/.test(ks.aviso)?'Dinheiro e escalação no save.':'Dinheiro no save.'}</b> ${esc(ks.aviso)}</p><button class="lime" onclick="api('/api/aviso/ok',{}).then(load)">Entendi</button></div>`;
   if(ks.kits=='trabalhando'){const p=ks.kits_prog||[0,1];
     bn+=`<div class="banner"><p><b>Gravando os uniformes no jogo…</b> ${esc(ks.kits_msg||'')}</p><div class="prog"><i style="width:${Math.round(100*p[0]/p[1])}%"></i></div></div>`}
   else if(S.kits_pendentes&&S.kits_pendentes.length) bn+=`<div class="banner"><p><b>Mudanças nos uniformes aguardando sua aprovação:</b> ${S.kits_pendentes.map(esc).join(' · ')}</p>
@@ -790,7 +806,7 @@ function render(){
   const tp=S.time&&S.time.prep;
   if(tp&&tp.rodando) bn+=`<div class="banner"><p><b>Preparando os uniformes do ${esc(S.time.nome)}:</b> o app está tirando os patrocínios originais das ${S.time.n_uniformes} variações e guardando onde eles ficavam. ${esc(tp.msg||'')}</p><div class="prog"><i style="width:${Math.round(100*(tp.i||0)/(tp.n||1))}%"></i></div></div>`;
   else if(tp&&tp.erro) bn+=`<div class="banner err"><p>Preparação dos uniformes: ${esc(tp.msg)}</p></div>`;
-  {const M=(S.carreira||{}).medico||{};const L=(M.ativos||[]);if(L.length)bn+=`<div class="banner err"><p><b>🩺 Não escale:</b> ${L.map(x=>`${esc(x.jogador)} (até ${dt(x.volta)})`).join(', ')}.</p><button class="ghost" onclick="go('elenco');document.querySelector('#etabs a[data-e=dm]').click()">Ver DM</button></div>`;
+  {const M=(S.carreira||{}).medico||{};const L=(M.ativos||[]);if(L.length)bn+=`<div class="banner err"><p><b>🩺 Afastados:</b> ${L.map(x=>`${esc(x.jogador)} (até ${dt(x.volta)})`).join(', ')}.${(S.escalacao||{}).auto?' O app já tira do plano de jogo.':' Não escale.'}</p><button class="ghost" onclick="go('elenco');document.querySelector('#etabs a[data-e=dm]').click()">Ver DM</button></div>`;
    const R=(M.liberados||[]).filter(x=>x.ha<=3);if(R.length)bn+=`<div class="banner"><p><b>✅ Liberado(s) para jogar:</b> ${R.map(x=>esc(x.jogador)).join(', ')}.</p></div>`;}
   {const D=(S.carreira||{}).diretoria||{};const ver=`<button class="ghost" onclick="go('clube');abrirSub('c','dir')">Ver</button>`;
    if(D.status=='demitido') bn+=`<div class="banner err"><p><b>Você foi demitido.</b> ${esc(D.motivo||'')}. Veja as propostas de outros clubes.</p>${ver}</div>`;
@@ -1306,7 +1322,7 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
     $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}"><div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
   return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
       <div class="nm">${esc(p.nome)}</div>${p.contrato_ate?`<small class="ctr ${fimContrato(p)?'fim':''}" title="Fim do contrato (do arquivo Dados do time)">contrato até ${p.contrato_ate.slice(5,7)}/${p.contrato_ate.slice(0,4)}</small>`:''}${fimContrato(p)?'<span class="tg ctrfim">ÚLTIMO ANO</span>':''}${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
-  if(etab=='pran')rPrancheta();
+  if(etab=='pran')rEscalacao();
   if(etab=='transf'){const tr=G.transferencias||[];
     const card=(t,cls,selo)=>`<div class="kcard ${cls}"><span class="selo">${selo}</span><b>${esc(t.nome)}</b><small>${dt(t.data)}${t.valor!=null?' · '+(t.tipo=='chegada'?'custou ~ ':'rendeu ~ ')+eurM(Math.abs(t.valor)):''}</small></div>`;
     $('kNeg').innerHTML='<div class="empty" style="font-size:12px">O app ainda não sabe ler quem está em negociação no jogo.</div>';
@@ -1345,7 +1361,41 @@ function rStats(){const E=S.estatisticas;
       <span style="flex:1">${esc(p.mandante_nome)} <b>${p.gols_mandante} x ${p.gols_visitante}</b> ${esc(p.visitante_nome)}</span><small style="color:var(--mut)">${esc(p.torneio_nome)}</small><span>${STABERTA===i?'▴':'▾'}</span></div>
       ${STABERTA===i?`<table class="tabcl" style="margin-top:8px"><tr><th style="text-align:left">Jogador</th><th>Min</th><th>Gols</th><th>Assist.</th><th>Nota</th></tr>${p.jogadores.map(j=>`<tr><td style="text-align:left">${esc(j.nome)}${j.amarelo?' 🟨':''}${j.vermelho?' 🟥':''}${sumTroca(p,j)}</td><td>${j.min}</td><td>${j.gols?'⚽'.repeat(Math.min(j.gols,4)):''}</td><td>${j.assist||''}</td><td style="${notaCls(j.nota)}">${nota1(j.nota)}</td></tr>`).join('')}</table>`:''}</div>`}).join('')||'<div class="empty">Nenhuma partida ainda.</div>';
 }
-// prancheta: posições em % do campo, guardadas no app
+// escalação: plano de jogo lido do save (ordem de 40 vagas); arrastar um jogador sobre outro troca os dois
+let ESC=null,ESCO=null,ESCARR=null;
+function escItens(){const E=S.escalacao;if(!E)return {};const m={};[...E.titulares,...E.reservas,...E.fora].forEach(x=>m[x.vaga]=x);return m}
+function rEscalacao(){const E=S.escalacao;
+  if(!E){$('escCampo').querySelectorAll('.eschip').forEach(f=>f.remove());$('escBanco').innerHTML='<div class="empty">A escalação aparece depois que o app ler o save.</div>';$('escFora').innerHTML='';return}
+  if(!ESC||ESCO!==E.ordem.join(',')){ESC=E.ordem.slice();ESCO=E.ordem.join(',')}
+  const M=escItens(),F=E.formacao;
+  const chip=(i,campo)=>{const x=M[ESC[i]]||{};if(!x.id)return '';const lk=x.fora;
+    const st=campo&&F?`left:${Math.max(8,Math.min(92,F[i].lado/1.04))}%;top:${Math.max(6,Math.min(94,96-F[i].prof*2))}%`:'';
+    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)}${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small>${esc(campo&&F?F[i].papel:x.pos||'')}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
+  const c=$('escCampo');c.querySelectorAll('.eschip').forEach(f=>f.remove());
+  c.insertAdjacentHTML('beforeend',[...Array(11).keys()].map(i=>chip(i,true)).join(''));
+  $('escBanco').innerHTML=[...Array(12).keys()].map(i=>chip(11+i)).join('');
+  $('escFora').innerHTML=[...Array(17).keys()].map(i=>chip(23+i)).join('')||'<div class="empty">Ninguém.</div>';
+  $('escAuto').checked=!!E.auto;
+  $('escAplicar').disabled=ESC.join(',')===E.ordem.join(',');
+  $('escHist').innerHTML=(E.hist||[]).length?'<b style="font-size:13px">Últimos ajustes automáticos</b>'+E.hist.map(h=>`<div style="font-size:12px;color:var(--mut);margin-top:4px">${dt(h.data)}: ${h.mudancas.map(esc).join('; ')||'—'}</div>`).join(''):'';}
+document.addEventListener('mousedown',e=>{const t=e.target.closest('.eschip[data-i]');if(!t)return;e.preventDefault();
+  ESCARR={i:+t.dataset.i,el:t.cloneNode(true)};const g=ESCARR.el;g.style.position='fixed';g.style.pointerEvents='none';g.style.transform='translate(-50%,-50%)';
+  g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';g.style.zIndex=99;document.body.appendChild(g)});
+document.addEventListener('mousemove',e=>{if(!ESCARR)return;ESCARR.el.style.left=e.clientX+'px';ESCARR.el.style.top=e.clientY+'px';
+  document.querySelectorAll('.eschip.alvo').forEach(x=>x.classList.remove('alvo'));const o=document.elementFromPoint(e.clientX,e.clientY);const a=o&&o.closest('.eschip[data-i]');if(a)a.classList.add('alvo')});
+document.addEventListener('mouseup',e=>{if(!ESCARR)return;const a=ESCARR;ESCARR=null;a.el.remove();document.querySelectorAll('.eschip.alvo').forEach(x=>x.classList.remove('alvo'));
+  const o=document.elementFromPoint(e.clientX,e.clientY);const t=o&&o.closest('.eschip[data-i]');if(!t)return;const b=+t.dataset.i;if(b===a.i)return;
+  const M=escItens(),pa=M[ESC[a.i]],pb=M[ESC[b]];
+  if((pa&&pa.fora&&b<23)||(pb&&pb.fora&&a.i<23)){toast('Jogador afastado pelo app não pode ser relacionado.',true);return}
+  [ESC[a.i],ESC[b]]=[ESC[b],ESC[a.i]];rEscalacao()});
+async function escAplicar(){try{const r=await api('/api/escalacao',{ordem:ESC});toast(r.mudou?'Escalação gravada no save. No jogo, volte ao menu e carregue a carreira.':'Nada mudou.');ESC=null;load()}catch(e){}}
+function escDesfazer(){ESC=null;rEscalacao()}
+async function escAuto(v){await api('/api/escalacao/auto',{auto:v});load()}
+function escExportar(){const M=escItens(),E=S.escalacao;const pj=i=>{const x=M[ESC[i]]||{};return {vaga:ESC[i],id:x.id,nome:x.nome,pos:x.pos,afastado:x.fora||null}};
+  const j={clube:S.clube,data:S.data,titulares:[...Array(11).keys()].map(i=>({...pj(i),papel:E.formacao?E.formacao[i].papel:null})),
+    reservas:[...Array(12).keys()].map(i=>pj(11+i)),nao_relacionados:[...Array(17).keys()].map(i=>pj(23+i)).filter(x=>x.id),ordem:ESC};
+  const b=new Blob([JSON.stringify(j,null,1)],{type:'application/json'});const u=URL.createObjectURL(b);const l=document.createElement('a');l.href=u;l.download='app_plano_de_jogo.json';l.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+// prancheta antiga (planejamento, não mais exibida): posições em % do campo, guardadas no app
 let PR=null,arr=null;
 function rPrancheta(){if(!PR)PR=JSON.parse(JSON.stringify((S.gestao||{}).prancheta||{}));const el=S.elenco||[];const nome=id=>(el.find(p=>p.id==id)||{}).nome||'?';
   const campo=$('campo');campo.querySelectorAll('.ficha').forEach(f=>f.remove());

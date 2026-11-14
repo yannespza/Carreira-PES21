@@ -7,7 +7,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor, dirigentes, diretor, presidente
+from core import assessor, dirigentes, diretor, presidente, escalacao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -260,6 +260,8 @@ class App:
         self.elenco = []
         self.moral_data = None
         self.estatisticas = None   # súmulas da temporada lidas do save (gols, assistências, minutos, notas)
+        self.escalacao = None      # plano de jogo lido do save (ordem dos 40 jogadores)
+        self._esc_pendente = False
 
     # ----- clube da carreira -----
     def tid(self):
@@ -436,6 +438,10 @@ class App:
                         self.ler_elenco(self.career)
                     log('dados do time relidos (elenco salvo no jogo)')
                 self._usert_mtime = um
+            if self._esc_pendente and time.time() >= getattr(self, '_prox_tentativa', 0):
+                with LOCK:
+                    self.escalacao_processar(self.career)
+                    self.persist()
             # save não mudou: se ficou crédito/multa pendente (ex.: falha ao gravar), tenta de novo
             if time.time() >= getattr(self, '_prox_tentativa', 0) and self.engine and self.career and (self.engine.pagamentos_pendentes() or any(
                     x['status'] == 'pendente' for x in (self.state or {}).get('multas', []) + (self.state or {}).get('debitos', []))):
@@ -533,6 +539,7 @@ class App:
             self.gestao_processar(car, novas, None if novo else antes)
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
+            self.escalacao_processar(car)
             if any(x['status'] == 'pendente' for x in st.get('debitos', [])):
                 self.aplicar_creditos()        # punição do diretor de futebol (verba retirada)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
@@ -754,6 +761,143 @@ class App:
                 return None
         return t['cores']
 
+    # ----- escalação do jogo (plano de jogo no save) -----
+    def _indisponivel_fn(self, dia):
+        """pid -> motivo se o app afastou o jogador nessa data (lesão, indisciplina, problema pessoal)."""
+        st = self.state or {}
+        g = gestao.Gestao(st, self.clube(), self.tid())
+
+        def f(pid):
+            ev = g.afastado(pid, dia) if dia else None
+            if not ev:
+                return None
+            return {'motivo': ev.get('titulo') or ev.get('tipo'), 'tipo': ev.get('tipo'), 'volta': ev.get('volta')}
+        return f
+
+    def _posicao_fn(self):
+        pos = {j['id']: j.get('pos', '') for j in (self.elenco or [])}
+        return lambda pid: pos.get(pid, '')
+
+    def _nome(self, pid):
+        for j in self.elenco or []:
+            if j['id'] == pid:
+                return j['nome']
+        return f'Jogador {pid}'
+
+    def escalacao_processar(self, car):
+        """Lê o plano de jogo do save; se houver afastado do app entre os relacionados, troca e grava."""
+        self._esc_pendente = False
+        if car is None:
+            return
+        try:
+            d = bytes(car.sf.data)
+            esc = escalacao.ler(d, savedata.team_index(d, car.team_id))
+        except Exception:
+            log(traceback.format_exc())
+            esc = None
+        self.escalacao = esc
+        if not esc or not CFG.get('escalacao_auto', True) or not car.date:
+            return
+        indisp = self._indisponivel_fn(car.date)
+        ordem, mud = escalacao.ajustar(esc, indisp, self._posicao_fn())
+        if ordem == esc['ordem']:
+            return
+        antes = list(esc['ordem'])
+        try:
+            escalacao.gravar(car, esc, ordem)
+            bk = car.write(os.path.join(DATA, 'backups_save'), log)
+        except Exception as e:
+            car.sf.data[esc['off']:esc['off'] + escalacao.TAM] = bytes(antes)
+            esc['ordem'] = antes
+            self._esc_pendente = True
+            self._prox_tentativa = time.time() + 20
+            self.status['erro'] = f'Não gravei a escalação agora ({e}). Vou tentar de novo.'
+            log('escalação não gravada:', e)
+            return
+        self.save_mtime = car.mtime
+        self.status['erro'] = None
+        saem, entram, banco = {}, [], []
+        for m in mud:
+            if not isinstance(m, tuple):
+                continue
+            tipo, entrou, saiu, info = m
+            if info:
+                saem.setdefault(saiu, (info.get('motivo') or 'afastado').lower())
+            if tipo == 'entra':
+                entram.append(f'{self._nome(entrou)} no lugar de {self._nome(saiu)}')
+            else:
+                banco.append(self._nome(entrou))
+        linhas = []
+        if saem:
+            linhas.append('fora dos relacionados: ' + ', '.join(f'{self._nome(p)} ({mot})' for p, mot in saem.items()))
+        if entram:
+            linhas.append('entram no time: ' + ', '.join(entram))
+        if banco:
+            linhas.append('sobem para o banco: ' + ', '.join(banco))
+        texto = '; '.join(linhas) or 'jogadores afastados foram tirados dos relacionados'
+        st = self.state
+        hoje = st.get('data')
+        st.setdefault('escalacao_hist', []).append({'data': hoje, 'mudancas': linhas,
+                                                    'lido_em': time.strftime('%d/%m %H:%M')})
+        st['escalacao_hist'] = st['escalacao_hist'][-30:]
+        st.setdefault('mensagens', []).append({
+            'id': self.engine._id() if self.engine else f'esc{int(time.time())}', 'data': hoje,
+            'empresa': '__diretoria__', 'de': 'Comissão técnica', 'assunto': 'Escalação ajustada no plano de jogo',
+            'texto': texto[0].upper() + texto[1:] + '.',
+            'tipo': 'medico', 'oferta_id': None, 'lida': False})
+        aviso = ('Escalação ajustada: ' + texto + '. No jogo, volte ao menu principal e carregue a carreira de novo. '
+                 'Não salve antes de recarregar.')
+        self.status['aviso'] = (self.status['aviso'] + ' ' + aviso) if self.status.get('aviso') else aviso
+        st['aviso_recarregar'] = True
+        log('escalação ajustada no save:', texto, 'backup', bk)
+
+    def escalacao_view(self):
+        esc = self.escalacao
+        car = self.career
+        if not esc or not car:
+            return None
+        indisp = self._indisponivel_fn(car.date)
+        pos = self._posicao_fn()
+
+        def item(s):
+            pid = esc['vagas'][s] if s < len(esc['vagas']) else None
+            if pid is None:
+                return {'vaga': s, 'vazio': True}
+            return {'vaga': s, 'id': pid, 'nome': self._nome(pid), 'pos': pos(pid), 'fora': indisp(pid)}
+        tit, res, fora = escalacao.grupos(esc['ordem'])
+        return {'titulares': [item(s) for s in tit], 'reservas': [item(s) for s in res],
+                'fora': [item(s) for s in fora if s < len(esc['vagas']) and esc['vagas'][s] is not None],
+                'ordem': esc['ordem'], 'formacao': esc.get('formacao'), 'auto': CFG.get('escalacao_auto', True),
+                'hist': (self.state or {}).get('escalacao_hist', [])[-5:][::-1]}
+
+    def escalacao_salvar(self, ordem):
+        """Grava no save a escalação montada na tela."""
+        car, esc = self.career, self.escalacao
+        if not car or not esc:
+            raise ValueError('Ainda não li a escalação do save.')
+        if os.path.getmtime(car.path) != car.mtime:
+            raise ValueError('O jogo salvou de novo. Espere o app ler o save e tente outra vez.')
+        ordem = [int(x) for x in ordem]
+        if sorted(ordem) != sorted(esc['ordem']):
+            raise ValueError('Escalação inválida.')
+        escalacao.validar(ordem, esc['vagas'], self._indisponivel_fn(car.date))
+        antes = list(esc['ordem'])
+        if ordem == antes:
+            return False
+        try:
+            escalacao.gravar(car, esc, ordem)
+            car.write(os.path.join(DATA, 'backups_save'), log)
+        except Exception:
+            car.sf.data[esc['off']:esc['off'] + escalacao.TAM] = bytes(antes)
+            esc['ordem'] = antes
+            raise
+        self.save_mtime = car.mtime
+        self.status['aviso'] = ('Escalação gravada no save. No jogo, volte ao menu principal e carregue a carreira '
+                                'de novo. Não salve antes de recarregar.')
+        self.state['aviso_recarregar'] = True
+        log('escalação gravada pela tela')
+        return True
+
     def elenco_view(self):
         st = self.state or {}
         el = [dict(j) for j in (self.elenco or [])]
@@ -786,7 +930,16 @@ class App:
             return
         try:
             from PIL import Image
+            with LOCK:      # lê o estado com a trava: a leitura do save pode estar mexendo nele
+                return self._atualizar_ingame(forcar, Image)
+        except Exception:
+            log(traceback.format_exc())
+
+    def _atualizar_ingame(self, forcar, Image):
+        if True:
             st = self.state
+            if st is None:
+                return
             cond = (st.get('gramado') or {}).get('cond', 75)
             gram = ingame.nivel_gramado(cond)
             hoje = sim.s2d(st['data']) if st.get('data') else None
@@ -811,8 +964,6 @@ class App:
             st['ingame_assin'] = assin
             log('visual do estádio atualizado:', res)
             self.persist()
-        except Exception:
-            log(traceback.format_exc())
 
     def cena_jpg(self, humor):
         """Foto da coletiva com o agasalho nas cores do clube e o painel dos patrocinadores vigentes."""
@@ -1188,6 +1339,7 @@ class App:
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
             'estatisticas': self.estatisticas_view(),
+            'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
         }
@@ -1802,6 +1954,15 @@ class H(BaseHTTPRequestHandler):
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/rivais':
                     A.state.setdefault('gestao', {})['rivais_manual'] = [int(x) for x in body.get('ids') or []]
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/escalacao':
+                    mudou = A.escalacao_salvar(body.get('ordem') or [])
+                    A.persist(); return self.send(200, {'ok': True, 'mudou': mudou})
+                if u.path == '/api/escalacao/auto':
+                    CFG['escalacao_auto'] = bool(body.get('auto'))
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    if CFG['escalacao_auto'] and A.career is not None:
+                        A.escalacao_processar(A.career)
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/prancheta':
                     g = gestao.Gestao(A.state, A.clube(), A.tid())

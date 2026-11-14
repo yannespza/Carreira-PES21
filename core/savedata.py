@@ -109,11 +109,9 @@ def elenco(data: bytes, team_index: int):
         return []
     o = base + team_index * ELENCO_PASSO
     out = []
-    for j in range(1, 40):
-        pid, idx = struct.unpack_from('<IH', data, o + 8 * j)
-        if idx == 0xffff:
-            break
-        pid &= 0x3fffffff
+    for j in range(1, 41):
+        pid = struct.unpack_from('<I', data, o + 8 * j)[0] & 0x3fffffff
+        # o número sequencial (idx) fica 0xFFFF em jogador recém-contratado: vale o id, não o número
         if pid:
             out.append(pid)
     return out

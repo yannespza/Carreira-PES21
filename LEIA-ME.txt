@@ -23,6 +23,30 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.7.1 (conferência completa):
+- Escalação: o app agora acha o plano de jogo em todos os formatos de save (nas carreiras mais antigas as
+  vagas vazias ficam marcadas de outro jeito, e a 3.7.0 não achava). Testado nos 8 saves.
+- Escalação: formação lida certo mesmo quando o goleiro não é a 1ª vaga (ex.: carreira do América).
+- Mensagem do ajuste mais clara: quem saiu (e por quê), quem entrou no time e quem subiu para o banco.
+- Correção: o visual do estádio e a leitura do save podiam gravar o arquivo da carreira ao mesmo tempo
+  (erro raro "dictionary changed size").
+- O aviso do topo diz "Escalação no save" quando é só ajuste de escalação.
+
+Novidades da 3.7 (escalação no jogo):
+- O app agora lê e grava o plano de jogo do save. Aba Elenco > Escalação: titulares no campo, os 12
+  reservas e os não relacionados, do jeito que estão no jogo.
+- Ajuste automático: quando o app afasta um jogador (lesão no treino ou em jogo, indisciplina, problema
+  pessoal), ele sai do plano de jogo sozinho e vai para o fim dos não relacionados. Entra um reserva da
+  mesma posição (senão do mesmo setor; goleiro só por goleiro) e o 1º não relacionado disponível sobe para o banco.
+  A comissão técnica manda mensagem dizendo quem entrou e quem saiu. Dá para desligar na própria aba.
+- Você também monta a escalação no app: arraste um jogador em cima de outro para trocar e clique em
+  "Aplicar no jogo". Jogador afastado (🔒) não pode ser relacionado. "Exportar JSON" baixa o plano de jogo.
+- Depois de qualquer ajuste: no jogo, volte ao menu principal e carregue a carreira de novo (não precisa
+  fechar o PES). Não salve antes de recarregar.
+- Suspensão por cartão continua com o próprio jogo, que já bloqueia o jogador.
+- Correção: jogador recém-contratado (número novo no save) não aparecia no elenco do app.
+- Correção: erro "noticias" ao abrir uma carreira nova quando a diretoria fechava patrocínio na hora.
+
 Novidades da 3.5.2:
 - Comercial > Empresas > "Remover N sem imagem": tira de uma vez as empresas cuja imagem não está mais na
   pasta de logos (as que têm contrato em vigor ficam). Dá para restaurar no fim da lista.
