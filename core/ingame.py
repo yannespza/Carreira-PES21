@@ -15,10 +15,18 @@ MODULO = 'AppCarreira.lua'
 
 LUA = r'''-- App Carreira PES 21: entrega as texturas geradas pelo app (faixas, gramado, bandeirinhas)
 -- nos jogos em casa do clube da carreira. Gerado pelo app; pode apagar que o app recria.
+-- v2: registra no sider.log o que o jogo pediu e o que foi entregue (diagnóstico).
 local root = ".\\GOGOSZ\\AppCarreira"
 local regras = {}
 local clube = nil
 local em_casa = false
+local vistos = {}
+
+local function existe(p)
+    local f = io.open(p, "rb")
+    if f then f:close() return true end
+    return false
+end
 
 local function carregar()
     regras = {}
@@ -36,31 +44,46 @@ end
 
 local function set_teams(ctx, home, away)
     carregar()
-    em_casa = (clube ~= nil and tonumber(home) == clube)
-    if #regras > 0 then
-        log(string.format("AppCarreira: clube %s, mandante %s, em casa: %s, %d arquivos", tostring(clube), tostring(home), tostring(em_casa), #regras))
-    end
+    vistos = {}
+    em_casa = (clube ~= nil and tonumber(home or ctx.home_team) == clube)
+    log(string.format("AppCarreira v2: clube %s, mandante %s, visitante %s, em casa: %s, %d regras",
+        tostring(clube), tostring(home), tostring(away), tostring(em_casa), #regras))
 end
 
 local function make_key(ctx, filename)
-    if #regras == 0 then return nil end
+    if #regras == 0 or not filename then return nil end
     local fl = string.lower(filename)
     for _, r in ipairs(regras) do
         if (r.q == "sempre" or (r.q == "casa" and em_casa)) and #fl >= #r.m and fl:sub(-#r.m) == r.m then
+            if not vistos[fl] then
+                vistos[fl] = true
+                log("AppCarreira: troca " .. filename .. " -> " .. r.a)
+            end
             return "appcarreira:" .. r.a
         end
+    end
+    -- diagnóstico: arquivos de faixa e bandeirinha que o jogo pediu e não estão nas regras
+    if em_casa and not vistos[fl] and (fl:find("faixa", 1, true) or fl:find("c_flag", 1, true) or fl:find("cornerflag", 1, true)) then
+        vistos[fl] = true
+        log("AppCarreira: pedido sem regra: " .. filename)
     end
 end
 
 local function get_filepath(ctx, filename, key)
     if key and key:sub(1, 12) == "appcarreira:" then
-        return root .. "\\" .. key:sub(13)
+        local p = root .. "\\" .. key:sub(13)
+        if not vistos[p] then
+            vistos[p] = true
+            log("AppCarreira: entregando " .. p .. (existe(p) and "" or " (ARQUIVO NÃO EXISTE)"))
+        end
+        return p
     end
 end
 
 local function init(ctx)
     if root:sub(1, 1) == "." then root = ctx.sider_dir .. root end
     carregar()
+    log("AppCarreira v2 iniciado: " .. root .. " (" .. #regras .. " regras)")
     ctx.register("set_teams", set_teams)
     ctx.register("livecpk_make_key", make_key)
     ctx.register("livecpk_get_filepath", get_filepath)

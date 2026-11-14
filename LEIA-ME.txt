@@ -23,6 +23,10 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.11.4:
+- Módulo AppCarreira.lua (faixas, bandeirinhas e gramado) agora escreve no sider.log o que o jogo pediu e o que
+  o app entregou em cada jogo em casa, para achar por que as faixas e bandeirinhas não aparecem.
+
 Novidades da 3.11.3:
 - Energia: o teste no jogo mostrou que o PES recalcula a energia ao carregar a carreira (pelos minutos do último
   jogo e os dias de descanso) e ignora o valor gravado. O app continua mostrando a energia, mas o programa de
