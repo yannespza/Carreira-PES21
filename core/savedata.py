@@ -69,6 +69,40 @@ def contratos_clube(data: bytes, pids):
     return {}
 
 
+ENERGIA_PASSO = 12   # registro: id do jogador (u32), energia (u8, 255 = 100%), marca (u8), 0 (u16), número (u32)
+
+
+def _energia_base(data: bytes, pids):
+    """Início da tabela de energia (cansaço) dos jogadores do clube."""
+    import numpy as np
+    s = set(pids)
+    if len(s) < 3:
+        return None
+    a = np.frombuffer(data[:len(data) // 4 * 4], '<u4') & 0x3fffffff
+    m = np.isin(a, list(s))
+    for i in np.nonzero(m[:-6] & m[3:-3] & m[6:])[0]:
+        o = int(i) * 4
+        if all(struct.unpack_from('<H', data, o + k * 12 + 6)[0] == 0 for k in range(3)):
+            while o >= 12 and struct.unpack_from('<I', data, o - 12)[0] & 0x3fffffff in s:
+                o -= 12
+            return o
+    return None
+
+
+def energia(data: bytes, pids):
+    """{id: (offset do byte, valor 0..255)} da energia dos jogadores do clube. 255 = barra ciano (100%)."""
+    o = _energia_base(data, pids)
+    out = {}
+    s = set(pids)
+    while o is not None and o + 12 <= len(data):
+        pid = struct.unpack_from('<I', data, o)[0] & 0x3fffffff
+        if pid not in s:
+            break
+        out[pid] = (o + 4, data[o + 4])
+        o += 12
+    return out
+
+
 def salarios(data: bytes, pids):
     """Salário anual de cada jogador do elenco (euros)."""
     return {p: c['salario'] for p, c in contratos_clube(data, pids).items()}
@@ -287,6 +321,29 @@ class Career:
         struct.pack_into('<i', self.sf.data, o1, t1 - u)
         if t2 == t1:
             struct.pack_into('<i', self.sf.data, o2, t2 - u)
+
+    def definir_energia(self, valores):
+        """valores: {id: 0..255}. Grava a energia dos jogadores (só sobe; nunca deixa ninguém mais cansado)."""
+        d = bytes(self.sf.data)
+        ti = team_index(d, self.team_id)
+        tab = energia(d, elenco(d, ti)) if ti is not None else {}
+        antes = {}
+        for pid, v in valores.items():
+            if pid in tab:
+                off, atual = tab[pid]
+                novo = int(max(atual, min(255, v)))
+                if novo != atual:
+                    antes[pid] = atual
+                    self.sf.data[off] = novo
+        return antes
+
+    def definir_energia_bruta(self, valores):
+        """Volta valores antigos de energia (desfaz uma gravação que falhou)."""
+        d = bytes(self.sf.data)
+        tab = energia(d, elenco(d, team_index(d, self.team_id)))
+        for pid, v in valores.items():
+            if pid in tab:
+                self.sf.data[tab[pid][0]] = int(v)
 
     def zerar_patrocinio(self):
         """Zera só a receita de patrocínio que veio com a carreira. O orçamento de transferências não é mexido."""

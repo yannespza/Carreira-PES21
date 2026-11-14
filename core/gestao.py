@@ -6,113 +6,39 @@ from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES, comp_de
 # ---------------- coletivas de imprensa ----------------
 # cada resposta: texto, tom (rosto do técnico), efeito na torcida, efeito na diretoria e o estilo da resposta.
 # O estilo mexe no vestiário (vestiario.coletiva) e na relação com a imprensa (REACAO abaixo).
-PERGUNTAS = {
-    'vitoria': [
-        ('Vitória importante. O time já está no nível que você quer?',
-         [('Ainda não. Gostei da entrega, mas temos muito a melhorar.', 'neutro', 1, 2, 'humilde'),
-          ('Sim! Esse grupo pode brigar por tudo nesta temporada.', 'feliz', 3, -1, 'empolgar'),
-          ('O mérito é todo dos jogadores. Eu só organizo.', 'feliz', 2, 1, 'proteger')]),
-        ('A torcida já sonha alto. Dá para pensar em título?',
-         [('Pensamos jogo a jogo. Título se conquista no fim.', 'neutro', 0, 2, 'corporativo'),
-          ('Quem não sonha não chega. Vamos com tudo!', 'feliz', 4, -1, 'empolgar'),
-          ('Ainda é cedo. Precisamos de reforços para isso.', 'neutro', -1, 1, 'pressao')]),
-    ],
-    'goleada': [
-        ('Uma goleada dessas mostra o quê sobre o time?',
-         [('Mostra que o trabalho está dando resultado.', 'feliz', 3, 2, 'corporativo'),
-          ('Foi um dia inspirado. Não dá para empolgar com um jogo.', 'neutro', 0, 2, 'humilde'),
-          ('Que o adversário respeite a gente daqui pra frente!', 'feliz', 4, -1, 'provocar')]),
-    ],
-    'empate': [
-        ('O empate foi justo?',
-         [('Merecíamos mais. Faltou capricho na finalização.', 'neutro', 1, 0, 'corporativo'),
-          ('Foi justo. O adversário também jogou bem.', 'neutro', 0, 1, 'humilde'),
-          ('A arbitragem prejudicou a gente hoje.', 'irritado', 2, -2, 'arbitragem')]),
-        ('A torcida cobrou no apito final. Como você recebe isso?',
-         [('A torcida tem razão de cobrar. Vamos melhorar.', 'neutro', 2, 1, 'culpa'),
-          ('Peço paciência. O trabalho está no começo.', 'neutro', -1, 1, 'humilde'),
-          ('Quem está aqui dentro sabe o que está fazendo.', 'irritado', -3, -1, 'proteger')]),
-    ],
-    'derrota': [
-        ('O que faltou hoje?',
-         [('A responsabilidade é minha. Eu errei na escalação.', 'neutro', 2, -1, 'culpa'),
-          ('Faltou atitude de alguns jogadores.', 'irritado', 0, 0, 'expor'),
-          ('Jogamos bem, o resultado não refletiu o jogo.', 'neutro', -2, 0, 'corporativo')]),
-        ('Seu cargo está ameaçado?',
-         [('Tenho total confiança da diretoria e do grupo.', 'neutro', 0, 1, 'corporativo'),
-          ('Isso não é comigo. Eu trabalho e o resto é com a diretoria.', 'irritado', -1, -2, 'provocar'),
-          ('Precisamos de reforços, e já pedi isso.', 'irritado', 1, -3, 'pressao')]),
-    ],
-    'vexame': [
-        ('Uma derrota pesada. Qual a explicação?',
-         [('Não há explicação. Peço desculpas à torcida.', 'irritado', 3, 0, 'culpa'),
-          ('Foi um apagão coletivo. Vamos rever tudo.', 'irritado', 1, 1, 'humilde'),
-          ('Alguns jogadores não honraram a camisa hoje.', 'irritado', 1, -1, 'expor')]),
-    ],
-    # clássicos
-    'classico_v': [
-        ('Vitória no clássico. Qual o recado para o rival?',
-         [('Respeito o adversário. Hoje fomos melhores, só isso.', 'feliz', 1, 2, 'humilde'),
-          ('A cidade tem dono. Eles sabem quem manda aqui!', 'feliz', 5, -1, 'provocar'),
-          ('Essa vitória é da torcida, que empurrou o time o jogo todo.', 'feliz', 4, 1, 'proteger')]),
-    ],
-    'classico_e': [
-        ('Empate no clássico. Fica um gosto amargo?',
-         [('Clássico é sempre equilibrado. O ponto tem valor.', 'neutro', -1, 1, 'corporativo'),
-          ('Fica, sim. A gente queria muito essa vitória pela torcida.', 'neutro', 2, 1, 'culpa'),
-          ('O juiz não deixou o jogo correr. Faltou critério.', 'irritado', 1, -2, 'arbitragem')]),
-    ],
-    'classico_d': [
-        ('Perder o clássico dói mais. Como fica o ambiente?',
-         [('Dói muito. Peço desculpas à torcida, a culpa é minha.', 'irritado', 3, 0, 'culpa'),
-          ('Alguns jogadores sentiram o peso do jogo.', 'irritado', 0, -1, 'expor'),
-          ('É só um jogo. A temporada é longa.', 'neutro', -4, 0, 'corporativo')]),
-    ],
-    # perguntas de situação (entram como terceira pergunta quando o momento pede)
-    'pressao': [
-        ('A diretoria deu sinais de impaciência. Você teme pelo emprego?',
-         [('Não penso nisso. Penso no próximo jogo.', 'neutro', 0, 1, 'corporativo'),
-          ('Se eu tiver o elenco que pedi, a resposta vem em campo.', 'irritado', 0, -3, 'pressao'),
-          ('Assumo o momento. Se não melhorar, a culpa é minha.', 'neutro', 2, 1, 'culpa')]),
-    ],
-    'lesao': [
-        ('A ausência de {jogador} pesou?',
-         [('Pesa, mas o elenco tem opções e confio em todos.', 'neutro', 0, 1, 'proteger'),
-          ('Pesa muito. Não temos peça de reposição à altura.', 'irritado', -1, -2, 'pressao'),
-          ('Não vou usar desfalque como desculpa.', 'neutro', 1, 1, 'humilde')]),
-    ],
-    'vestiario': [
-        ('Fala-se em clima ruim no vestiário. É verdade?',
-         [('Mentira. O grupo está fechado comigo.', 'irritado', 0, 0, 'proteger'),
-          ('Tem jogador que precisa entender o momento do clube.', 'irritado', -1, -1, 'expor'),
-          ('Toda equipe passa por isso. Vamos resolver aqui dentro.', 'neutro', 1, 1, 'corporativo')]),
-    ],
-}
+from .coletiva_perguntas import PERGUNTAS   # banco de perguntas (só texto)
 
 # como cada jornalista recebe cada estilo de resposta (os outros estilos ele critica)
 APROVA = {'duarte': {'culpa', 'humilde'}, 'ferraz': {'culpa', 'humilde', 'proteger'},
           'lacerda': {'proteger', 'corporativo', 'humilde'}, 'pilha': {'provocar', 'empolgar', 'pressao', 'expor'},
           'renata': {'corporativo', 'humilde', 'culpa'}, 'arnaldo': {'culpa', 'proteger', 'provocar'}}
 REACAO = {
-    'humilde': (['Pés no chão. Gosto de técnico assim.', 'Resposta madura, sem firula.'],
-                ['Muito morno. Falta ambição nesse discurso.', 'Humildade demais vira conformismo.']),
-    'corporativo': (['Equilíbrio, sem polêmica. Correto.', 'Falou o necessário e protegeu o ambiente.'],
-                    ['Não disse nada. Coletiva protocolar.', 'Resposta de manual. Zero conteúdo.']),
-    'empolgar': (['Pode sonhar sim! Esse time tem cara de campeão!', 'Isso que a torcida quer ouvir!'],
-                 ['Cuidado com a euforia. Futebol cobra caro.', 'Prometeu demais. Vai ter que entregar.']),
-    'provocar': (['Isso! Técnico tem que ter sangue no olho!', 'Gostei! Personalidade é tudo.'],
-                 ['Provocação gratuita. Se perder o próximo, vira piada.', 'Desnecessário. Deu munição ao adversário.']),
-    'culpa': (['Assumir a culpa é coisa de líder.', 'Chamou a responsabilidade. Respeito.'],
-              ['Assumir a culpa toda hora não resolve nada.', 'Bonito no microfone. E o que muda em campo?']),
-    'expor': (['Cobrança pública às vezes acorda o time.', 'Falou o que todo mundo viu!'],
-              ['Expor jogador em público racha qualquer vestiário.', 'Apurei que a fala caiu muito mal no elenco.']),
-    'proteger': (['Blindou o grupo. Liderança.', 'Técnico que protege o elenco ganha o vestiário.'],
-                 ['Passou pano para quem não jogou nada.', 'Proteger é uma coisa, fingir que está tudo bem é outra.']),
-    'arbitragem': (['Ele tem razão, o apito pesou hoje.', 'Precisava falar. A arbitragem foi ruim.'],
-                   ['Reclamar da arbitragem é a desculpa mais velha do futebol.', 'Culpar o juiz esconde os próprios erros.']),
-    'pressao': (['Ele tem razão: o elenco é curto.', 'Recado dado à diretoria. Corajoso.'],
-                ['Jogar a culpa na diretoria em público? Isso tem preço.', 'Pedir reforço pelo microfone é queimar ponte.']),
+    'humilde': (['Pés no chão. Gosto de técnico assim.', 'Resposta madura, sem firula.', 'Discurso de quem sabe onde está pisando.', 'Sem salto alto. O vestiário agradece.'],
+                ['Muito morno. Falta ambição nesse discurso.', 'Humildade demais vira conformismo.', 'Pés no chão demais: parece que já aceitou o meio da tabela.', 'Faltou ambição. Torcedor quer ouvir mais que isso.']),
+    'corporativo': (['Equilíbrio, sem polêmica. Correto.', 'Falou o necessário e protegeu o ambiente.', 'Resposta segura. Não deu manchete para ninguém.', 'Equilibrado, como um técnico de clube grande deve ser.'],
+                    ['Não disse nada. Coletiva protocolar.', 'Resposta de manual. Zero conteúdo.', 'Falou, falou e não respondeu.', 'Coletiva em piloto automático.']),
+    'empolgar': (['Pode sonhar sim! Esse time tem cara de campeão!', 'Isso que a torcida quer ouvir!', 'A torcida vai à loucura com essa resposta!', 'Técnico que acredita contagia o grupo.'],
+                 ['Cuidado com a euforia. Futebol cobra caro.', 'Prometeu demais. Vai ter que entregar.', 'Discurso de euforia costuma virar arquivo contra ele.', 'Prometeu a lua. Agora vai ter que buscar.']),
+    'provocar': (['Isso! Técnico tem que ter sangue no olho!', 'Gostei! Personalidade é tudo.', 'Personalidade! O rival vai sentir.', 'Gostei do recado. Tem que ter casca.'],
+                 ['Provocação gratuita. Se perder o próximo, vira piada.', 'Desnecessário. Deu munição ao adversário.', 'Arrumou uma briga que não precisava.', 'Fala de arquibancada, não de treinador.']),
+    'culpa': (['Assumir a culpa é coisa de líder.', 'Chamou a responsabilidade. Respeito.', 'Tirou o peso do grupo. Atitude de líder.', 'Honestidade rara num microfone.'],
+              ['Assumir a culpa toda hora não resolve nada.', 'Bonito no microfone. E o que muda em campo?', 'De tanto assumir culpa, uma hora a diretoria acredita.', 'Culpa assumida não marca gol.']),
+    'expor': (['Cobrança pública às vezes acorda o time.', 'Falou o que todo mundo viu!', 'Disse o que precisava ser dito.', 'Recado direto: agora todo mundo sabe o que ele pensa.'],
+              ['Expor jogador em público racha qualquer vestiário.', 'Apurei que a fala caiu muito mal no elenco.', 'Fala pública assim racha o vestiário em uma semana.', 'Quem expõe jogador perde o grupo.']),
+    'proteger': (['Blindou o grupo. Liderança.', 'Técnico que protege o elenco ganha o vestiário.', 'Fechou com o elenco. O grupo vai correr por ele.', 'Blindagem total. Os jogadores vão gostar.'],
+                 ['Passou pano para quem não jogou nada.', 'Proteger é uma coisa, fingir que está tudo bem é outra.', 'Proteção cega: ninguém foi cobrado.', 'Defendeu o indefensável.']),
+    'arbitragem': (['Ele tem razão, o apito pesou hoje.', 'Precisava falar. A arbitragem foi ruim.', 'Reclamou com razão. Tinha lance para discutir.', 'Defendeu o clube. Alguém tinha que falar.'],
+                   ['Reclamar da arbitragem é a desculpa mais velha do futebol.', 'Culpar o juiz esconde os próprios erros.', 'A arbitragem não perdeu o jogo sozinha.', 'Desculpa pronta de novo.']),
+    'pressao': (['Ele tem razão: o elenco é curto.', 'Recado dado à diretoria. Corajoso.', 'Cobrou a diretoria com coragem.', 'Disse em público o que todo mundo fala em off.'],
+                ['Jogar a culpa na diretoria em público? Isso tem preço.', 'Pedir reforço pelo microfone é queimar ponte.', 'Recado público à diretoria raramente termina bem.', 'Queimou a ponte com o presidente ao vivo.']),
 }
+
+
+def _preencher(t, v):
+    try:
+        return t.format(**v)
+    except (KeyError, IndexError, ValueError):
+        return t
 
 
 def tipo_partida(p, team_id):
@@ -181,34 +107,106 @@ class Gestao:
         adv_id = partida['visitante'] if casa else partida['mandante']
         classico = adv_id in set(rivais or ())
         r = random.Random(_seed('col', partida['chave']))
-        pool = PERGUNTAS['classico_' + partida['res'].lower()] if classico else PERGUNTAS[tipo]
-        qs = [(q, ans, None) for q, ans in r.sample(pool, min(2, len(pool)))]
-        if classico:
-            outra = [x for x in PERGUNTAS[tipo] if x[0] not in [q for q, _, _ in qs]]
-            if outra:
-                qs.append((*r.choice(outra), None))
-        # uma pergunta sobre o momento, quando ele pede
-        dia = s2d(partida['data'])
-        les = next((e for e in reversed(self.g['eventos']) if e.get('tipo') == 'lesao'
-                    and s2d(e['data']) <= dia < s2d(e['volta'])), None)
-        conf = (self.s.get('mundo') or {}).get('diretoria', 60)
-        clima = ((self.g.get('vestiario') or {}).get('clima', 60))
-        if conf <= 40 and partida['res'] != 'V':
-            qs.append((*PERGUNTAS['pressao'][0], None))
-        elif les and r.random() < 0.6:
-            q, ans = PERGUNTAS['lesao'][0]
-            qs.append((q.format(jogador=les['jogador']), ans, les['jogador']))
-        elif clima < 40 and r.random() < 0.6:
-            qs.append((*PERGUNTAS['vestiario'][0], None))
-        qs = qs[:3]
         adv = nomes(adv_id)
         gp, gc = (partida['gm'], partida['gv']) if casa else (partida['gv'], partida['gm'])
+        cod = int(partida.get('torneio') or 0) & 1023
+        from .campeonatos import NOMES as NOMES_COMP
+        v = {'adv': adv, 'placar': f'{gp} x {gc}', 'comp': NOMES_COMP.get(cod, 'copa').split(' · ')[0],
+             'jogador': '', 'pos': '', 'seq': ''}
+        # 1) duas perguntas sobre o resultado (variações de casa/fora e 0 x 0 entram no sorteio)
+        if classico:
+            pool = list(PERGUNTAS['classico_' + partida['res'].lower()])
+            extra = list(PERGUNTAS[tipo])
+        else:
+            pool = list(PERGUNTAS[tipo])
+            if tipo == 'vitoria' and not casa:
+                pool += PERGUNTAS['vitoria_fora']
+            if tipo in ('derrota', 'vexame') and casa:
+                pool += PERGUNTAS['derrota_casa']
+            if tipo == 'empate' and gp == 0:
+                pool = PERGUNTAS['empate_0'] + pool[:3]
+            extra = []
+        qs = [(q, ans, None) for q, ans in r.sample(pool, min(2, len(pool)))]
+        if extra:
+            qs.append((*r.choice(extra), None))
+        # 2) perguntas sobre o momento: sequência, tabela, copa, torcida, diretoria, lesão, vestiário, mercado
+        dia = s2d(partida['data'])
+        sit = self._situacoes(partida, dia, cod, v)
+        r.shuffle(sit)
+        sit.sort(key=lambda x: -x[0])         # as mais urgentes primeiro
+        usados = {q for q, _, _ in qs}
+        for _, chave, jog in sit:
+            if len(qs) >= 4:
+                break
+            op = [x for x in PERGUNTAS[chave] if x[0] not in usados]
+            if op:
+                q, ans = r.choice(op)
+                usados.add(q)
+                qs.append((q, ans, jog))
+        if len(qs) < 4 and r.random() < 0.5:
+            q, ans = r.choice(PERGUNTAS['geral'])
+            qs.append((q, ans, None))
+        qs = [(_preencher(q, v), [(_preencher(a[0], v), *a[1:]) for a in ans], j) for q, ans, j in qs[:4]]
         self.g['coletivas'].append({
             'id': f"col{len(self.g['coletivas']) + 1}", 'partida': partida['chave'], 'data': partida['data'],
             'titulo': f"{self.clube} {gp} x {gc} {adv}", 'tipo': tipo, 'status': 'aberta', 'classico': classico,
             'perguntas': [{'texto': q, 'respostas': [a[0] for a in ans], 'efeitos': [list(a[1:]) for a in ans],
                            'escolha': None, **_reporter(tipo, i, partida['chave'])} for i, (q, ans, _) in enumerate(qs)]})
         self.g['coletivas'] = self.g['coletivas'][-30:]
+
+    def _situacoes(self, partida, dia, cod, v):
+        """[(urgência, chave do banco, jogador)] do momento do clube."""
+        out = []
+        ps = [p for p in self.s.get('partidas', []) if p.get('data', '') <= partida['data']][-12:]
+        res = [p['res'] for p in ps]
+        def seq(cond):
+            n = 0
+            for x in reversed(res):
+                if not cond(x):
+                    break
+                n += 1
+            return n
+        sv, sd, sem_v, invic = seq(lambda x: x == 'V'), seq(lambda x: x == 'D'), seq(lambda x: x != 'V'), seq(lambda x: x != 'D')
+        if sv >= 3:
+            v['seq'] = sv; out.append((3, 'seq_vitorias', None))
+        elif sd >= 2:
+            v['seq'] = sd; out.append((4, 'seq_derrotas', None))
+        elif sem_v >= 4:
+            v['seq'] = sem_v; out.append((3, 'jejum', None))
+        elif invic >= 6:
+            v['seq'] = invic; out.append((2, 'invicto', None))
+        tab = self.s.get('tabela') or []
+        tab = tab.get('linhas') or [] if isinstance(tab, dict) else tab
+        pos = next((i + 1 for i, l in enumerate(tab) if l.get('id') == self.team_id), None)
+        if pos and len(tab) >= 10 and max(l.get('j', 0) for l in tab) >= 4:
+            v['pos'] = pos
+            if pos == 1:
+                out.append((2, 'lider', None))
+            elif pos <= 4:
+                out.append((1, 'g4', None))
+            elif pos > len(tab) - 4:
+                out.append((4, 'z4', None))
+        if cod not in (17, 79, 81, 80):
+            out.append((2, 'copa', None))
+        m = self.s.get('mundo') or {}
+        torc, conf = m.get('torcida', 60), m.get('diretoria', 60)
+        if conf <= 40 and partida['res'] != 'V':
+            out.append((5, 'pressao', None))
+        if torc < 35:
+            out.append((3, 'torcida_protesto', None))
+        elif torc >= 80 and partida['res'] == 'V':
+            out.append((1, 'torcida_festa', None))
+        les = next((e for e in reversed(self.g['eventos']) if e.get('tipo') == 'lesao'
+                    and s2d(e['data']) <= dia < s2d(e['volta'])), None)
+        if les:
+            v['jogador'] = les['jogador']; out.append((2, 'lesao', les['jogador']))
+        if (self.g.get('vestiario') or {}).get('clima', 60) < 40:
+            out.append((3, 'vestiario', None))
+        if self.g.get('imprensa', 55) < 35:
+            out.append((2, 'imprensa_tensa', None))
+        if dia.month in (1, 2, 7, 8):
+            out.append((1, 'mercado', None))
+        return out
 
     def responder(self, cid, q, a, mundo):
         c = next((x for x in self.g['coletivas'] if x['id'] == cid), None)

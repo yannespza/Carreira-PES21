@@ -161,3 +161,87 @@ def view(state, hoje, elenco_ids=None):
     liberados.sort(key=lambda x: x['volta'], reverse=True)
     return {'ativos': ativos, 'liberados': liberados, 'nivel': estrutura.nivel(state, 'medico'),
             'efeito': estrutura.DEPTOS['medico']['efeito'][estrutura.nivel(state, 'medico') - 1]}
+
+
+# ---------------- energia (cansaço) e programa de recuperação ----------------
+# A energia vem do save (0..255, 255 = barra ciano). O programa de recuperação, pago todo mês, devolve parte da
+# energia que falta depois de cada jogo: o jogador volta ao 100% mais rápido. A alteração é gravada no save.
+RECUPERACAO = [
+    {'nivel': 0, 'nome': 'Sem programa', 'pct': 0, 'mensal': 0,
+     'desc': 'Recuperação normal do jogo.'},
+    {'nivel': 1, 'nome': 'Fisioterapia extra', 'pct': 15, 'mensal': 150_000,
+     'desc': 'Massagem, piscina e sessões extras de fisioterapia depois dos jogos.'},
+    {'nivel': 2, 'nome': 'Centro de recuperação', 'pct': 30, 'mensal': 350_000,
+     'desc': 'Crioterapia, botas de compressão, controle de sono e nutrição individual.'},
+    {'nivel': 3, 'nome': 'Ciência do esporte', 'pct': 45, 'mensal': 700_000,
+     'desc': 'Monitoramento por GPS e exames de sangue, câmara hiperbárica e recuperação sob medida.'},
+]
+
+
+def _deb(state, hoje, valor, motivo):
+    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+                                            'valor': int(valor), 'status': 'pendente', 'motivo': motivo})
+
+
+def contratar_recuperacao(state, nivel, hoje):
+    """Troca o programa de recuperação. O primeiro mês é cobrado na hora; depois, todo dia 1º."""
+    nivel = int(nivel)
+    if not 0 <= nivel < len(RECUPERACAO):
+        raise ValueError('Programa inválido.')
+    g = state.setdefault('gestao', {})
+    rec = g.setdefault('recuperacao', {'nivel': 0})
+    if rec.get('nivel', 0) == nivel:
+        return rec
+    p = RECUPERACAO[nivel]
+    if p['mensal']:
+        orc = (state.get('dinheiro') or {}).get('orc_transf')
+        if orc is not None and orc < p['mensal']:
+            raise ValueError(f"O orçamento de transferências ({fmt_eur(orc)}) não cobre o primeiro mês ({fmt_eur(p['mensal'])}).")
+        _deb(state, hoje, p['mensal'], f"Departamento médico: {p['nome']} ({hoje.strftime('%m/%Y')})")
+    rec.update(nivel=nivel, desde=d2s(hoje), pago_ate=hoje.strftime('%Y-%m'))
+    return rec
+
+
+def cobrar_recuperacao(state, hoje):
+    """Mensalidade do programa a cada mês novo (chamado a cada leitura do save)."""
+    rec = (state.get('gestao') or {}).get('recuperacao') or {}
+    p = RECUPERACAO[rec.get('nivel', 0)]
+    if not p['mensal'] or not hoje:
+        return
+    mes = hoje.strftime('%Y-%m')
+    pago = rec.get('pago_ate') or mes
+    a, m = map(int, pago.split('-'))
+    while (a, m) < (hoje.year, hoje.month):
+        m += 1
+        if m > 12:
+            a, m = a + 1, 1
+        _deb(state, hoje, p['mensal'], f"Departamento médico: {p['nome']} ({m:02d}/{a})")
+    rec['pago_ate'] = mes
+
+
+def recuperar(state, energia, ultima_partida):
+    """Depois de cada jogo novo, devolve 'pct'% da energia que falta (uma vez por jogo). energia: {id: 0..255}.
+    Devolve {id: valor novo} para gravar no save."""
+    rec = (state.get('gestao') or {}).get('recuperacao') or {}
+    pct = RECUPERACAO[rec.get('nivel', 0)]['pct']
+    if not pct or not ultima_partida:
+        return {}
+    feitos = rec.setdefault('feitos', {})
+    out = {}
+    for pid, v in energia.items():
+        if v >= 255 or feitos.get(str(pid)) == ultima_partida:
+            continue
+        novo = int(round(v + (255 - v) * pct / 100))
+        if novo > v:
+            out[pid] = novo
+            feitos[str(pid)] = ultima_partida
+    return out
+
+
+def view_energia(state, energia, elenco):
+    rec = (state.get('gestao') or {}).get('recuperacao') or {}
+    nomes = {j['id']: j for j in elenco or []}
+    lista = [{'id': pid, 'nome': (nomes.get(pid) or {}).get('nome', str(pid)), 'pos': (nomes.get(pid) or {}).get('pos', ''),
+              'energia': int(round(v * 100 / 255))} for pid, v in energia.items()]
+    lista.sort(key=lambda x: x['energia'])
+    return {'jogadores': lista, 'programas': RECUPERACAO, 'nivel': rec.get('nivel', 0), 'desde': rec.get('desde')}

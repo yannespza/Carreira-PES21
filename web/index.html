@@ -458,6 +458,11 @@ dialog select,dialog input{width:100%}
 .emp .lg{position:relative}.emp .lg .troca{position:absolute;bottom:4px;right:6px;font-size:11px;color:#333;background:rgba(255,255,255,.85);border-radius:3px;padding:1px 6px;cursor:pointer;opacity:0;transition:opacity .15s}
 .emp:hover .lg .troca,.emp .lg.sem .troca{opacity:1}.emp .lg.sem{background:repeating-linear-gradient(45deg,#2a2f38 0 8px,#252a32 8px 16px)}
 .emp .lg.sem span.aviso{color:var(--mut);font-size:12px;text-align:center}
+.cen{position:absolute;top:8px;left:10px;right:10px;height:5px;background:#0008;border-radius:3px;overflow:hidden;z-index:2}.cen i{display:block;height:100%}
+.engrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 18px}
+.en{display:flex;align-items:center;gap:8px;font-size:13px}.enn{width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.enb{flex:1;height:7px;background:#ffffff14;border-radius:4px;overflow:hidden}.enb i{display:block;height:100%;border-radius:4px}
+.acao.sel{outline:2px solid var(--lime)}
 </style>
 </head>
 <body>
@@ -1029,6 +1034,7 @@ function rDM(){const M=(S.carreira||{}).medico||{};const A=M.ativos||[],L=M.libe
   $('dmBox').innerHTML=`<div class="grid3"><div class="meter"><h4>NO DEPARTAMENTO MÉDICO <b style="color:${A.length?'var(--red)':'var(--green)'}">${A.length}</b></h4><p style="margin-top:0">O jogo não sabe das lesões do app: <b>não escale</b> quem está aqui e volte a escalar quando aparecer como liberado. Você recebe uma mensagem do departamento médico nos dois casos.</p></div>
    <div class="meter"><h4>DEPARTAMENTO MÉDICO · NÍVEL ${M.nivel||'—'}</h4><p style="margin-top:0">${esc(M.efeito||'')}. Investir no departamento (Clube › Estrutura e marca) encurta as próximas lesões e também quem já está no DM, quando a obra termina.</p></div>
    <div class="meter"><h4>TRATAMENTO INTENSIVO</h4><p style="margin-top:0">Fisioterapia extra e câmara hiperbárica: corta 30% do tempo que falta. Uma vez por lesão, pago com o orçamento de transferências.</p></div></div>
+   ${rEnergia()}
    <div class="box"><h3>Indisponíveis</h3>${A.length?`<div class="dm">${A.map(x=>`<div class="dmc ${x.gravidade=='leve'?'leve':x.tipo!='lesao'?'afastado':''}">${ft(x.jogador_id)}<div style="flex:1"><b>${esc(x.jogador)}</b> <span class="nao">NÃO ESCALAR</span>
      <p><b style="font-size:13px;color:var(--txt)">${esc(x.titulo)}</b> · ${x.tipo=='lesao'?'lesão '+esc(x.gravidade)+(x.origem=='jogo'?' (em jogo)':' (no treino)'):esc(x.tipo)}</p>
      <p>Fase: ${esc(x.fase)} · volta em <b style="color:var(--txt)">${dt(x.volta)}</b> (${x.falta} dia(s))</p>
@@ -1036,6 +1042,16 @@ function rDM(){const M=(S.carreira||{}).medico||{};const A=M.ativos||[],L=M.libe
      ${(x.historico||[]).map(h=>`<p style="font-size:11px">• ${esc(h.texto)}</p>`).join('')}
      ${x.custo_trat?`<button class="ghost" style="margin-top:6px" onclick="tratar('${x.id}','${esc(x.jogador)}',${x.custo_trat})">Tratamento intensivo · ${eurM(x.custo_trat)}</button>`:''}</div></div>`).join('')}</div>`:'<div class="empty">Ninguém no departamento médico. Elenco todo à disposição.</div>'}</div>
    <div class="box" style="margin-top:16px"><h3>Liberados nos últimos 14 dias</h3>${L.map(x=>`<div class="jl"><span class="lib">LIBERADO</span> <b>${esc(x.jogador)}</b> · ${esc(x.titulo)} <small style="margin-left:auto">desde ${dt(x.volta)}</small></div>`).join('')||'<div class="empty" style="font-size:12px">Ninguém voltou recentemente.</div>'}</div>`}
+function corEn(e){return e>=100?'#22d3ee':e>=70?'#4ade80':e>=40?'#facc15':'#f87171'}
+function rEnergia(){const E=(S.carreira||{}).energia||{};const J=E.jogadores||[];const P=E.programas||[];if(!J.length&&!P.length)return '';
+  const atual=P[E.nivel||0]||{};const cans=J.filter(j=>j.energia<100).length;
+  return `<div class="box" style="margin-bottom:16px"><h3>Energia do elenco <small style="color:var(--mut);font-weight:400">· lida do save (ciano = 100%, como no plano de jogo)</small></h3>
+   <p style="font-size:12px;color:var(--mut);margin-top:0">${cans?cans+' jogador(es) abaixo de 100%.':'Todo mundo descansado.'} Programa atual: <b style="color:var(--txt)">${esc(atual.nome||'Sem programa')}</b>${atual.pct?' (+'+atual.pct+'% de recuperação depois de cada jogo)':''}.</p>
+   <div class="engrid">${J.map(j=>`<div class="en"><span class="enn">${esc(j.nome)}</span><div class="enb"><i style="width:${Math.max(3,j.energia)}%;background:${corEn(j.energia)}"></i></div><b style="color:${corEn(j.energia)}">${j.energia}%</b></div>`).join('')}</div>
+   <h3 style="margin-top:16px">Programa de recuperação</h3>
+   <p style="font-size:12px;color:var(--mut);margin-top:0">Depois de cada jogo, o programa devolve parte da energia que falta a cada jogador e o app grava isso no save. Mensalidade cobrada do orçamento de transferências (o jogo também desconta). Para valer no jogo, saia da carreira para o menu e carregue o save de novo.</p>
+   <div class="acoes">${P.map(p=>`<div class="acao${p.nivel==(E.nivel||0)?' sel':''}"><b>${esc(p.nome)}</b><small>${esc(p.desc)}</small><span class="pr">${p.mensal?eurM(p.mensal)+'/mês':'grátis'}</span><span style="font-size:12px;color:var(--mut)">${p.pct?'+'+p.pct+'% da energia que falta, após cada jogo':'recuperação normal'}</span><button class="${p.nivel==(E.nivel||0)?'ghost':'lime'}" ${p.nivel==(E.nivel||0)?'disabled':''} onclick="recup(${p.nivel},'${esc(p.nome)}',${p.mensal})">${p.nivel==(E.nivel||0)?'Atual':p.nivel?'Contratar':'Cancelar programa'}</button></div>`).join('')}</div></div>`}
+async function recup(n,nome,c){if(!confirm(c?`Contratar ${nome} por ${eurM(c)} por mês? O primeiro mês é cobrado agora.`:'Cancelar o programa de recuperação?'))return;await api('/api/medico/recuperacao',{nivel:n});toast(c?nome+' contratado.':'Programa cancelado.');load()}
 async function tratar(id,n,c){if(!confirm('Tratamento intensivo para '+n+' por '+eurM(c)+'?'))return;await api('/api/medico/tratar',{id});toast('Tratamento iniciado: volta antecipada.');load()}
 let RKF='todos';
 function rRank(){const R=(S.carreira||{}).ranking;const el=$('rankBox');if(!el||!R)return;const a=R.atual,p=R.prestigio_tecnico??50;
@@ -1377,7 +1393,7 @@ function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
   const ult=el.filter(fimContrato);$('elCtr').innerHTML=ult.length?`<div class="banner" style="margin-bottom:12px"><p><b>📝 Contrato terminando até o fim da temporada:</b> ${ult.map(p=>esc(p.nome)).join(', ')}. Renove no jogo ou planeje a reposição.</p></div>`:'';
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral e contratos de '+S.moral_data+' (Dados do time)':' · para ver a moral e os contratos, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
-    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}" onclick="abrirFicha(${p.id})" style="cursor:pointer">${p.cgj?`<div class="cgj">${p.cgj}</div>`:''}<div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
+    $('elList').innerHTML=el.length?el.map(p=>{const a=afastamento(p.id);return `<div class="carta ${a?'fora':''}" onclick="abrirFicha(${p.id})" style="cursor:pointer">${p.cgj?`<div class="cgj">${p.cgj}</div>`:''}${p.energia!=null?`<div class="cen" title="Energia ${p.energia}%"><i style="width:${Math.max(3,p.energia)}%;background:${corEn(p.energia)}"></i></div>`:''}<div class="av2 pos-${esc(p.pos||'')}" title="${esc(POSN[p.pos]||'')}">${esc(p.pos||iniciais(p.nome))}</div><div class="alt">${p.altura?p.altura+' cm':''}</div><div class="ft"><img src="/foto/${p.id}.png" loading="lazy" onerror="this.remove()"></div>${(()=>{const mv=p.moral_app??p.moral;if(mv==null)return '';const ap=p.moral_app!=null&&p.moral_app!==p.moral;
   return `<div class="moral m${mv} ${ap?'app':''}" title="Moral: ${['péssima','baixa','normal','boa','ótima'][mv]}${p.moral!=null?' (no jogo: '+['péssima','baixa','normal','boa','ótima'][p.moral]+')':''}${(p.moral_motivos||[]).length?'\n'+p.moral_motivos.join('\n'):''}">${['↓','↘','→','↗','↑'][mv]}</div>`})()}
       <div class="nm">${esc(p.nome)}</div>${p.contrato_ate?`<small class="ctr ${fimContrato(p)?'fim':''}" title="Fim do contrato (do arquivo Dados do time)">contrato até ${p.contrato_ate.slice(5,7)}/${p.contrato_ate.slice(0,4)}</small>`:''}${fimContrato(p)?'<span class="tg ctrfim">ÚLTIMO ANO</span>':''}${a?`<span class="tg" title="${esc(a.texto)}">${a.tipo=='indisciplina'?'AFASTADO':a.tipo=='lesao'?'🩺 LESIONADO':'FORA'} até ${dt(a.volta)}</span>`:''}${chegou.has(p.id)?'<span class="tg novo">CONTRATADO</span>':''}</div>`}).join(''):'<div class="empty">O elenco aparece depois que o app ler o save.</div>'}
   if(etab=='pran')rEscalacao();

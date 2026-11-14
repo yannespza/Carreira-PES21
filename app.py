@@ -342,6 +342,14 @@ class App:
                         self.moral_data = time.strftime('%d/%m %H:%M', time.localtime(os.path.getmtime(us[-1])))
                 except Exception:
                     log(traceback.format_exc())
+            try:          # energia (cansaço): 255 = barra ciano no plano de jogo
+                self.energia = {pid: v for pid, (_, v) in savedata.energia(bytes(car.sf.data), ids).items()}
+            except Exception:
+                log(traceback.format_exc())
+                self.energia = {}
+            for j in el:
+                if j['id'] in self.energia:
+                    j['energia'] = int(round(self.energia[j['id']] * 100 / 255))
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
             posicao.registrar(self.elenco)
             self._fichas(car, nomes)
@@ -551,6 +559,7 @@ class App:
             self.aplicar_creditos()
             self.mundo_processar()
             self.gestao_processar(car, novas, None if novo else antes)
+            self.recuperacao_processar(car)
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
             self.escalacao_processar(car)
@@ -569,6 +578,20 @@ class App:
             mu = mundo.Mundo(self.state, self.clube(), self.tid())
             mu.rivais = set(self.rivais_ids())
             mu.processar(self.engine, lambda i: self.names.get(i, f'Time {i}'))
+        except Exception:
+            log(traceback.format_exc())
+
+    def recuperacao_processar(self, car):
+        """Programa de recuperação do DM: mensalidade e energia extra depois de cada jogo (gravada no save)."""
+        try:
+            st = self.state
+            medico.cobrar_recuperacao(st, car.date)
+            ps = st.get('partidas') or []
+            novos = medico.recuperar(st, getattr(self, 'energia', {}) or {}, ps[-1]['chave'] if ps else None)
+            if novos:
+                pend = st.setdefault('energia_pend', {})
+                pend.update({str(k): v for k, v in novos.items()})
+                log('recuperação do DM:', len(novos), 'jogadores com energia extra')
         except Exception:
             log(traceback.format_exc())
 
@@ -750,6 +773,7 @@ class App:
             'retro': ret, 'tecnico': {**tecnico_carreira.view(tecnico_carreira.carregar(DATA)),
                                       'arquivadas': tecnico_carreira.arquivadas(DATA)},
             'medico': medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None),
+            'energia': medico.view_energia(st, getattr(self, 'energia', {}) or {}, self.elenco),
             'ranking': self.ranking_view(),
         }
 
@@ -1212,7 +1236,8 @@ class App:
         oi = self.state.get('orc_inicial')
         definir = bool(oi and oi.get('status') == 'pendente')
         debs = [x for x in self.state.get('debitos', []) if x['status'] == 'pendente']
-        if (not pend and not multas and not zerar and not definir and not debs) or self.career is None or self.career.fin_off is None:
+        ener = {int(k): v for k, v in (self.state.get('energia_pend') or {}).items()}
+        if (not pend and not multas and not zerar and not definir and not debs and not ener) or self.career is None or self.career.fin_off is None:
             return
         car = self.career
         total = 0; total_multa = 0
@@ -1220,13 +1245,13 @@ class App:
         if definir and orc_antes == oi['valor']:
             oi.update(status='confirmado', antes=orc_antes, em=self.state['data'])
             definir = False
-            if not pend and not multas and not zerar and not debs:
+            if not pend and not multas and not zerar and not debs and not ener:
                 return
         if definir:
             antes2 = car.money().get('orc_transf_2', 0)
             car.definir_orcamento(oi['valor'])
         zerado = car.zerar_patrocinio() if zerar else 0
-        if zerar and not zerado and not pend and not multas and not debs:
+        if zerar and not zerado and not pend and not multas and not debs and not ener:
             z.update(status='confirmado', valor=0)       # já estava zerado: nada a gravar
             return
         for c, pg in pend:
@@ -1239,6 +1264,7 @@ class App:
         for x in debs:
             car.debitar(x['valor'])
             total_deb += x['valor']
+        ener_antes = car.definir_energia(ener) if ener else {}
         try:
             bk = car.write(os.path.join(DATA, 'backups_save'), log)
         except Exception as e:
@@ -1255,6 +1281,8 @@ class App:
                 car.credit_sponsor(m['valor'])
             for x in debs:
                 car.debitar(-x['valor'])
+            if ener_antes:
+                car.definir_energia_bruta(ener_antes)
             if zerado:
                 car.desfazer_zerar(zerado, orc_antes)
             if definir:
@@ -1287,6 +1315,15 @@ class App:
             m['status'] = 'aplicada'; m['aplicada_em'] = hoje
         for x in debs:
             x['status'] = 'aplicado'; x['aplicado_em'] = hoje
+        if ener:
+            self.state['energia_pend'] = {}
+            for pid, v in ener.items():
+                if hasattr(self, 'energia') and pid in self.energia:
+                    self.energia[pid] = max(self.energia[pid], v)
+            for j in self.elenco or []:
+                if j['id'] in (getattr(self, 'energia', {}) or {}):
+                    j['energia'] = int(round(self.energia[j['id']] * 100 / 255))
+            log('energia gravada no save:', len(ener_antes), 'jogadores')
         if zerar:
             z.update(status='aplicado' if zerado else 'confirmado', valor=zerado, em=hoje)
         self.state['dinheiro'] = money
@@ -2098,6 +2135,12 @@ class H(BaseHTTPRequestHandler):
                     o = estrutura.investir(A.state, body.get('depto'), sim.s2d(A.state['data']))
                     A.aplicar_creditos(); A.persist()
                     return self.send(200, {'ok': True, 'obra': o})
+                if u.path == '/api/medico/recuperacao':
+                    if not A.state.get('data'):
+                        raise ValueError('O app ainda não leu a data da carreira.')
+                    medico.contratar_recuperacao(A.state, body.get('nivel', 0), sim.s2d(A.state['data']))
+                    A.recuperacao_processar(A.career) if A.career else None
+                    A.aplicar_creditos(); A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/medico/tratar':
                     medico.tratar(A.state, body.get('id'), sim.s2d(A.state['data']))
                     A.aplicar_creditos(); A.persist(); return self.send(200, {'ok': True})

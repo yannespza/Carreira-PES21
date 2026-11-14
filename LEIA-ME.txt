@@ -23,6 +23,15 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.11.0:
+- Energia dos jogadores lida do save (a mesma barra do plano de jogo: ciano = 100%). Aparece em Elenco >
+  Departamento médico e numa barrinha em cima de cada carta do elenco.
+- Programa de recuperação no departamento médico (15%, 30% ou 45%): depois de cada jogo devolve essa parte da
+  energia que falta a cada jogador e grava no save. Mensalidade descontada do orçamento de transferências.
+- Coletivas bem maiores: cerca de 80 perguntas e mais de 230 respostas, com perguntas sobre sequência de
+  resultados, liderança, zona de rebaixamento, copas, torcida, diretoria, lesões, vestiário, mercado e base.
+  Até 4 perguntas por coletiva, e mais variações nas falas dos jornalistas.
+
 Novidades da 3.10.0:
 - Patrocínios vigentes atualizados para os valores reais na cotação do jogo (R$ 4,30 por euro). A diferença das
   parcelas que já tinham sido pagas entra no save no próximo crédito (aparece em Finanças como "Ajuste para a

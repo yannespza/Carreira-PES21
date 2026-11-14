@@ -216,19 +216,19 @@ ASSINA = {'goleada': ['renata', 'duarte', 'ferraz'], 'bom': ['renata', 'lacerda'
 
 # como cada jornalista abre a pergunta na coletiva (a pergunta em si continua a mesma, para as respostas baterem)
 INTRO = {
-    'duarte': {'bom': ["Vou ser direto.", "Sem rodeios:", "Números à parte,"],
+    'duarte': {'bom': ["Vou ser direto.", "Sem rodeios:", "Números à parte:", 'Tenho uma pergunta incômoda, mas necessária.', 'Sem querer estragar a festa:'],
                'ruim': ["Desculpa, mas preciso perguntar.", "Vou ser direto, porque o torcedor merece resposta.",
-                        "Não dá para fingir que está tudo bem."]},
-    'ferraz': {'bom': ["Com todo respeito, e já que hoje deu certo,", "Curiosidade minha:"],
-               'ruim': ["Na última coletiva o discurso foi outro, então pergunto:", "Com todo respeito,"]},
-    'lacerda': {'bom': ["O clima no CT parece ótimo.", "Apurei que o grupo saiu satisfeito."],
-                'ruim': ["Apurei que o vestiário ficou pesado.", "Há informação de cobrança interna."]},
-    'pilha': {'bom': ["Professor, a torcida tá MALUCA!", "Fala, professor! Que jogo!"],
-              'ruim': ["Professor, o torcedor tá revoltado!", "Professor, a live tá pegando fogo!"]},
-    'renata': {'bom': ["Uma pergunta mais tática.", "Pensando no desenho do time,"],
-               'ruim': ["Do ponto de vista tático,", "Olhando para a estrutura do time,"]},
-    'arnaldo': {'bom': ["Professor, eu que acompanho o clube há quarenta anos:"],
-                'ruim': ["Professor, eu que já vi muita coisa nesse futebol:"]},
+                        "Não dá para fingir que está tudo bem.", 'O torcedor quer explicação, então lá vai.', 'Os números não mentem, professor.']},
+    'ferraz': {'bom': ["Com todo respeito, e já que hoje deu certo:", "Curiosidade minha:", 'Só para registrar, já que o resultado ajudou:', 'Uma pergunta que o placar não responde:'],
+               'ruim': ["Na última coletiva o discurso foi outro, então pergunto:", "Com todo respeito:", 'Ironias à parte:', 'Vou citar o senhor mesmo, da semana passada:']},
+    'lacerda': {'bom': ["O clima no CT parece ótimo.", "Apurei que o grupo saiu satisfeito.", 'Fontes do clube falam em grupo muito unido.', 'Bastidor bom no CT, pelo que apurei.'],
+                'ruim': ["Apurei que o vestiário ficou pesado.", "Há informação de cobrança interna.", 'Fontes internas falam em insatisfação.', 'Pelo que apurei, a diretoria está atenta.']},
+    'pilha': {'bom': ["Professor, a torcida tá MALUCA!", "Fala, professor! Que jogo!", 'PROFESSOR! O chat tá explodindo aqui!', 'Professor, que noite, hein!'],
+              'ruim': ["Professor, o torcedor tá revoltado!", "Professor, a live tá pegando fogo!", 'Professor, sendo bem sincero com o senhor:', 'Professor, o pessoal tá xingando muito na live!']},
+    'renata': {'bom': ["Uma pergunta mais tática.", "Pensando no desenho do time:", 'Uma curiosidade sobre o desenho tático.', 'Analisando os mapas de calor:'],
+               'ruim': ["Do ponto de vista tático:", "Olhando para a estrutura do time:", 'Olhando os números do jogo:', 'Na leitura tática da partida:']},
+    'arnaldo': {'bom': ["Professor, eu que acompanho o clube há quarenta anos:", 'Professor, no meu tempo isso era chamado de futebol-arte:', 'Isso me lembrou os grandes times do passado, professor.'],
+                'ruim': ["Professor, eu que já vi muita coisa nesse futebol:", 'Professor, com a experiência de quem já viu de tudo:', 'Professor, no futebol de antigamente isso não passava:']},
 }
 
 
