@@ -63,7 +63,7 @@ local function make_key(ctx, filename)
         end
     end
     -- diagnóstico: arquivos de faixa e bandeirinha que o jogo pediu e não estão nas regras
-    if em_casa and not vistos[fl] and (fl:find("faixa", 1, true) or fl:find("c_flag", 1, true) or fl:find("cornerflag", 1, true)) then
+    if em_casa and not vistos[fl] and (fl:find("faixa", 1, true) or fl:find("c_flag", 1, true) or fl:find("cornerflag", 1, true) or fl:find("\\cf_", 1, true)) then
         vistos[fl] = true
         log("AppCarreira: pedido sem regra: " .. filename)
     end
@@ -459,6 +459,38 @@ def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, plano, gram, log=pri
             resumo['bandeirinha'] = True
         except Exception as e:
             log('bandeirinha não gerada', e)
+    # bandeirinhas de verdade do jogo (14/11, pelo sider.log): o estádio do clube tem a própria textura
+    # (stXXX\sourceimages\tga\#windx11\cf_stXXX_bsm_alp.ftex) e o TournamentCornerFlags usa
+    # cornerflag\sourceimages\tga\#windx11\cf_common_bsm_alp.ftex. Mantém o recorte (alfa) do original.
+    if patro is not None or cores:
+        alvos = []
+        if est:
+            d, arqs = _texturas_estadio(est)
+            st = 'st%03d' % est['id']
+            for a in arqs:
+                if re.match(r'cf_.*_bsm(_alp)?\.ftex$', a.lower()):
+                    alvos.append((os.path.join(d, a), f'{st}\\sourceimages\\tga\\#windx11\\{a}'))
+        for comp in ('Brasileiro A', 'Brasileiro B', 'Default'):
+            p = os.path.join(tcf, comp, 'Asset', 'model', 'bg', 'common', 'cornerflag', 'sourceimages', 'tga',
+                             '#windx11', 'cf_common_bsm_alp.ftex')
+            if os.path.exists(p):
+                alvos.append((p, 'cornerflag\\sourceimages\\tga\\#windx11\\cf_common_bsm_alp.ftex'))
+                break
+        for i, (src, regra) in enumerate(alvos):
+            if not _formato_ok(src):
+                log('bandeirinha: formato não suportado', os.path.basename(src))
+                continue
+            try:
+                from . import ftex
+                base = ftex.read(src).convert('RGBA')
+                img = bandeirinha(base.width, base.height, cor1, cor2, patro)
+                img.putalpha(base.getchannel('A'))
+                nome = f'bandeirinha_cf_{i}.ftex'
+                ftex.write(img, src, os.path.join(out, nome))
+                regras.append((regra, nome, 'casa'))
+                resumo['bandeirinha'] = True
+            except Exception as e:
+                log('bandeirinha não gerada', os.path.basename(src), e)
     with open(os.path.join(out, 'mapa.txt'), 'w', encoding='utf-8') as f:
         f.write(f'time={int(team_id)}\n')
         for m, a, q in regras:
