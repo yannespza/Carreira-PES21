@@ -1,3 +1,4 @@
+import re
 """Monta os uniformes: base limpa + logos dos contratos ativos, e grava na pasta do kitserver."""
 import os
 from PIL import Image
@@ -7,22 +8,33 @@ from . import ftex
 # Cada posição pode ter mais de um lugar na textura (pares e lados repetidos do molde).
 # cx, cy = centro; w, h = tamanho máximo (no sentido de leitura do logo); rot = giro em graus (anti-horário)
 SLOTS = {
-    'peito':        {'nome': 'Peito (master)',          'valor_base': 12_000_000,
+    'peito':        {'nome': 'Peito (master)',          'valor_base': 14_000_000,
                      'lugares': [(1024, 1330, 430, 150, 0)], 'vista': 'frente'},
-    'barra':        {'nome': 'Barra da camisa (frente)', 'valor_base': 3_000_000,
+    'barra':        {'nome': 'Barra da camisa (frente)', 'valor_base': 1_700_000,
                      'lugares': [(1024, 1690, 300, 90, 0)], 'vista': 'frente'},
-    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 4_000_000, 'inclinacao_padrao': 0,  # aprovado no jogo
+    'mangas':       {'nome': 'Mangas (par)',             'valor_base': 1_700_000, 'inclinacao_padrao': 0,  # aprovado no jogo
                      # manga direita: frente (3R) e trás (1R) · manga esquerda: frente (7R) e trás (6R)
                      # o último número espelha a inclinação entre os lados
                      'lugares': [(651, 1010, 150, 62, 0, 1), (651, 780, 150, 62, 0, 1),
                                  (1394, 1010, 150, 62, 0, -1), (1394, 890, 150, 62, 0, -1)], 'vista': 'mangas'},
-    'costas':       {'nome': 'Costas (alto)',            'valor_base': 3_500_000,
+    'costas':       {'nome': 'Costas (alto)',            'valor_base': 3_100_000,
                      'lugares': [(1024, 805, 320, 56, 180)], 'vista': 'costas'},
-    'calcao':       {'nome': 'Calção – pernas (par)',    'valor_base': 2_500_000,
+    'calcao':       {'nome': 'Calção – pernas (par)',    'valor_base': 1_150_000,
                      'lugares': [(146, 1388, 210, 66, -90), (1902, 1400, 190, 66, 90)], 'vista': 'calcao'},
-    'calcao_tras':  {'nome': 'Calção – trás',            'valor_base': 1_500_000,
+    'calcao_tras':  {'nome': 'Calção – trás',            'valor_base': 500_000,
                      'lugares': [(1846, 1732, 190, 48, 90)], 'vista': 'calcao'},
 }
+# Preço de referência de cada espaço (em euro, a moeda do save), calibrado com contratos reais de 2025/26
+# para um clube do porte do Palmeiras (fator 1,0), empresa grande e atratividade média:
+# master ~R$ 100 mi (Sportingbet), costas ~R$ 20-25 mi (Leapmotor/FictorAgro), omoplata ~R$ 20 mi (Cimed),
+# mangas ~R$ 11-12 mi (Sil, Shopee), barra traseira ~R$ 10 mi (Assist Card), calção ~R$ 5-12 mi,
+# trás do calção ~R$ 3-4 mi (MotoChefe, D'Italia). Clubes menores recebem proporcionalmente menos (sim.fator_clube).
+VALOR_BASE = {
+    'peito': 14_000_000, 'acima_peito': 600_000, 'barra': 1_700_000, 'gola': 2_100_000,
+    'laterais_frente': 430_000, 'costas': 3_100_000, 'costas_baixo': 1_300_000, 'costas_laterais': 350_000,
+    'mangas': 1_700_000, 'calcao': 1_150_000, 'calcao_tras': 500_000,
+}
+
 SLOT_ORDER = ['peito', 'barra', 'mangas', 'costas', 'calcao', 'calcao_tras']
 
 # recortes da textura para a pré-visualização (cada vista pode juntar mais de um pedaço lado a lado)
@@ -38,9 +50,16 @@ VARIANTS = [
     ('p1', 'u0137p1', 'verde'), ('p1x1', 'u0137p1', 'verde'), ('p1x2', 'u0137p1', 'verde'), ('p1x3', 'u0137p1', 'verde'),
     ('p2', 'u0137p2', 'branco'), ('p2x1', 'u0137p2', 'branco'), ('p2x2', 'u0137p2', 'branco'), ('p2x3', 'u0137p2', 'branco'),
     ('p3', 'u0137p3', 'azul'), ('p4', 'u0137p1', 'listrado'),
+    ('g1', 'u0137g1', 'g1'), ('g2', 'u0137g2', 'g2'), ('g3', 'u0137g1', 'g3'),
 ]
 FAMILIAS = {'verde': 'Verde', 'branco': 'Branco', 'azul': 'Azul',
-            'listrado': 'Listrado'}
+            'listrado': 'Listrado', 'g1': 'Goleiro azul', 'g2': 'Goleiro vermelho', 'g3': 'Goleiro azul e areia'}
+GOLEIRO_PALMEIRAS = [v for v in VARIANTS if v[0].startswith('g')]
+
+
+def e_goleiro(fam):
+    """Famílias de uniforme de goleiro (g1, g2…): ficam numa aba própria."""
+    return bool(re.fullmatch(r'g\d+', str(fam)))
 
 _base_cache = {}
 ESTUDIO = {}        # família -> configuração do estúdio (cores novas, estrelas)
@@ -53,6 +72,9 @@ VIEWS_PADRAO = {k: list(v) for k, v in VIEWS.items()}
 def usar_time(t):
     """Troca posições, uniformes e famílias pelos do clube da carreira (muda os objetos no lugar)."""
     SLOTS.clear(); SLOTS.update({k: dict(v) for k, v in t['slots'].items()})
+    for k, v in SLOTS.items():          # preço vem sempre da tabela atual, não do que ficou gravado no time
+        if k in VALOR_BASE:
+            v['valor_base'] = VALOR_BASE[k]
     SLOT_ORDER[:] = [s for s in t['ordem'] if s in SLOTS]
     VARIANTS[:] = [tuple(v) for v in t['variantes']]
     FAMILIAS.clear(); FAMILIAS.update(t['familias'])

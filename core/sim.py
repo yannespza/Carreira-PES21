@@ -211,7 +211,7 @@ class Engine:
 
     @staticmethod
     def _grande(slot):
-        return SLOTS.get(slot, {}).get('valor_base', 0) >= 2_500_000
+        return SLOTS.get(slot, {}).get('valor_base', 0) >= 1_000_000
 
     def setores_ocupados(self, slot=None):
         """Exclusividade de setor: vale entre as posições grandes (peito, mangas, costas, barra, calção).
@@ -221,18 +221,21 @@ class Engine:
                 } - {'outros', None}
 
     def fator_clube(self):
-        """Porte do clube no mercado (valor do elenco e torcida, ranking real): ~1,0 para Palmeiras e Flamengo,
-        ~0,45 para um clube médio da Série B, ~0,2 para os menores. Marca grande paga menos a clube pequeno."""
+        """Porte comercial do clube (Palmeiras = 1,0). Calibrado com os masters reais de 2025/26:
+        Flamengo ~1,9, Corinthians ~1,4, São Paulo ~0,8, Vasco/Atlético/Botafogo/Grêmio ~0,55-0,6,
+        Fortaleza ~0,3, Juventude e América-MG ~0,1. Pesa mais a torcida e o prestígio do que o elenco."""
         try:
             from . import ranking
             c = ranking.CLUBES.get(self.s.get('time_id'))
+            pal = ranking.CLUBES.get(137)
         except Exception:
-            c = None
-        if c:
-            sc = 0.65 * min(1.0, c[3] / 200) ** 0.7 + 0.35 * c[4] / 100
+            c = pal = None
+        sc = lambda x: (0.5 * x[4] / 100 + 0.05 * min(1.0, x[3] / 200) ** 0.7 + 0.45 * x[5] / 100) ** 2.7
+        if c and pal:
+            f = sc(c) / sc(pal)
         else:
-            sc = max(0.05, (self.base_atr - 30) / 60)
-        return round(0.12 + 0.98 * sc, 3)
+            f = max(0.05, (self.base_atr - 30) / 60) ** 2
+        return round(max(0.04, min(2.0, f)), 3)
 
     def valor_justo(self, empresa, slot, atr=None, r=None):
         atr = self.atratividade() if atr is None else atr

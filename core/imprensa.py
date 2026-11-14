@@ -137,7 +137,8 @@ C = {
                     "Camisa com patrocínio novo! Já quero a minha! Mas quero também CAMISA 9, hein!"],
         'lesao': ["Machucou NO TREINO?! Gente, como é que machuca no treino?! Isso é praga de secador!",
                   "Sem o {jogador} a gente tá perdido! Corre, departamento médico, corre! 🏃"],
-        'elenco': ["{jogador} é MONSTRO! Craque! Seleção já! 🐐", "{jogador}? Esquece. Banco. Agora."],
+        'elenco': ["{jogador} é MONSTRO! Craque! Seleção já! 🐐", "{jogador}? Esquece. Banco. Agora.",
+                   "[G]{jogador} é PAREDÃO! Ninguém passa! 🧤", "[A]{jogador} é matador! Deu bola, é gol! ⚽"],
         'diretoria': ["Diretoria, abre o cofre e traz reforço! Chega de conversa!",
                       "O presidente falando bonito... quero ver é contratação, presidente!"],
         'bastidores': ["Tô sabendo de coisa grande chegando aí... confia no Pilha! 👀",
@@ -161,8 +162,15 @@ C = {
         'mercado': ["Do ponto de vista de campo, o dinheiro novo precisa virar um volante de saída e um ponta de profundidade.",
                     "Receita maior permite planejar o elenco por função, não por nome."],
         'lesao': ["A ausência de {jogador} muda a estrutura: o {tecnico} perde uma peça de equilíbrio.",
-                  "Sem {jogador}, a tendência é o time mudar o desenho para não perder o meio."],
-        'elenco': ["{jogador} rende mais quando joga por dentro. Aberto, ele some.",
+                  "[M]Sem {jogador}, a tendência é o time mudar o desenho para não perder o meio.",
+                  "[D]Sem {jogador}, a linha defensiva perde quem a organiza. O {tecnico} vai ter de remontar a zaga.",
+                  "[G]Sem {jogador}, o {tecnico} perde a saída de bola pelo goleiro, que era parte do modelo.",
+                  "[A]Sem {jogador}, o time perde a referência de área e o pivô que segurava a bola na frente."],
+        'elenco': ["[MA]{jogador} rende mais quando joga por dentro. Aberto, ele some.",
+                   "[G]{jogador} vai bem embaixo das traves, mas ainda sofre nas saídas do gol.",
+                   "[D]{jogador} defende bem, mas precisa sair jogando com mais qualidade.",
+                   "[M]{jogador} precisa de um volante ao lado para se soltar.",
+                   "[A]{jogador} precisa ser mais acionado em profundidade. Ele vive do espaço atrás da defesa.",
                    "O momento de {jogador} tem a ver com função. Não é só questão de vontade."],
         'diretoria': ["Pressão de diretoria costuma encurtar o trabalho. E trabalho curto raramente vira modelo de jogo.",
                       "Cobrança é normal. O importante é a comissão manter a ideia."],
@@ -187,6 +195,9 @@ C = {
         'lesao': ["Antigamente o sujeito jogava com o tornozelo enfaixado. Hoje é tudo ressonância.",
                   "Lesão no treino... no meu tempo o treino era um coletivo e uma pelada."],
         'elenco': ["{jogador} me lembra aqueles jogadores de antigamente: de raça.",
+                   "[G]No meu tempo goleiro bom era o que fechava o gol e falava pouco. Esse {jogador} tem cara disso.",
+                   "[D]Zagueiro à moda antiga, esse {jogador}: chega junto e não pede desculpa.",
+                   "[A]Centroavante tem que viver de gol, e o {jogador} sabe disso.",
                    "Esse {jogador} precisa de alguém que pegue no braço e oriente."],
         'diretoria': ["Diretoria boa é a que aparece pouco e paga em dia.",
                       "Conheço esse filme: primeiro a diretoria apoia, depois procura culpado."],
@@ -226,6 +237,9 @@ def _rnd(*k):
 
 
 def _fmt(t, v):
+    from . import posicao
+    t = posicao.limpar(t)
+    posicao.completar(v)
     try:
         return t.format(**v)
     except (KeyError, IndexError):
@@ -261,7 +275,8 @@ def reportagem(noticia, ctx):
         v['campanha'] = noticia.get('campanha_nome') or 'a campanha'
         frases = r.sample(MESA['ok' if noticia.get('aprovada') else 'nao'], 4)
     for i, k in enumerate([autor] + outros[:r.randint(2, 3)]):
-        t = frases[i] if noticia.get('tipo') == 'campanha' else r.choice(C[k].get(sit) or C[k]['bastidores'])
+        from . import posicao
+        t = frases[i] if noticia.get('tipo') == 'campanha' else r.choice(posicao.filtrar(C[k].get(sit) or C[k]['bastidores'], v))
         mesa.append({'jornalista': k, **JORNALISTAS[k], 'texto': _fmt(t, v)})
     prog = JORNALISTAS[r.choice([m['jornalista'] for m in mesa if m['jornalista'] != 'pilha'] or [autor])]['programa']
     return {'autor': {'id': autor, **JORNALISTAS[autor]}, 'corpo': corpo, 'mesa': mesa, 'programa': prog,

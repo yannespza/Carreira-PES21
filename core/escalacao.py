@@ -25,7 +25,9 @@ OFF_FORM = 0xa0        # da formação até o início da lista
 
 GRUPO = {'GL': 'G', 'ZAG': 'D', 'LE': 'D', 'LD': 'D', 'VOL': 'M', 'MEI': 'M', 'ME': 'M', 'MD': 'M',
          'PE': 'A', 'PD': 'A', 'ATA': 'A'}
-PAPEL = savedata.POSICOES          # código de posição do PES -> sigla do app
+PAPEL = savedata.POSICOES          # código de posição do PES -> sigla do app (usada para achar substituto)
+# sigla exata da vaga na formação (o mapinha do plano de jogo distingue meia central, meia-atacante e segundo atacante)
+PAPEL_EXATO = ['GL', 'ZAG', 'LE', 'LD', 'VOL', 'MC', 'ME', 'MD', 'MEI', 'PE', 'PD', 'SA', 'ATA']
 
 
 def lista_valida(a):
@@ -61,8 +63,43 @@ def formacao(d: bytes, off):
     out = []
     for i in range(N_TIT):
         prof, lado = xy[2 * i], xy[2 * i + 1]
-        out.append({'papel': PAPEL[cod[i]], 'prof': prof, 'lado': lado})
+        out.append({'papel': PAPEL[cod[i]], 'sigla': PAPEL_EXATO[cod[i]], 'prof': prof, 'lado': lado})
     return out
+
+
+def nome_formacao(form):
+    """Nome da formação pela altura de cada jogador no campo (sem o goleiro): ex. 4-2-3-1, 4-3-3, 3-5-2.
+    Devolve (nome detalhado, nome curto); o curto junta as linhas de meio-campo (ex.: 4-1-2-3 -> 4-3-3)."""
+    if not form:
+        return None, None
+    profs = sorted(x['prof'] for x in form if x['papel'] != 'GL')
+    if len(profs) != 10:
+        return None, None
+    linhas, atual = [], [profs[0]]
+    for p in profs[1:]:
+        if p - atual[-1] >= 5:
+            linhas.append(atual); atual = [p]
+        else:
+            atual.append(p)
+    linhas.append(atual)
+    detalhado = '-'.join(str(len(l)) for l in linhas)
+    defesa = sum(1 for p in profs if p < 17)
+    ataque = sum(1 for p in profs if p >= 38)
+    meio = 10 - defesa - ataque
+    curto = '-'.join(str(n) for n in (defesa, meio, ataque) if n)
+    return detalhado, curto
+
+
+def mover_para_primeiro_fora(ordem, vg, pid):
+    """Põe o jogador na 1ª vaga dos não relacionados (se ele estiver entre os não relacionados)."""
+    ini = N_TIT + N_RES
+    for i in range(ini, TAM):
+        s = ordem[i]
+        if 0 <= s < len(vg) and vg[s] == pid:
+            if i != ini:
+                ordem.insert(ini, ordem.pop(i))
+            return i != ini
+    return False
 
 
 def vagas(d: bytes, team_index):

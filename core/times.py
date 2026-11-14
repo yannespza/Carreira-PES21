@@ -10,8 +10,8 @@ VERSAO_LIMPEZA = 2       # detecção nova: times preparados com a versão antig
 # do clube não tem patrocínio naquela posição para servir de referência
 PADRAO = copy.deepcopy(kits.SLOTS)
 ORDEM_PADRAO = list(kits.SLOT_ORDER)
-VARIANTES_PALMEIRAS = list(kits.VARIANTS)
-FAMILIAS_PALMEIRAS = dict(kits.FAMILIAS)
+VARIANTES_PALMEIRAS = [v for v in kits.VARIANTS if not v[0].startswith('g')]   # goleiro entra por _goleiro_palmeiras
+FAMILIAS_PALMEIRAS = {k: v for k, v in kits.FAMILIAS.items() if not kits.e_goleiro(k)}
 
 # posições extras que o app passa a vender quando o uniforme original do clube tinha patrocínio nelas
 EXTRAS = {
@@ -76,15 +76,16 @@ def listar_variantes(pasta):
     except OSError:
         return out
     for v in nomes:
-        m = re.fullmatch(r'p(\d+)(x\d+)?', v.lower())
+        m = re.fullmatch(r'([pg])(\d+)(x\d+)?', v.lower())
         if not m or not os.path.isdir(os.path.join(pasta, v)):
             continue
-        # textura principal: u0136p1.ftex (às vezes u0136p1x3.ftex); _back, _leg e _name ficam de fora
-        arqs = sorted(f for f in os.listdir(os.path.join(pasta, v)) if re.fullmatch(r'u\d+p\d+(x\d+)?\.ftex', f.lower()))
+        # textura principal: u0136p1.ftex (às vezes u0136p1x3.ftex; no goleiro u0136g1.ftex, às vezes com o
+        # número de outra pasta); _back, _leg e _name ficam de fora
+        arqs = sorted(f for f in os.listdir(os.path.join(pasta, v)) if re.fullmatch(r'u\d+[pg]\d+(x\d+)?\.ftex', f.lower()))
         if not arqs:
             continue
-        out.append((v, arqs[0][:-5], 'p' + m.group(1)))
-    chave = lambda x: (int(re.findall(r'\d+', x[0])[0]), len(x[0]), x[0])
+        out.append((v, arqs[0][:-5], m.group(1) + m.group(2)))
+    chave = lambda x: (x[0][0] == 'g', int(re.findall(r'\d+', x[0])[0]), len(x[0]), x[0])
     return sorted(out, key=chave)
 
 
@@ -113,6 +114,8 @@ class Times:
                 t['legado'] = True          # Palmeiras limpo à mão nas versões antigas: nunca refaz
                 t['preparado'] = True
                 self.salvar(t)
+            if t.get('legado') and t.get('id') == 137:
+                self._goleiro_palmeiras(t)
             if not t.get('legado') and t.get('versao_limpeza') != VERSAO_LIMPEZA:
                 # preparado com a limpeza antiga: refaz detecção e limpeza (os originais guardados continuam)
                 t['deteccao'] = {}
@@ -127,9 +130,43 @@ class Times:
                  'base_dir': os.path.join(self.data, 'kits_base'), 'variantes': VARIANTES_PALMEIRAS,
                  'familias': FAMILIAS_PALMEIRAS, 'slots': PADRAO, 'ordem': ORDEM_PADRAO, 'preparado': True,
                  'atratividade_base': self.cfg.get('atratividade_base', 68), 'deteccao': {}, 'legado': True}
+            self._goleiro_palmeiras(t)
             self.salvar(t)
             return t
         return None
+
+    def _goleiro_palmeiras(self, t):
+        """Uniformes de goleiro do Palmeiras: bases limpas vêm prontas com o app (recursos/kits_goleiro/137).
+        Copia as bases, guarda os originais do jogo e põe as variações g1/g2/g3 no time."""
+        if any(v[0].startswith('g') for v in t['variantes']):
+            return
+        rec = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'recursos', 'kits_goleiro', '137')
+        novos = []
+        for variant, fname, fam in kits.GOLEIRO_PALMEIRAS:
+            src = os.path.join(rec, variant, fname + '.ftex')
+            jogo = os.path.join(t.get('pasta') or '', variant, fname + '.ftex')
+            if not (os.path.isfile(src) and os.path.isfile(jogo)):
+                continue
+            try:
+                dst = os.path.join(t['base_dir'], variant, fname + '.ftex')
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                if not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+                bk = os.path.join(self.dir(t['id']), 'originais', variant, fname + '.ftex')
+                if not os.path.exists(bk):
+                    os.makedirs(os.path.dirname(bk), exist_ok=True)
+                    shutil.copy2(jogo, bk)
+            except OSError as e:
+                self.log(f'uniforme de goleiro {variant} não foi preparado: {e}')
+                continue
+            novos.append([variant, fname, fam])
+        if novos:
+            t['variantes'] = [list(v) for v in t['variantes']] + novos
+            t['familias'] = dict(t['familias'])
+            for _, _, fam in novos:
+                t['familias'][fam] = kits.FAMILIAS.get(fam) or FAMILIAS_PALMEIRAS.get(fam) or fam
+            self.salvar(t)
+            self.log(f'uniformes de goleiro do Palmeiras prontos: {", ".join(v[0] for v in novos)}')
 
     def salvar(self, t):
         os.makedirs(self.dir(t['id']), exist_ok=True)
@@ -142,7 +179,7 @@ class Times:
         vs = listar_variantes(pasta)
         fams = {}
         for _, _, f in vs:
-            fams.setdefault(f, f'Uniforme {f[1:]}')
+            fams.setdefault(f, f'Goleiro {f[1:]}' if f.startswith('g') else f'Uniforme {f[1:]}')
         t = {'id': tid, 'nome': nome_curto(self.mapa, tid), 'pasta': pasta,
              'base_dir': os.path.join(self.dir(tid), 'kits_base'), 'variantes': [list(v) for v in vs],
              'familias': fams, 'slots': copy.deepcopy(PADRAO), 'ordem': list(ORDEM_PADRAO), 'preparado': False,

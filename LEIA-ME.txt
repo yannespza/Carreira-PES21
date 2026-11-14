@@ -23,6 +23,20 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 3.8.0 (correções e verificações):
+- Uniformes de goleiro: os 3 do Palmeiras (azul, vermelho, azul e areia) agora recebem os patrocínios.
+  Em Uniformes eles ficam na aba "Goleiro", separados dos de linha. Os originais do jogo ficam guardados
+  em data\times\137\originais. Na primeira abertura aparece o aviso para aplicar no jogo.
+- Escalação: o campo mostra as posições exatas do plano de jogo e o nome da formação (4-3-3, 3-5-2...).
+- Jogador liberado pelo departamento médico vai direto para a 1ª vaga dos não relacionados.
+- Redes sociais e imprensa: os comentários sobre um jogador combinam com a posição dele (goleiro não
+  "perde gol feito", zagueiro não "sumiu na criação").
+- Patrocínios com valores de mercado reais do futebol brasileiro: master de clube grande na casa de
+  R$ 100 mi por ano (Palmeiras), Flamengo e Corinthians acima, clubes médios e pequenos proporcionais.
+- Jaqueta do técnico na coletiva refeita: a cor pega as dobras e o brilho do tecido, a barba, o pescoço
+  e a haste do microfone não são mais pintados, e escudo e patrocinador são estampados com a curva do
+  peito, as dobras e a luz da foto (o escudo foge da haste do microfone).
+
 Novidades da 3.7.1 (conferência completa):
 - Escalação: o app agora acha o plano de jogo em todos os formatos de save (nas carreiras mais antigas as
   vagas vazias ficam marcadas de outro jeito, e a 3.7.0 não achava). Testado nos 8 saves.

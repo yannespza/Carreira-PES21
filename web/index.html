@@ -112,6 +112,7 @@ main{max-width:1240px;margin:0 auto;padding:22px 24px 60px}
 .seg{display:flex;gap:4px;margin-bottom:10px}
 .seg button{flex:1;padding:9px 6px;font-size:12px;white-space:nowrap}
 .seg button.on{background:var(--lime);color:var(--onlime)}
+.famtipo{margin-bottom:6px}.famtipo button{font-weight:700;letter-spacing:.3px}
 .slot{background:var(--panel2);border-radius:3px;padding:12px;margin-bottom:8px}
 .slot .h{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .slot .h b{font-family:var(--head);letter-spacing:.05em;text-transform:uppercase}
@@ -525,7 +526,7 @@ dialog select,dialog input{width:100%}
     <div id="u-pat">
     <div class="kitwrap">
       <div>
-        <div class="seg" id="famSeg"></div>
+        <div id="famSeg"></div>
         <div class="kitprev"><img id="kitImg" alt="prévia do uniforme"></div>
         <button class="lime" style="width:100%;margin-top:8px" onclick="aplicarKits()" id="btnAplicarKits">Aplicar no jogo (todos os uniformes)</button>
         <div id="kitsStatus" style="color:var(--mut);font-size:12px;margin-top:4px"></div>
@@ -572,7 +573,7 @@ dialog select,dialog input{width:100%}
       <div class="box"><h3>Banco <small>12 reservas · arraste um jogador em cima de outro para trocar</small></h3><div class="escl" id="escBanco"></div>
         <h3 style="margin-top:16px">Não relacionados</h3><div class="escl" id="escFora"></div>
         <label style="display:flex;gap:8px;align-items:center;margin-top:16px;font-size:13px"><input type="checkbox" id="escAuto" onchange="escAuto(this.checked)">
-          Ajuste automático: quando o app afasta um jogador (lesão, indisciplina, problema pessoal), ele sai do plano de jogo e entra um reserva da mesma posição</label>
+          Ajuste automático: quando o app afasta um jogador (lesão, indisciplina, problema pessoal), ele sai do plano de jogo e entra um reserva da mesma posição. Quando é liberado, volta em 1º nos não relacionados</label>
         <div id="escHist" style="margin-top:12px"></div>
         <p style="font-size:12px;color:var(--mut);margin-top:12px">O app grava a escalação direto no save. Depois de aplicar, no jogo volte ao menu principal e carregue a carreira de novo (não salve antes). Jogadores com 🔒 estão afastados pelo app e não podem ser relacionados. Suspensão por cartão o próprio jogo já controla.</p></div></div></div>
     <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
@@ -673,7 +674,7 @@ async function rEstudio(){
 function desenharEstudio(salvo){
   const tro=Object.fromEntries((estCfg.trocas||[]).map(t=>[t[0],t[1]]));
   $('estudio').innerHTML=`<div class="kitwrap"><div>
-    <div class="seg">${Object.entries(S.familias).map(([k,n])=>`<button class="${k==estFam?'on':'ghost'}" onclick="estFam='${k}';rEstudio()">${esc(n)}</button>`).join('')}</div>
+    ${famAbas(estFam,"estFam='#';rEstudio()",'ghost')}
     <div class="kitprev"><img id="estImg" alt="prévia do estúdio"></div>
     <div style="display:flex;gap:8px;margin-top:8px"><button class="lime" style="flex:1" onclick="salvarEstudio()">Usar estas cores neste uniforme</button>
       ${salvo?`<button class="ghost" onclick="removerEstudio()">Voltar ao original</button>`:''}</div>
@@ -1369,12 +1370,13 @@ function rEscalacao(){const E=S.escalacao;
   if(!ESC||ESCO!==E.ordem.join(',')){ESC=E.ordem.slice();ESCO=E.ordem.join(',')}
   const M=escItens(),F=E.formacao;
   const chip=(i,campo)=>{const x=M[ESC[i]]||{};if(!x.id)return '';const lk=x.fora;
-    const st=campo&&F?`left:${Math.max(8,Math.min(92,F[i].lado/1.04))}%;top:${Math.max(6,Math.min(94,96-F[i].prof*2))}%`:'';
-    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)}${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small>${esc(campo&&F?F[i].papel:x.pos||'')}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
+    const st=campo&&F?`left:${Math.max(7,Math.min(93,F[i].lado/1.04))}%;top:${Math.max(5,Math.min(94,97-F[i].prof*1.95))}%`:'';
+    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small>${esc(campo&&F?(F[i].sigla||F[i].papel):x.pos||'')}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
   const c=$('escCampo');c.querySelectorAll('.eschip').forEach(f=>f.remove());
   c.insertAdjacentHTML('beforeend',[...Array(11).keys()].map(i=>chip(i,true)).join(''));
   $('escBanco').innerHTML=[...Array(12).keys()].map(i=>chip(11+i)).join('');
   $('escFora').innerHTML=[...Array(17).keys()].map(i=>chip(23+i)).join('')||'<div class="empty">Ninguém.</div>';
+  $('escInfo').textContent=(E.formacao_nome?'formação '+E.formacao_nome+' · ':'')+'posições do plano de jogo do save';
   $('escAuto').checked=!!E.auto;
   $('escAplicar').disabled=ESC.join(',')===E.ordem.join(',');
   $('escHist').innerHTML=(E.hist||[]).length?'<b style="font-size:13px">Últimos ajustes automáticos</b>'+E.hist.map(h=>`<div style="font-size:12px;color:var(--mut);margin-top:4px">${dt(h.data)}: ${h.mudancas.map(esc).join('; ')||'—'}</div>`).join(''):'';}
@@ -1431,13 +1433,21 @@ function rTimeline(){const ps=S.linha_tempo||[];const k=ps.map(p=>p.chave).join(
 function verPartida(i){const p=S.linha_tempo[i];const R={V:'Vitória',E:'Empate',D:'Derrota'}[p.res];
   $('dTitle').textContent=R;$('dBody').innerHTML=`<p style="font-size:22px;font-family:var(--head);text-align:center;margin:10px 0">${esc(p.mandante_nome)} <b style="color:var(--lime)">${p.gm} x ${p.gv}</b> ${esc(p.visitante_nome)}</p>
   <p style="text-align:center;color:var(--mut)">${esc(p.torneio_nome)} · ${dt(p.data)}</p>`;$('dOk').classList.add('hidden');dlg.showModal()}
+// uniformes de linha e de goleiro em abas separadas
+const ehGoleiro=k=>/^g\d+$/.test(k);
+function famAbas(atual,acao,cls){
+  const fs=Object.entries(S.familias||{}),gol=fs.filter(([k])=>ehGoleiro(k)),lin=fs.filter(([k])=>!ehGoleiro(k));
+  const noGol=ehGoleiro(atual),grupo=noGol?gol:lin,off=cls||'';
+  const aba=gol.length?`<div class="seg famtipo"><button class="${noGol?off:'on'}" onclick="${acao.replace('#',(lin[0]||[''])[0])}">👕 Linha (${lin.length})</button><button class="${noGol?'on':off}" onclick="${acao.replace('#',gol[0][0])}">🧤 Goleiro (${gol.length})</button></div>`:'';
+  return aba+`<div class="seg">${grupo.map(([k,n])=>`<button class="${k==atual?'on':off}" onclick="${acao.replace('#',k)}">${esc(n)}</button>`).join('')}</div>`;
+}
 function rKits(forcar){
   const prep=S.time&&S.time.prep&&S.time.prep.rodando;
   if(!REV||Date.now()-revT>(prep?3000:30000)||(REV._fam!=fam)){if(REV)REV._fam=fam;carregarRev()}
   if(REV&&!prep&&REV.prep&&REV.prep.rodando){revStamp=Date.now()}
   if(!Object.keys(S.familias||{}).length){$('famSeg').innerHTML='';$('candInfo').innerHTML='';
     $('slots').innerHTML=`<div class="empty">Os uniformes do ${esc(S.clube||'clube')} ainda não foram preparados. ${(S.status||{}).erro?esc(S.status.erro):'O app prepara sozinho na primeira leitura; isso leva alguns minutos.'}</div>`;return}
-  $('famSeg').innerHTML=Object.entries(S.familias).map(([k,v])=>`<button class="${k==fam?'on':''}" onclick="fam='${k}';kitStamp=Date.now();rKits()">${v}</button>`).join('');
+  $('famSeg').innerHTML=famAbas(fam,"fam='#';kitStamp=Date.now();rKits()");
   const src='/api/preview?familia='+fam+(cand?'&cand='+encodeURIComponent(JSON.stringify(cand)):'')+'&t='+kitStamp;
   if($('kitImg').dataset.src!=src){$('kitImg').dataset.src=src;$('kitImg').src=src}
   $('candInfo').innerHTML=cand?`prévia da proposta: <b style="color:var(--lime)">${esc(cand.empresa)}</b> <a style="color:var(--mut);cursor:pointer" onclick="cand=null;kitStamp=Date.now();rKits()">✕ limpar</a>`:'';

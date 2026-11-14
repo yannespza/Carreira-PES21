@@ -23,6 +23,9 @@ class _Vazio(dict):
 
 
 def fmt(txt, v):
+    from . import posicao
+    txt = posicao.limpar(txt)
+    posicao.completar(v)
     try:
         return string.Formatter().vformat(txt, (), _Vazio(v))
     except (ValueError, IndexError):
@@ -38,6 +41,8 @@ class Memoria:
     def escolher(self, chave, pool, rnd, v=None):
         if not pool:
             return ''
+        from . import posicao
+        pool = posicao.filtrar(pool, v)       # frase de goleiro só para goleiro, de atacante só para atacante...
         recentes = self.u.setdefault(chave, [])
         livres = [t for t in pool if t not in recentes]
         if not livres:                      # banco rodou inteiro: volta o mais antigo
@@ -151,7 +156,7 @@ já posso respirar?|cardiologista agradece|vitória no estilo {clube}: com emoç
     },
     'neutro': {
         'posts': L("""empate fora não é o fim do mundo|jogo travado, faltou criatividade|ponto é ponto... mas esperava mais|
-time precisa de reforço no meio|segue o campeonato|{jogador} sumiu no jogo hoje|nem bom nem ruim, morno|
+time precisa de reforço no meio|segue o campeonato|[MA]{jogador} sumiu no jogo hoje|nem bom nem ruim, morno|[G]{jogador} salvou o ponto com aquela defesa|[D]{jogador} segurou a zaga, pelo menos isso|
 dava pra ter vencido o {adv}|o {tecnico} precisa mexer mais cedo|{placar}, cada um leva um ponto pra casa|
 faltou o último passe, o resto foi ok|jogo pra esquecer rápido|criou pouco, sofreu pouco, empate justo|
 alguém mais achou que o time cansou no fim?|empate com gosto de derrota pra mim|empate com gosto de vitória pelo que foi o jogo|
@@ -168,7 +173,7 @@ se eu soubesse tinha ido no aniversário da minha tia"""),
     },
     'chateado': {
         'posts': L("""que fase... time sem alma|não dá pra perder assim pro {adv}|cadê a intensidade??|
-alguém explica essas substituições?|torcida não merece isso|{jogador} não pode ser titular|tá difícil defender esse time|
+alguém explica essas substituições?|torcida não merece isso|{jogador} não pode ser titular|tá difícil defender esse time|[G]{jogador} engoliu um frango que não dá pra aceitar|[D]{jogador} deixou o atacante passar como se fosse cone|[A]{jogador} perdeu gol feito, inacreditável|
 {tecnico} precisa achar o time logo|perder pro {adv} jogando desse jeito é triste|time entrou dormindo e acordou tarde|
 de novo o mesmo filme, gol bobo e time perdido|o {clube} não pode se acostumar a perder|
 sem padrão de jogo nenhum, cada um faz o que quer|toma gol e o time some, impressionante|
@@ -219,8 +224,8 @@ o reforço vai ser o roupeiro novo|com o dinheiro que tem dá pra contratar o ma
     },
     'escalacao': {
         'posts': L("""quem vocês colocam de titular no próximo jogo?|{jogador} tem que começar jogando|
-eu tirava o {jogador} e colocava alguém mais rápido|três zagueiros ou linha de quatro? opinem|
-o {tecnico} precisa testar o time com dois volantes|time ideal: goleiro, linha de quatro e {jogador} solto no meio|
+[DMA]eu tirava o {jogador} e colocava alguém mais rápido|três zagueiros ou linha de quatro? opinem|[G]{jogador} tem que ser o goleiro titular, sem discussão|[D]{jogador} na zaga dá outra segurança|[A]quero o {jogador} de referência lá na frente|[M]{jogador} tem que jogar de volante, ele organiza|
+o {tecnico} precisa testar o time com dois volantes|[M]time ideal: goleiro, linha de quatro e {jogador} solto no meio|
 quero ver o {jogador} de titular pelo menos uma vez|meio-campo precisa de mais saída de bola|
 alguém mais acha que o time rende mais no 4-3-3?|deixa o {jogador} no banco e vê o que acontece|
 time que ganhou não se mexe, ou mexe?"""),
@@ -282,7 +287,7 @@ contrata o técnico do meu time de várzea"""),
     'jogador_bom': {
         'posts': L("""{jogador} tá jogando muita bola|{jogador} é o melhor do elenco disparado|renova com o {jogador} já!|
 {jogador} merece convocação|que fase do {jogador}, impressionante|o {jogador} carrega esse time|
-{jogador} foi o melhor em campo de novo|tô com medo de levarem o {jogador} na janela"""),
+{jogador} foi o melhor em campo de novo|tô com medo de levarem o {jogador} na janela|[G]{jogador} fechou o gol de novo 🧤|[G]que goleiro, {jogador} pega tudo|[D]{jogador} não perde uma dividida, que zagueiro|[D]com o {jogador} atrás eu durmo tranquilo|[M]{jogador} dita o ritmo do meio-campo|[M]todo passe bom passa pelo pé do {jogador}|[A]{jogador} não para de fazer gol|[A]{jogador} na frente é gol certo"""),
         'concordo': L("""disparado|craque|merece demais|tem que blindar ele|melhor contratação dos últimos anos|
 o cara é diferenciado"""),
         'discordo': L("""bom jogador, mas some nos jogos grandes|tá bem, mas melhor do elenco é exagero|
@@ -290,9 +295,9 @@ ainda precisa provar mais|oscila muito"""),
         'zoeira': L("""já tô fazendo a camisa personalizada|{jogador} pra presidente|quero ser o {jogador} quando crescer"""),
     },
     'jogador_ruim': {
-        'posts': L("""{jogador} não pode ser titular|até quando o {jogador} vai jogar?|{jogador} sumiu nos últimos jogos|
+        'posts': L("""{jogador} não pode ser titular|até quando o {jogador} vai jogar?|[MA]{jogador} sumiu nos últimos jogos|
 {jogador} precisa de banco pra respirar|não entendo a insistência com o {jogador}|
-o {jogador} tá devendo muito|{jogador} errou tudo de novo, impressionante"""),
+o {jogador} tá devendo muito|{jogador} errou tudo de novo, impressionante|[G]{jogador} tomou mais um frango, não dá|[G]cada bola alta é um susto com o {jogador} no gol|[D]{jogador} deixou o atacante passar fácil de novo|[D]toda vez que o {jogador} sai pro bote a defesa fica exposta|[M]{jogador} não acerta um passe|[M]{jogador} só toca de lado, não cria nada|[A]{jogador} perdeu gol feito de novo|[A]atacante que não faz gol, né {jogador}"""),
         'concordo': L("""concordo|banco nele|tá devendo mesmo|não rende mais|já passou da hora|precisa de concorrência"""),
         'discordo': L("""calma, fase ruim todo mundo tem|ele joga machucado às vezes, ninguém sabe|
 o time não ajuda ele|já resolveu muito jogo, tem crédito|não vou crucificar|ele faz o trabalho sujo que ninguém vê"""),
@@ -301,7 +306,7 @@ o {jogador} assinou com o adversário e esqueceu de avisar"""),
     },
     'lesao': {
         'posts': L("""alguém sabe se {jogador} volta pro próximo jogo?|perder o {jogador} agora é um baque|
-força, {jogador}! volta logo 🙏|DM do {clube} precisa ser revisto, muita lesão|{jogador} faz muita falta, sem ele o time não cria|
+força, {jogador}! volta logo 🙏|DM do {clube} precisa ser revisto, muita lesão|[MA]{jogador} faz muita falta, sem ele o time não cria|[G]sem o {jogador} no gol dá até medo|[D]sem o {jogador} a zaga fica perdida|[A]sem o {jogador} quem vai fazer os gols?|
 saiu alguma informação sobre o {jogador}?|recupera com calma, {jogador}, não força"""),
         'concordo': L("""faz muita falta|torcendo pela recuperação|volta forte 🙏|sem ele o time perde muito|
 melhor voltar 100% do que forçar"""),
@@ -461,7 +466,8 @@ def _tema_de(texto):
     t = texto.strip().lower()
     for tema, b in TORCIDA.items():
         for modelo in b['posts']:
-            rx = re.escape(modelo.lower())
+            from . import posicao
+            rx = re.escape(posicao.limpar(modelo).lower())
             rx = re.sub(r'\\\{[a-z_]+\\\}', '.*', rx)
             if re.fullmatch(rx, t):
                 return tema

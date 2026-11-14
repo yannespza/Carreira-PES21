@@ -7,7 +7,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP_DIR)
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor, dirigentes, diretor, presidente, escalacao
+from core import assessor, dirigentes, diretor, presidente, escalacao, posicao
 from core.logos import LogoBank
 
 PORT = 8765
@@ -340,6 +340,7 @@ class App:
                 except Exception:
                     log(traceback.format_exc())
             self.elenco = sorted(el, key=lambda j: savedata.ORDEM_POS.get(j.get('pos'), 99))
+            posicao.registrar(self.elenco)
             try:
                 self.estatisticas = sumulas.do_clube(bytes(car.sf.data), car.team_id, nomes)
             except Exception:
@@ -800,6 +801,16 @@ class App:
             return
         indisp = self._indisponivel_fn(car.date)
         ordem, mud = escalacao.ajustar(esc, indisp, self._posicao_fn())
+        # quem estava afastado e foi liberado vai para a 1ª vaga dos não relacionados
+        st = self.state
+        noelenco = [p for p in esc['vagas'] if p]
+        afast_agora = [p for p in noelenco if indisp(p)]
+        antes_afast = st.get('escalacao_afastados')
+        liberados = [p for p in (antes_afast or []) if p in noelenco and p not in afast_agora]
+        for pid in reversed(liberados):
+            if escalacao.mover_para_primeiro_fora(ordem, esc['vagas'], pid):
+                mud.append(('liberado', pid, None, None))
+        st['escalacao_afastados'] = afast_agora
         if ordem == esc['ordem']:
             return
         antes = list(esc['ordem'])
@@ -816,11 +827,14 @@ class App:
             return
         self.save_mtime = car.mtime
         self.status['erro'] = None
-        saem, entram, banco = {}, [], []
+        saem, entram, banco, liberado_txt = {}, [], [], []
         for m in mud:
             if not isinstance(m, tuple):
                 continue
             tipo, entrou, saiu, info = m
+            if tipo == 'liberado':
+                liberado_txt.append(self._nome(entrou))
+                continue
             if info:
                 saem.setdefault(saiu, (info.get('motivo') or 'afastado').lower())
             if tipo == 'entra':
@@ -834,8 +848,9 @@ class App:
             linhas.append('entram no time: ' + ', '.join(entram))
         if banco:
             linhas.append('sobem para o banco: ' + ', '.join(banco))
+        if liberado_txt:
+            linhas.append('liberados pelo departamento médico (1º dos não relacionados): ' + ', '.join(liberado_txt))
         texto = '; '.join(linhas) or 'jogadores afastados foram tirados dos relacionados'
-        st = self.state
         hoje = st.get('data')
         st.setdefault('escalacao_hist', []).append({'data': hoje, 'mudancas': linhas,
                                                     'lido_em': time.strftime('%d/%m %H:%M')})
@@ -865,7 +880,11 @@ class App:
                 return {'vaga': s, 'vazio': True}
             return {'vaga': s, 'id': pid, 'nome': self._nome(pid), 'pos': pos(pid), 'fora': indisp(pid)}
         tit, res, fora = escalacao.grupos(esc['ordem'])
-        return {'titulares': [item(s) for s in tit], 'reservas': [item(s) for s in res],
+        det, curto = escalacao.nome_formacao(esc.get('formacao'))
+        conhecidas = {'4-2-3-1', '4-1-4-1', '4-3-2-1', '4-4-1-1', '3-4-2-1', '4-3-3', '4-4-2', '3-5-2', '3-4-3', '5-3-2',
+                      '5-4-1', '4-5-1', '4-1-2-1-2'}
+        nome_f = det if (det in conhecidas or not curto or curto == det) else f'{det} (variação do {curto})'
+        return {'titulares': [item(s) for s in tit], 'reservas': [item(s) for s in res], 'formacao_nome': nome_f,
                 'fora': [item(s) for s in fora if s < len(esc['vagas']) and esc['vagas'][s] is not None],
                 'ordem': esc['ordem'], 'formacao': esc.get('formacao'), 'auto': CFG.get('escalacao_auto', True),
                 'hist': (self.state or {}).get('escalacao_hist', [])[-5:][::-1]}
@@ -1205,6 +1224,12 @@ class App:
             json.dumps(self.state.get('estudio_aplicado') or {}, sort_keys=True)
         desenho = [] if self.state.get('kits_desenho', 1) == kits.VERSAO_DESENHO else \
             ['logos redesenhados (letras brancas e placas como a da Condor não somem mais)']
+        ja = set(self.state.get('kits_variantes') or [v[0] for v in kits.VARIANTS if not v[0].startswith('g')])
+        novos = [v for v in kits.VARIANTS if v[0] not in ja]
+        if novos:
+            gol = [v for v in novos if kits.e_goleiro(v[2])]
+            desenho = desenho + ([f"uniformes de goleiro ({len(gol)}) recebem os patrocínios"] if gol else []) + \
+                ([f"{len(novos) - len(gol)} uniforme(s) novo(s) recebem os patrocínios"] if len(novos) > len(gol) else [])
         if self.assinatura(atual) == aplicado:
             return (['cores, estrelas ou número do Estúdio de uniformes'] if mud_est else []) + desenho
         antes = {c[0]: c for c in json.loads(aplicado)}
@@ -1241,6 +1266,7 @@ class App:
                 with LOCK:
                     self.state['kits_aplicados'] = sig
                     self.state['kits_desenho'] = kits.VERSAO_DESENHO
+                    self.state['kits_variantes'] = sorted(v[0] for v in kits.VARIANTS)
                     self.state['estudio_aplicado'] = est
                     self.persist()
                 self.status['kits'] = 'ok'
@@ -2021,7 +2047,7 @@ def _versao():
 
 VERSAO = _versao()
 REPO = 'yannespza/Carreira-PES21'
-ARQUIVOS_CODIGO = ('app.py', 'versao.txt', 'Abrir App.bat', 'Instalar.bat', 'LEIA-ME.txt', 'core/', 'web/')
+ARQUIVOS_CODIGO = ('app.py', 'versao.txt', 'Abrir App.bat', 'Instalar.bat', 'LEIA-ME.txt', 'core/', 'web/', 'recursos/')
 
 
 def _vtuple(v):
