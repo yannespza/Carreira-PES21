@@ -463,22 +463,97 @@ dialog select,dialog input{width:100%}
 .en{display:flex;align-items:center;gap:8px;font-size:13px}.enn{width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .enb{flex:1;height:7px;background:#ffffff14;border-radius:4px;overflow:hidden}.enb i{display:block;height:100%;border-radius:4px}
 .acao.sel{outline:2px solid var(--lime)}
+
+/* ===== visual 4.0: vertical (monitor em pé), estilo modo carreira ===== */
+:root{--bg:#070B12;--bg2:#0C121D;--panel:#101826;--panel2:#162133;--line:rgba(255,255,255,.08);
+  --txt:#EAF0FA;--mut:#8591A8;--dim:#5E6A80;--lime:#22E58B;--lime2:#14B86B;--onlime:#03150B;
+  --gold:#F5B83D;--red:#F25C5C;--green:#22E58B;--blue:#3DA5F5;--cyan:#22D9E5;--r:18px;
+  --glass:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02))}
+html,body{font-size:15px}
+body{background:radial-gradient(900px 600px at 85% -5%,rgba(34,229,139,.14),transparent 60%),
+  radial-gradient(800px 700px at -10% 45%,rgba(61,165,245,.08),transparent 60%),var(--bg) fixed;padding-bottom:96px}
+/* topo compacto */
+.top{height:auto;min-height:76px;background:rgba(7,11,18,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{background:none;color:var(--txt);clip-path:none;padding:0 14px 0 20px}
+.brand .mk{border:0;transform:none;width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,var(--lime),var(--lime2));color:var(--onlime);font-size:20px;box-shadow:0 6px 18px rgba(34,229,139,.3)}
+.brand b{font-size:22px}.brand small{color:var(--mut)}
+.club{background:none;border:0;padding:0 10px;flex:1}
+.club b{font-size:22px}
+.right{flex-wrap:wrap;justify-content:flex-end;padding:10px 18px}
+.chip{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:16px}
+.right button.ghost{border-radius:12px}
+/* menu embaixo, com ícones */
+nav#nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:rgba(10,15,24,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+nav#nav a{flex:1;flex-direction:column;justify-content:center;gap:6px;padding:14px 2px 16px;border:0;position:relative;color:var(--dim);font-size:12px !important;letter-spacing:.08em !important;text-transform:uppercase}
+nav#nav a em{font-style:normal}
+nav#nav a.on{color:var(--lime);border:0}
+nav#nav a.on:before{content:"";position:absolute;top:0;left:50%;width:44px;margin-left:-22px;height:3px;border-radius:2px;background:var(--lime);box-shadow:0 0 16px var(--lime)}
+nav#nav .badge{position:absolute;top:8px;left:calc(50% + 8px)}
+/* barras de informação */
+.tl{background:transparent;border:0;padding:10px 22px}
+#sub,.mksub{background:transparent !important;color:var(--mut) !important;display:flex;flex-wrap:wrap;gap:8px 22px;padding:4px 22px 6px;font-size:13px}
+#sub select{background:var(--bg2) !important;color:var(--txt) !important;border-color:var(--line) !important;border-radius:8px}
+#sub a{color:var(--mut)}
+main{max-width:1080px;padding:18px 22px 40px}
+.crumb{font-size:13px}
+/* títulos e cartões */
+section>.crumb+.tabs2,section>.tabs2{position:sticky;top:76px;z-index:4;background:rgba(7,11,18,.9);backdrop-filter:blur(10px)}
+.tabs2{gap:8px;border:0;margin:6px -4px 18px;padding:8px 4px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.tabs2::-webkit-scrollbar{display:none}
+.tabs2 a{white-space:nowrap;padding:10px 18px;border:1px solid var(--line);border-radius:30px;font-family:var(--head);letter-spacing:.06em;text-transform:uppercase;font-size:14px;color:var(--mut)}
+.tabs2 a.on{background:var(--lime);border-color:var(--lime);color:var(--onlime)}
+.box,.meter,.card,.reader,.emp,.mkt,.kcol,.asscard,.postbox,.sala,.termo,.slot,.acao,.dmc,.proxj,.trof{border-radius:var(--r) !important}
+.box,.meter,.reader,.emp,.mkt{background:var(--glass),var(--panel);border:1px solid var(--line)}
+.box{padding:22px 24px}
+.box h3,.meter h4{font-size:17px;letter-spacing:.14em;color:var(--mut)}
+.card{background:var(--glass),var(--panel2);border:1px solid var(--line)}
+.card b{font-size:25px;white-space:nowrap}
+.row{border-radius:14px;background:var(--glass),var(--panel2);border:1px solid var(--line);padding:14px 16px}
+.row .lg,.msg .lg,.emp .lg{border-radius:10px}
+button{border-radius:12px;padding:11px 18px;font-size:14px}
+button.lime{background:linear-gradient(180deg,var(--lime),var(--lime2));box-shadow:0 8px 22px rgba(34,229,139,.28)}
+button.ghost{border-color:rgba(255,255,255,.16)}
+select,input{border-radius:10px;padding:10px 12px}
+.banner{border-radius:16px;background:linear-gradient(90deg,rgba(34,229,139,.16),rgba(34,229,139,.03));border-color:rgba(34,229,139,.3)}
+.pill{border-radius:20px;padding:3px 10px}
+.bar,.prog,.gbar,.enb{border-radius:8px;background:rgba(255,255,255,.08)}.bar i,.enb i{border-radius:8px}
+.toast{border-radius:14px;bottom:110px}
+dialog{border-radius:20px}
+/* herói do clube */
+.hero{grid-template-columns:1fr;border-radius:22px;padding:26px 28px}
+.hero h1{font-size:46px}
+.cards{flex-wrap:wrap}.cards .card{flex:1;min-width:140px}
+/* tudo numa coluna */
+.grid2,.kitwrap,.inbox,.limpgrid,.mkcard,.dist{grid-template-columns:1fr !important}
+.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.acoes,.deps,.kanban,.tecgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sala .conteudo{grid-template-columns:1fr}
+.palco{width:100%;height:560px;border-radius:16px}
+.palco.foto{height:640px}
+.tecfoto{height:520px}
+.rosto{height:520px}
+.campo{max-height:820px}
+.inbox>.box{max-height:620px !important}.inbox .reader{order:-1;min-height:0}
+/* elenco */
+.cards-el{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.carta{border-radius:16px;background:radial-gradient(circle at 70% 10%,rgba(61,165,245,.22),transparent 60%),var(--glass),var(--panel2);min-height:150px}
+.carta .ft{width:84px;height:84px}
+.cen{height:6px;top:5px}
+.carta .av2,.carta .alt{top:17px}
+/* notícias, partida ao vivo */
+.ncard{border-radius:16px}.ncard.big{flex-direction:column}.ncard.big .nmedia{min-height:260px}
+.live{border-radius:20px;padding:18px 22px;background:linear-gradient(120deg,rgba(242,92,92,.22),var(--panel) 65%)}
+.live .pl{font-size:34px}
+@media(max-width:760px){.grid3,.acoes,.deps,.kanban,.tecgrid{grid-template-columns:1fr}}
+:root[data-theme="light"] nav#nav{background:rgba(255,255,255,.95)}
+:root[data-theme="light"] .top{background:rgba(255,255,255,.9)}
+:root[data-theme="light"] .club b,:root[data-theme="light"] .brand b{color:#161a21}
 </style>
 </head>
 <body>
 <div class="top">
   <div class="brand"><div class="mk">P</div><div><b>CARREIRA</b><small>PATROCÍNIOS · PES 21</small></div></div>
   <div class="club"><small>Clube comandado</small><b id="clubName">—</b></div>
-  <nav id="nav">
-    <a data-t="clube" class="on">◆ Clube</a>
-    <a data-t="camp">◆ Campeonatos</a>
-    <a data-t="patro">◆ Comercial <span class="badge hidden" id="bOf"></span></a>
-    <a data-t="kits">◆ Uniformes <span class="badge hidden" id="bMkt"></span></a>
-    <a data-t="elenco">◆ Elenco</a>
-    <a data-t="fin">◆ Finanças</a>
-    <a data-t="news">◆ Mídia</a>
-    <a data-t="msgs">◆ Mensagens <span class="badge hidden" id="bMsg"></span></a>
-  </nav>
   <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
 <div class="tl" id="timeline"><small>LINHA DO TEMPO</small></div>
@@ -669,6 +744,16 @@ dialog select,dialog input{width:100%}
   </div>
 </dialog>
 <div class="toast" id="toast"></div>
+<nav id="nav">
+    <a data-t="clube" class="on"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg><em>Clube</em></a>
+    <a data-t="camp"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4"/></svg><em>Campeonatos</em></a>
+    <a data-t="patro"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><em>Comercial</em><span class="badge hidden" id="bOf"></span></a>
+    <a data-t="kits"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 3 2 5 3-1v11h8V10l3 1 2-5-5-3a4 4 0 01-8 0z"/></svg><em>Uniformes</em><span class="badge hidden" id="bMkt"></span></a>
+    <a data-t="elenco"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6"/><circle cx="17" cy="9" r="2.5"/><path d="M18 14c3 .5 4 2.5 4 5"/></svg><em>Elenco</em></a>
+    <a data-t="fin"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1.6 5-1.6 5 0s-5 3-5 4.6 5 1.6 5 0"/></svg><em>Finanças</em></a>
+    <a data-t="news"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg><em>Mídia</em></a>
+    <a data-t="msgs"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><em>Mensagens</em><span class="badge hidden" id="bMsg"></span></a>
+  </nav>
 
 <script>
 let somOn=true, ultNaoLidas=null, actx=null;
@@ -1502,7 +1587,7 @@ function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCore
   const sat=c=>{const m=Math.max(...c),n=Math.min(...c);return m-n};const lum=c=>.299*c[0]+.587*c[1]+.114*c[2];
   let c=S.cores.map(hexRgb).sort((a,b)=>sat(b)-sat(a))[0];
   if(sat(c)<40)return;  // camisa branca/preta: mantém o verde-limão do app
-  while(lum(c)<95)c=c.map(v=>Math.min(255,Math.round(v*1.25+12)));
+  while(lum(c)<140)c=c.map(v=>Math.min(255,Math.round(v*1.25+12)));
   const r=document.documentElement.style;r.setProperty('--lime','rgb('+c.join(',')+')');r.setProperty('--lime2','rgb('+c.map(v=>Math.round(v*.82)).join(',')+')');
   r.setProperty('--onlime',lum(c)>150?'#11140a':'#ffffff')}
 // linha do tempo

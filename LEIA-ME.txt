@@ -23,6 +23,13 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.0.0:
+- Visual novo, pensado para o monitor vertical: cartões translúcidos, menu embaixo com ícones,
+  sub-abas em botões arredondados que ficam presos no topo ao rolar, tudo em uma coluna.
+- A cor de destaque continua seguindo as cores do clube, agora mais viva.
+- Mensagens: a mensagem aberta aparece em cima da lista.
+- Nenhuma função foi removida.
+
 Novidades da 3.11.6:
 - Faixas com medidas "quebradas" (como a Faixa G5 do Allianz Parque) agora também são trocadas: o app
   arredonda o tamanho da textura em vez de desistir dela.
