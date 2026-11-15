@@ -548,16 +548,62 @@ dialog{border-radius:20px}
 :root[data-theme="light"] nav#nav{background:rgba(255,255,255,.95)}
 :root[data-theme="light"] .top{background:rgba(255,255,255,.9)}
 :root[data-theme="light"] .club b,:root[data-theme="light"] .brand b{color:#161a21}
+
+/* painel Central + topo (4.0.1) */
+.brand{display:none}
+.club{flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;padding:10px 22px}
+.club>div{display:flex;flex-direction:column}
+.club .topesc{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
+.club b{font-size:26px}.club small{color:var(--mut);font-size:13px}
+.chip2{display:flex;flex-direction:column;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:6px 14px}
+.chip2 small{font-size:10px;letter-spacing:.12em;color:var(--mut)}.chip2 b{font-family:var(--head);font-size:18px;color:var(--lime)}
+.crumb{font-size:0;margin:14px 0 6px}.crumb:before{display:none}
+.crumb b{font-family:var(--head);font-size:54px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1;color:var(--txt)}
+.ajustes{margin-top:30px;border-top:1px solid var(--line);padding:16px 0 !important}
+#painel{display:flex;flex-direction:column;gap:20px;margin-bottom:22px}
+.plab{font-family:var(--head);font-size:16px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+.pj,.pa,.pbox{background:var(--glass),var(--panel);border:1px solid var(--line);border-radius:22px}
+.pj{padding:28px 30px;position:relative;overflow:hidden;background:radial-gradient(360px 260px at 92% 0%,color-mix(in srgb,var(--lime) 30%,transparent),transparent 70%),linear-gradient(135deg,color-mix(in srgb,var(--lime) 16%,transparent),transparent 55%),var(--panel)}
+.pjh{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ptag{padding:7px 14px;border-radius:30px;background:color-mix(in srgb,var(--lime) 16%,transparent);color:var(--lime);font-family:var(--head);font-size:14px;letter-spacing:.1em;text-transform:uppercase}
+.pjv{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:24px 0}
+.pjt{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.pjt b{font-family:var(--head);font-size:22px;letter-spacing:.05em;text-transform:uppercase}
+.pescw{width:128px;height:128px;position:relative;display:grid;place-items:center}
+.pescw span{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;font-family:var(--head);font-size:40px;background:linear-gradient(145deg,#3A465E,#222B3D);box-shadow:0 0 0 3px rgba(255,255,255,.12),0 14px 30px rgba(0,0,0,.45)}
+.pesc{position:absolute;inset:0;width:128px;height:128px;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(0,0,0,.55))}
+.pescw:has(img) span{visibility:hidden}
+.pjm{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:18px}
+.pjm i{font-style:normal;font-family:var(--head);font-size:62px;opacity:.85;line-height:1}.pjm small{color:var(--mut);font-size:15px}
+.pjs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.pjs>div{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 12px;text-align:center}
+.pjs small{display:block;font-size:11px;letter-spacing:.12em;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pjs b{font-family:var(--head);font-size:22px}.pjs .res{width:22px;height:22px;font-size:12px;margin-right:2px}
+.pjb{display:flex;gap:14px}.pjb button{flex:1;padding:18px;font-size:19px;letter-spacing:.12em}
+.pan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pa{display:flex;align-items:center;gap:16px;padding:20px;cursor:pointer}
+.pa p{margin:6px 0 0;font-size:16px;color:#C5CFE2}
+.anel{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;flex:none}
+.anel>div{width:94px;height:94px;border-radius:50%;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.anel b{font-family:var(--head);font-size:30px;line-height:1}.anel small{font-size:11px;color:var(--mut)}
+.pbox{padding:22px 26px;cursor:pointer}
+.pcl,.pag{display:flex;align-items:center;gap:16px;padding:12px 12px;border-radius:12px;font-size:20px}
+.pcl span:first-child{width:28px;color:var(--mut)}.pn{flex:1;display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcl small{color:var(--mut)}.pcl b{width:52px;text-align:right;font-family:var(--head);font-size:22px}
+.pcl.eu{background:color-mix(in srgb,var(--lime) 14%,transparent);color:var(--lime);font-weight:700}
+.pag{border-bottom:1px solid var(--line);border-radius:0}.pag b{font-family:var(--head);width:70px}
+.pag em{font-style:normal;padding:4px 12px;border-radius:20px;font-family:var(--head);font-size:13px;letter-spacing:.08em;text-transform:uppercase;background:rgba(143,160,189,.14);color:#8FA0BD}
+.pag em.cup{background:rgba(245,184,61,.15);color:var(--gold)}
+@media(max-width:760px){.pan{grid-template-columns:1fr}.pesc{width:90px;height:90px}}
 </style>
 </head>
 <body>
 <div class="top">
   <div class="brand"><div class="mk">P</div><div><b>CARREIRA</b><small>PATROCÍNIOS · PES 21</small></div></div>
-  <div class="club"><small>Clube comandado</small><b id="clubName">—</b></div>
-  <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
+  <div class="club"><img class="topesc" src="/escudo.png" onerror="this.remove()"><div><b id="clubName">—</b><small id="clubSub">Clube comandado</small></div></div>
+  <div class="right"><span><i class="dot" id="gDot"></i><span id="gTxt">Jogo fechado</span></span><span class="chip2"><small>TRANSFERÊNCIAS</small><b id="cxChip">—</b></span><span class="chip" id="dateChip">--/--/----</span><button class="ghost" title="Fechar o app (para de ler o save)" onclick="sair()" style="padding:6px 9px">⏻</button><button class="ghost" id="somBtn" title="Aviso sonoro de mensagens" onclick="toggleSom()" style="padding:6px 9px">🔔</button></div>
 </div>
 <div class="tl" id="timeline"><small>LINHA DO TEMPO</small></div>
-<div class="mksub" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
 
 <div id="setup" class="hidden" style="position:fixed;inset:0;z-index:200;background:rgba(10,12,16,.92);overflow:auto;padding:40px 16px"><div class="box" style="max-width:760px;margin:0 auto" id="setupBox"></div></div>
 <main>
@@ -566,8 +612,8 @@ dialog{border-radius:20px}
 
   <!-- CLUBE -->
   <section id="t-clube">
-    <div class="crumb">Início / Clube / <b>Visão geral</b></div>
-    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Visão geral</a><a data-sub="tab">Classificação</a><a data-sub="dir">Diretoria</a><a data-sub="est">Estrutura e marca</a><a data-sub="riv">Clássicos</a><a data-sub="rank">Ranking</a><a data-sub="temp">Temporadas</a><a data-sub="tec">Carreira do técnico</a></div>
+    <div class="crumb">Início / Clube / <b>Central do técnico</b></div>
+    <div class="tabs2" data-grp="c"><a data-sub="geral" class="on">Central</a><a data-sub="tab">Classificação</a><a data-sub="dir">Diretoria</a><a data-sub="est">Estrutura e marca</a><a data-sub="riv">Clássicos</a><a data-sub="rank">Ranking</a><a data-sub="temp">Temporadas</a><a data-sub="tec">Carreira do técnico</a></div>
     <div id="c-tab" class="hidden"><div class="box"><h3>Classificação <small id="tabInfo"></small></h3><div id="tabela"></div></div></div>
     <div id="c-dir" class="hidden"><div id="dirBox"></div></div>
     <div id="c-est" class="hidden"><div id="estBox"></div></div>
@@ -576,6 +622,7 @@ dialog{border-radius:20px}
     <div id="c-temp" class="hidden"><div id="tempBox"></div></div>
     <div id="c-tec" class="hidden"><div id="tecBox"></div></div>
     <div id="c-geral">
+    <div id="painel"></div>
     <div class="hero">
       <img class="wmk" src="/escudo.png" onerror="this.remove()">
       <div>
@@ -733,6 +780,7 @@ dialog{border-radius:20px}
     </div>
   </section>
 
+<div class="mksub ajustes" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
   <div class="foot">App de Carreira · uso pessoal · versão <span id="ver">—</span>. Os dados vêm do último save gravado pelo jogo.</div>
 </main>
 
@@ -975,7 +1023,30 @@ function rIngame(){const g=S.ingame;const el=$('ingameBox');if(!el)return;
     <div>🌱 Gramado: <b>${(()=>{const c=((S.carreira||{}).gramado||{}).cond;return (c==null?'':Math.round(c)+'% · ')+(g.gramado=='otimo'?'impecável':g.gramado=='ruim'?'castigado':'normal')})()}</b> <small style="color:var(--mut)">· desgasta a cada jogo em casa e só recupera com investimento (Clube › Estrutura e marca)</small></div>
     <div>📐 Bandeirinhas: <b>${g.bandeirinha?'cores do clube + patrocinador master':'originais'}</b></div>
     <button class="ghost" onclick="api('/api/ingame/atualizar',{}).then(()=>{toast('Estádio atualizado. Vale a partir do próximo jogo em casa.');load()})">Refazer agora</button></div>`}
-function rClube(){rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();rRank();
+
+// painel "Central do técnico" (visual 4.0)
+function anel(p,c,sub){p=Math.max(0,Math.min(100,Math.round(p||0)));return `<div class="anel" style="background:conic-gradient(${c} ${p*3.6}deg,rgba(255,255,255,.08) 0)"><div><b>${p}%</b><small>${sub}</small></div></div>`}
+function pEsc(id,n){const ini=esc((n||'?').replace(/[^A-Za-zÀ-ú ]/g,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase());
+  return `<div class="pescw"><span>${ini}</span><img class="pesc" src="${S.time&&id==S.time.id?'/escudo.png':'/escudo/'+id+'.png'}" onerror="this.remove()"></div>`}
+function rPainel(){const el=$('painel');if(!el)return;const d=S.dinheiro||{};if($('cxChip'))$('cxChip').textContent=eurM(d.orc_transf);
+  const meu=S.time?S.time.id:null,L=((S.tabela||{}).linhas)||[],lin=id=>L.find(l=>l.id==id);
+  const P=S.proximos||[],j=P[0];let h='';
+  if(j){const casa=j.m==meu,adv=casa?j.v:j.m,advN=casa?j.vn:j.mn,me=lin(meu),la=lin(adv);
+    const forma=(S.forma||'').slice(-5).split('').map(r=>`<span class="res ${r}">${r}</span>`).join('')||'—';
+    h+=`<div class="pj"><div class="pjh"><span class="plab">Próxima partida</span><span class="ptag">${esc(j.comp||'')} · ${casa?'em casa':'fora'}</span></div>
+     <div class="pjv"><div class="pjt">${pEsc(j.m,j.mn)}<b>${esc(j.mn)}</b></div><div class="pjm"><i>VS</i><span>${dt(j.data)}</span><small>${casa&&S.ingame&&S.ingame.estadio?esc(S.ingame.estadio):''}</small></div><div class="pjt">${pEsc(j.v,j.vn)}<b>${esc(j.vn)}</b></div></div>
+     <div class="pjs"><div><small>FORMA</small><b>${forma}</b></div><div><small>POSIÇÃO</small><b>${me?me.pos+'º · '+me.pts+' pts':'—'}</b></div><div><small>${esc((advN||'ADVERSÁRIO').toUpperCase())}</small><b>${la?la.pos+'º · '+la.pts+' pts':'—'}</b></div></div>
+     <div class="pjb"><button class="lime" onclick="go('elenco');setTimeout(()=>{const a=document.querySelector('#etabs a[data-e=pran]');a&&a.click()},50)">Escalar time</button><button class="ghost" onclick="go('camp')">Ver campeonato</button></div></div>`}
+  const E=((S.carreira||{}).energia||{}).jogadores||[],m=S.mundo||{};
+  const en=E.length?E.reduce((a,x)=>a+x.energia,0)/E.length:null,sr=E.filter(x=>x.sem_ritmo).length,cans=E.filter(x=>x.energia<100).length;
+  h+=`<div class="pan">`+(en!=null?`<div class="pa" onclick="go('elenco')">${anel(en,corEn(Math.round(en)),'elenco')}<div><span class="plab">Energia</span><p>${sr?sr+' voltando de lesão':cans?cans+' abaixo de 100%':'todos descansados'}</p></div></div>`:'')+
+   (m.diretoria!=null?`<div class="pa" onclick="abrirSub('c','dir')">${anel(m.diretoria,cor(m.diretoria),'confiança')}<div><span class="plab">Diretoria</span><p>${m.diretoria>=80?'total confiança':m.diretoria>=55?'tranquila':m.diretoria>=35?'cobrando resultados':'cargo ameaçado'}</p></div></div>`:'')+
+   (m.torcida!=null?`<div class="pa">${anel(m.torcida,cor(m.torcida),'humor')}<div><span class="plab">Torcida</span><p>${m.torcida>=80?'euforia':m.torcida>=60?'satisfeita':m.torcida>=40?'desconfiada':'irritada'}</p></div></div>`:'')+`</div>`;
+  const i=L.findIndex(l=>l.id==meu);
+  if(i>=0){const ini=Math.max(0,Math.min(i-2,L.length-5));h+=`<div class="pbox" onclick="abrirSub('c','tab')"><span class="plab">Classificação</span>${L.slice(ini,ini+5).map(l=>`<div class="pcl ${l.id==meu?'eu':''}"><span>${l.pos}</span><span class="pn">${escT(l.id)}${esc(l.nome)}</span><small>${l.j} j</small><b>${l.pts}</b></div>`).join('')}</div>`}
+  if(P.length>1)h+=`<div class="pbox"><span class="plab">Agenda</span>${P.slice(1,5).map(x=>{const c=x.m==meu;return `<div class="pag"><b>${dt(x.data).slice(0,5)}</b><span class="pn">${esc(c?x.vn:x.mn)} · ${c?'casa':'fora'}</span><em class="${/liberta|sul-?americ|copa/i.test(x.comp||'')?'cup':''}">${esc(x.comp||'')}</em></div>`}).join('')}</div>`;
+  el.innerHTML=h}
+function rClube(){rPainel();rHumor();rIngame();rDir();rEstr();rRiv();rTemp();rTec();rRank();
   const d=S.dinheiro||{};
   $('hName').textContent=S.clube;const a=S.atratividade||0;
   $('hTier').textContent=a>=80?'ELITE':a>=60?'ALTA':a>=40?'MÉDIA':'BAIXA';
@@ -1580,6 +1651,10 @@ function limparPrancheta(){PR={};api('/api/prancheta',{pos:PR});rPrancheta()}
 function trocarTema(){const c=document.documentElement.dataset.theme=='light'?'dark':'light';document.documentElement.dataset.theme=c;try{localStorage.setItem('tema',c)}catch(e){};$('temaBtn').textContent=c=='light'?'Tema escuro':'Tema claro'}
 try{const t=localStorage.getItem('tema');if(t){document.documentElement.dataset.theme=t;setTimeout(()=>$('temaBtn').textContent=t=='light'?'Tema escuro':'Tema claro',0)}}catch(e){}
 // cores do clube (tema camaleão): a cor mais viva do uniforme vira a cor de destaque
+function vivo(c){let[r,g,b]=c.map(v=>v/255);const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;
+  if(d){h=mx==r?((g-b)/d)%6:mx==g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360}
+  const S2=.78,L=.52,C=(1-Math.abs(2*L-1))*S2,X=C*(1-Math.abs((h/60)%2-1)),m=L-C/2;
+  const t=h<60?[C,X,0]:h<120?[X,C,0]:h<180?[0,C,X]:h<240?[0,X,C]:h<300?[X,0,C]:[C,0,X];return t.map(v=>Math.round((v+m)*255))}
 function hexRgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16))}
 function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCores.k==k)return;aplicarCores.k=k;
   {const r0=document.documentElement.style;const cs=S.cores.map(hexRgb);const sa=c=>Math.max(...c)-Math.min(...c);const fo=cs.slice().sort((a,b)=>sa(b)-sa(a))[0];
@@ -1587,7 +1662,7 @@ function aplicarCores(){if(!S.cores)return;const k=S.cores.join();if(aplicarCore
   const sat=c=>{const m=Math.max(...c),n=Math.min(...c);return m-n};const lum=c=>.299*c[0]+.587*c[1]+.114*c[2];
   let c=S.cores.map(hexRgb).sort((a,b)=>sat(b)-sat(a))[0];
   if(sat(c)<40)return;  // camisa branca/preta: mantém o verde-limão do app
-  while(lum(c)<140)c=c.map(v=>Math.min(255,Math.round(v*1.25+12)));
+  c=vivo(c);
   const r=document.documentElement.style;r.setProperty('--lime','rgb('+c.join(',')+')');r.setProperty('--lime2','rgb('+c.map(v=>Math.round(v*.82)).join(',')+')');
   r.setProperty('--onlime',lum(c)>150?'#11140a':'#ffffff')}
 // linha do tempo

@@ -23,6 +23,14 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.0.1:
+- Clube abre na "Central do técnico", como na prévia: próxima partida em destaque com escudos, forma,
+  posição dos dois times e botão Escalar time; medidores redondos de energia, diretoria e torcida;
+  classificação perto do seu time e agenda dos próximos jogos.
+- Topo com o escudo e o nome do clube, orçamento de transferências e data. Título grande em cada tela.
+- Carreira, moeda, tema e pastas do jogo foram para o fim da página.
+- Cor de destaque mais viva, no tom da camisa do clube.
+
 Novidades da 4.0.0:
 - Visual novo, pensado para o monitor vertical: cartões translúcidos, menu embaixo com ícones,
   sub-abas em botões arredondados que ficam presos no topo ao rolar, tudo em uma coluna.
