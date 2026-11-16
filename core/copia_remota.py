@@ -9,7 +9,9 @@ Pastas no repositório:
   saves/AAAA-MM-DD/HHMMSS_app_carreira.json (o que o app guardou da carreira ativa naquele momento)
   saves/AAAA-MM-DD/HHMMSS_EDIT00000000.pesz (só quando o EDIT muda)
   ultimo.json                               (lista das últimas versões enviadas)
-Ficam as versões dos últimos DIAS_GUARDAR dias (o histórico do GitHub ainda guarda as apagadas).
+Limpeza semanal: durante a semana tudo fica guardado. Na primeira gravação de uma semana nova, o app deixa só as
+MANTER_VERSOES versões mais recentes de cada save (e o app_carreira.json delas) e recomeça o histórico do repositório
+do zero com esses arquivos, para as versões apagadas não continuarem ocupando espaço no histórico do GitHub.
 
 .pesz = o save decriptado e compactado (bem menor que o original) e que volta a ser o arquivo original byte a
 byte (conferido antes de enviar; se não bater, vai o original compactado).
@@ -17,7 +19,7 @@ O token fica só no PC (data/copia_remota.json), nunca vai para a tela nem para 
 import base64, datetime as dt, json, os, re, struct, threading, time, urllib.request, urllib.error, zlib
 
 ESPERA_MIN = 2           # minutos sem o arquivo mudar antes de enviar (o jogo terminou de gravar)
-DIAS_GUARDAR = 7
+MANTER_VERSOES = 2       # versões de cada save que sobram na limpeza semanal
 API = 'https://api.github.com'
 
 status = {'ultimo_envio': None, 'ultimo_arquivo': None, 'erro': None, 'enviando': False}
@@ -45,7 +47,7 @@ def publico(data_dir):
     """O que a tela pode ver (sem o token)."""
     c = ler_cfg(data_dir)
     return {'ativo': bool(c.get('ativo') and c.get('token') and c.get('repo')), 'repo': c.get('repo') or '',
-            'tem_token': bool(c.get('token')), 'espera_min': ESPERA_MIN, 'dias': DIAS_GUARDAR, **status,
+            'tem_token': bool(c.get('token')), 'espera_min': ESPERA_MIN, 'manter': MANTER_VERSOES, 'ultima_limpeza': c.get('limpeza_semana'), **status,
             'versoes': (c.get('ultimos') or [])[-8:][::-1]}
 
 
@@ -78,14 +80,44 @@ def _enviar_arquivo(token, repo, caminho, conteudo, msg):
     _req(token, 'PUT', f'/repos/{repo}/contents/{caminho}', corpo)
 
 
-def _limpar_antigos(token, repo, hoje):
-    pastas = _req(token, 'GET', f'/repos/{repo}/contents/saves') or []
-    limite = (hoje - dt.timedelta(days=DIAS_GUARDAR - 1)).isoformat()
-    for p in pastas:
-        if p.get('type') == 'dir' and p['name'] < limite:
-            for f in _req(token, 'GET', f'/repos/{repo}/contents/saves/{p["name"]}') or []:
-                _req(token, 'DELETE', f'/repos/{repo}/contents/{f["path"]}',
-                     {'message': f'remove cópia antiga {p["name"]}', 'sha': f['sha']})
+def _semana(d):
+    a, w, _ = d.isocalendar()
+    return f'{a}-S{w:02d}'
+
+
+def limpar_semana(token, repo, manter=MANTER_VERSOES):
+    """Deixa só as `manter` versões mais recentes de cada save e recomeça o histórico com elas (commit sem pai).
+    Devolve (arquivos mantidos, arquivos removidos)."""
+    info = _req(token, 'GET', f'/repos/{repo}')
+    ramo = (info or {}).get('default_branch') or 'main'
+    ref = _req(token, 'GET', f'/repos/{repo}/git/ref/heads/{ramo}')
+    if not ref:
+        return 0, 0
+    commit = _req(token, 'GET', f'/repos/{repo}/git/commits/{ref["object"]["sha"]}')
+    arvore = _req(token, 'GET', f'/repos/{repo}/git/trees/{commit["tree"]["sha"]}?recursive=1')
+    blobs = [t for t in (arvore or {}).get('tree', []) if t.get('type') == 'blob']
+    versoes = {}                       # arquivo do save -> [caminhos .pesz]
+    for t in blobs:
+        m = re.match(r'saves/(\d{4}-\d{2}-\d{2})/(\d{6})_(.+)\.pesz$', t['path'])
+        if m:
+            versoes.setdefault(m.group(3), []).append((m.group(1) + m.group(2), t['path']))
+    ficam = set()
+    for nome, lst in versoes.items():
+        for _, caminho in sorted(lst)[-manter:]:
+            ficam.add(caminho)
+            if nome.startswith('ML'):
+                ficam.add(caminho.replace('_' + nome + '.pesz', '_app_carreira.json'))
+    novos = [{'path': t['path'], 'mode': t.get('mode', '100644'), 'type': 'blob', 'sha': t['sha']}
+             for t in blobs if not t['path'].startswith('saves/') or t['path'] in ficam]
+    removidos = len(blobs) - len(novos)
+    if not removidos:
+        return len(novos), 0
+    tree = _req(token, 'POST', f'/repos/{repo}/git/trees', {'tree': novos})
+    novo = _req(token, 'POST', f'/repos/{repo}/git/commits',
+                {'message': f'limpeza semanal: ficam as {manter} versões mais recentes de cada save', 'tree': tree['sha'],
+                 'parents': []})
+    _req(token, 'PATCH', f'/repos/{repo}/git/refs/heads/{ramo}', {'sha': novo['sha'], 'force': True})
+    return len(novos), removidos
 
 
 def testar(token, repo):
@@ -194,10 +226,16 @@ def enviar(data_dir, save_path, estado_path, versao, forcar=False):
         info = {'versao_app': versao, 'enviado_em': dt.datetime.now().isoformat(timespec='seconds'),
                 'save_ativo': os.path.basename(save_path), 'pasta_save': os.path.dirname(save_path), 'versoes': c['ultimos'][::-1]}
         _enviar_arquivo(token, repo, 'ultimo.json', json.dumps(info, ensure_ascii=False, indent=1).encode(), 'índice')
-        try:
-            _limpar_antigos(token, repo, dt.date.today())
-        except Exception:
-            pass
+        sem = _semana(dt.date.today())
+        if c.get('limpeza_semana') != sem:
+            try:
+                if c.get('limpeza_semana'):              # na primeira semana não há o que limpar
+                    ficam, saiu = limpar_semana(token, repo)
+                    status['ultima_limpeza'] = f'{sem}: {saiu} arquivos apagados, {ficam} mantidos'
+                c['limpeza_semana'] = sem
+                salvar_cfg(data_dir, c)
+            except Exception as e:
+                status['erro'] = f'limpeza semanal: {e}'
         ult = lista[-1]
         status.update(ultimo_envio=info['enviado_em'], ultimo_arquivo=ult['caminho'].replace('saves/', ''), erro=None,
                       enviados_agora=n)
