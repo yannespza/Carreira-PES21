@@ -8,7 +8,7 @@ sys.path.insert(0, APP_DIR)
 from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
+from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
 from core import comissao, gestao_elenco, clube_eventos, premios
 from core.logos import LogoBank
 
@@ -330,6 +330,11 @@ class App:
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
             self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
+            try:    # diagnóstico somente leitura da memória do jogo (Sider): ajuda a achar lesão/energia/contrato na RAM
+                if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')) and CFG.get('memoria_diag', True):
+                    memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
+            except Exception:
+                log(traceback.format_exc())
             # moral: só existe no arquivo "Dados do time" (USERT...) que o jogo grava quando você salva o elenco
             us = sorted(glob.glob(os.path.join(os.path.dirname(car.path), 'USERT*')), key=os.path.getmtime)
             self.moral_data = None
@@ -1791,7 +1796,7 @@ def copia_watcher():
     """Cópia do save para análise a distância (core/copia_remota.py): confere a cada minuto."""
     while True:
         try:
-            copia_remota.enviar(DATA, A.save_path, A.state_path, VERSAO)
+            copia_remota.enviar(DATA, A.save_path, A.state_path, VERSAO, pasta_jogo=CFG.get('pasta_jogo'))
         except Exception:
             log(traceback.format_exc())
         time.sleep(60)
@@ -2163,7 +2168,7 @@ class H(BaseHTTPRequestHandler):
                     return self.send(400, {'erro': t['erro']})
             copia_remota.salvar_cfg(DATA, c)
             if body.get('enviar_agora'):
-                threading.Thread(target=copia_remota.enviar, args=(DATA, A.save_path, A.state_path, VERSAO, True),
+                threading.Thread(target=copia_remota.enviar, args=(DATA, A.save_path, A.state_path, VERSAO, True, CFG.get('pasta_jogo')),
                                  daemon=True).start()
             return self.send(200, copia_remota.publico(DATA))
         if u.path == '/api/config':

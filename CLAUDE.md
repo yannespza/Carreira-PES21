@@ -33,6 +33,7 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Gestão do elenco: renovação, empréstimo, insatisfeitos, conversa, histórico | `core/gestao_elenco.py` |
 | Pressão por vendas, planejamento, protestos/festa, convocação | `core/clube_eventos.py` |
 | Prêmios da liga (craque da rodada, artilharia, seleção) | `core/premios.py` |
+| Diagnóstico de memória do jogo via Sider (somente leitura; relatórios `memoria_*.txt` vão na cópia remota, pasta `memoria/`) | `core/memoria_jogo.py` |
 | Cópia do save para o GitHub privado (análise a distância) | `core/copia_remota.py` (repo yannespza/carreira-pes21-saves: `saves/AAAA-MM-DD/HHMMSS_<arquivo>.pesz`, uma versão por gravação; na virada da semana ficam só as 2 mais recentes de cada save e o histórico do repo recomeça). Abrir/comparar/montar no /tmp/sim: `ferramentas/saves_remotos.py` |
 Esses módulos são chamados em `App.mercado_processar` e `App.extras_processar`; a tela recebe `extras_view()`.
 Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o teste no PC).

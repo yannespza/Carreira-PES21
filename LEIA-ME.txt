@@ -427,3 +427,10 @@ Segurança:
 - Antes de mexer no save, o app guarda uma cópia em data\backups_save (as 30 mais recentes).
 - Os uniformes limpos (sem patrocínio) ficam em data\kits_base (Palmeiras) e data\times\<id>\kits_base (outros clubes).
 - Os uniformes originais do patch estão em ..\eFootball PES 2021\BACKUP_APP_CARREIRA\kits_originais
+
+VERSÃO 4.1.3 - Diagnóstico da memória do jogo (somente leitura)
+- O app instala um módulo pequeno no Sider que, ao carregar a partida e ao voltar ao menu, anota o que o jogo
+  mantém na memória (jogadores do seu clube). Ele não altera nada no jogo.
+- Para isso o app liga o "luajit.ext.enabled" no sider.ini (com backup). Para desligar: "memoria_diag": false em config.
+- Os relatórios (pasta GOGOSZ\AppCarreira\memoria_*.txt) vão junto com a cópia do save para o GitHub, para eu analisar.
+- Depois de atualizar, feche o app com o botão ⏻ e abra de novo; abra o jogo, carregue a carreira e inicie uma partida.
