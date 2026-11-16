@@ -1,20 +1,22 @@
-"""Cópia do save para análise a distância (o Claude lê pelo GitHub quando o PC está desligado).
+"""Cópia dos saves para análise a distância (o Claude lê pelo GitHub quando o PC está desligado).
 
-Sempre que o jogo grava o save da carreira, o app espera alguns minutos sem mudança e manda uma cópia
-para um repositório PRIVADO do GitHub do usuário. Cada dia tem a sua pasta e a cópia do dia é trocada a
-cada envio, então no fim do dia fica a última modificação. Junto vai o arquivo do app desta carreira.
+Sempre que o jogo grava um save do Master League (qualquer espaço, não só o da carreira ativa) ou o arquivo EDIT,
+o app espera ESPERA_MIN minutos sem mudança e manda uma VERSÃO NOVA para o repositório PRIVADO do usuário.
+Nada é substituído: cada gravação vira um arquivo próprio, com a hora no nome, para comparar antes e depois.
 
 Pastas no repositório:
-  saves/AAAA-MM-DD/<arquivo do save>     (ex.: saves/2026-11-16/ML00000006)
-  saves/AAAA-MM-DD/app_carreira.json     (o que o app guardou da carreira)
-  ultimo.json                            (data, hora, arquivo, versão do app)
-Ficam só os últimos DIAS_GUARDAR dias.
+  saves/AAAA-MM-DD/HHMMSS_ML00000006.pesz   (save compactado; ferramentas/saves_remotos.py abre)
+  saves/AAAA-MM-DD/HHMMSS_app_carreira.json (o que o app guardou da carreira ativa naquele momento)
+  saves/AAAA-MM-DD/HHMMSS_EDIT00000000.pesz (só quando o EDIT muda)
+  ultimo.json                               (lista das últimas versões enviadas)
+Ficam as versões dos últimos DIAS_GUARDAR dias (o histórico do GitHub ainda guarda as apagadas).
 
-O token fica só no PC (data/copia_remota.json), nunca vai para a tela nem para o GitHub.
-Nada aqui grava no save."""
-import base64, datetime as dt, json, os, threading, time, urllib.request, urllib.error
+.pesz = o save decriptado e compactado (bem menor que o original) e que volta a ser o arquivo original byte a
+byte (conferido antes de enviar; se não bater, vai o original compactado).
+O token fica só no PC (data/copia_remota.json), nunca vai para a tela nem para o GitHub. Nada aqui grava no save."""
+import base64, datetime as dt, json, os, re, struct, threading, time, urllib.request, urllib.error, zlib
 
-ESPERA_MIN = 10          # minutos sem o save mudar antes de enviar
+ESPERA_MIN = 2           # minutos sem o arquivo mudar antes de enviar (o jogo terminou de gravar)
 DIAS_GUARDAR = 7
 API = 'https://api.github.com'
 
@@ -44,7 +46,7 @@ def publico(data_dir):
     c = ler_cfg(data_dir)
     return {'ativo': bool(c.get('ativo') and c.get('token') and c.get('repo')), 'repo': c.get('repo') or '',
             'tem_token': bool(c.get('token')), 'espera_min': ESPERA_MIN, 'dias': DIAS_GUARDAR, **status,
-            'enviado_mtime': c.get('enviado_mtime')}
+            'versoes': (c.get('ultimos') or [])[-8:][::-1]}
 
 
 def _req(token, metodo, caminho, corpo=None):
@@ -98,45 +100,111 @@ def testar(token, repo):
     return {'ok': True}
 
 
+def empacotar(raw):
+    """Save decriptado e compactado. Só usa o formato decriptado se voltar ao original byte a byte."""
+    try:
+        from . import pescrypt
+        sf = pescrypt.decrypt(raw)
+        refeito = pescrypt.encrypt(sf)
+        if refeito == raw[:len(refeito)]:
+            partes = [bytes(sf.enc_header), bytes(sf.file_header), bytes(sf.description), bytes(sf.logo),
+                      bytes(sf.data), bytes(sf.serial), raw[len(refeito):]]
+            cab = struct.pack('<7I', *map(len, partes))
+            return b'PESZ1' + cab + zlib.compress(b''.join(partes), 6)
+    except Exception:
+        pass
+    return b'PESZ0' + zlib.compress(raw, 6)
+
+
+def desempacotar(blob):
+    """Devolve (arquivo original, dados decriptados ou None)."""
+    if blob[:5] == b'PESZ0':
+        return zlib.decompress(blob[5:]), None
+    if blob[:5] != b'PESZ1':
+        raise ValueError('não é um .pesz')
+    tam = struct.unpack_from('<7I', blob, 5)
+    corpo = zlib.decompress(blob[5 + 28:])
+    partes, p = [], 0
+    for t in tam:
+        partes.append(corpo[p:p + t])
+        p += t
+    from . import pescrypt
+    eh, fh, desc, logo, data, serial, cauda = partes
+    raw = pescrypt.encrypt(pescrypt.SaveFile(eh, fh, desc, logo, data, serial)) + cauda
+    return raw, data
+
+
+def _arquivos(pasta):
+    out = []
+    try:
+        for n in os.listdir(pasta):
+            if re.fullmatch(r'ML[0-9A-F]{8}', n) or n == 'EDIT00000000':
+                out.append(os.path.join(pasta, n))
+    except OSError:
+        pass
+    return out
+
+
 def enviar(data_dir, save_path, estado_path, versao, forcar=False):
-    """Manda a cópia do save de hoje. Devolve True se enviou."""
+    """Manda uma versão nova de cada save (e do EDIT) que mudou desde o último envio. Devolve quantos enviou."""
     c = ler_cfg(data_dir)
     if not (c.get('ativo') and c.get('token') and c.get('repo')) or not save_path or not os.path.exists(save_path):
-        return False
-    m = os.path.getmtime(save_path)
-    if not forcar:
-        if c.get('enviado_mtime') == m:
-            return False
-        if time.time() - m < ESPERA_MIN * 60:
-            return False
-    if not _lock.acquire(blocking=False):
-        return False
+        return 0
+    enviados = c.setdefault('enviados', {})          # caminho -> mtime enviado
+    agora = time.time()
+    pend = []
+    for arq in _arquivos(os.path.dirname(save_path)):
+        m = os.path.getmtime(arq)
+        if enviados.get(arq) == m:
+            continue
+        if not forcar and agora - m < ESPERA_MIN * 60:
+            continue
+        pend.append((m, arq))
+    if not pend or not _lock.acquire(blocking=False):
+        return 0
     status['enviando'] = True
+    n = 0
     try:
         token, repo = c['token'], c['repo']
-        dia = dt.datetime.fromtimestamp(m).date()
-        nome = os.path.basename(save_path)
-        with open(save_path, 'rb') as f:
-            bruto = f.read()
-        _enviar_arquivo(token, repo, f'saves/{dia.isoformat()}/{nome}', bruto, f'save {dia} {nome}')
-        if estado_path and os.path.exists(estado_path):
-            with open(estado_path, 'rb') as f:
-                _enviar_arquivo(token, repo, f'saves/{dia.isoformat()}/app_carreira.json', f.read(), f'app {dia}')
-        info = {'dia': dia.isoformat(), 'salvo_em': dt.datetime.fromtimestamp(m).isoformat(timespec='seconds'),
-                'arquivo': nome, 'pasta_save': os.path.dirname(save_path), 'versao_app': versao,
-                'enviado_em': dt.datetime.now().isoformat(timespec='seconds'), 'tamanho': len(bruto)}
-        _enviar_arquivo(token, repo, 'ultimo.json', json.dumps(info, ensure_ascii=False, indent=1).encode(), 'último envio')
+        lista = []
+        for m, arq in sorted(pend):
+            quando = dt.datetime.fromtimestamp(m)
+            dia, hora, nome = quando.date().isoformat(), quando.strftime('%H%M%S'), os.path.basename(arq)
+            with open(arq, 'rb') as f:
+                bruto = f.read()
+            blob = empacotar(bruto)
+            caminho = f'saves/{dia}/{hora}_{nome}.pesz'
+            _enviar_arquivo(token, repo, caminho, blob, f'{nome} {dia} {hora}')
+            item = {'arquivo': nome, 'caminho': caminho, 'salvo_em': quando.isoformat(timespec='seconds'),
+                    'tamanho_original': len(bruto), 'tamanho_enviado': len(blob), 'ativo': arq == save_path}
+            if arq == save_path and estado_path and os.path.exists(estado_path):
+                with open(estado_path, 'rb') as f:
+                    cj = f'saves/{dia}/{hora}_app_carreira.json'
+                    _enviar_arquivo(token, repo, cj, f.read(), f'app {dia} {hora}')
+                item['app_carreira'] = cj
+            enviados[arq] = m
+            c['enviados'] = enviados
+            salvar_cfg(data_dir, c)
+            lista.append(item)
+            n += 1
+        hist = c.setdefault('ultimos', [])
+        hist.extend(lista)
+        c['ultimos'] = hist[-40:]
+        salvar_cfg(data_dir, c)
+        info = {'versao_app': versao, 'enviado_em': dt.datetime.now().isoformat(timespec='seconds'),
+                'save_ativo': os.path.basename(save_path), 'pasta_save': os.path.dirname(save_path), 'versoes': c['ultimos'][::-1]}
+        _enviar_arquivo(token, repo, 'ultimo.json', json.dumps(info, ensure_ascii=False, indent=1).encode(), 'índice')
         try:
             _limpar_antigos(token, repo, dt.date.today())
         except Exception:
             pass
-        c['enviado_mtime'] = m
-        salvar_cfg(data_dir, c)
-        status.update(ultimo_envio=info['enviado_em'], ultimo_arquivo=f'{dia.isoformat()}/{nome}', erro=None)
-        return True
+        ult = lista[-1]
+        status.update(ultimo_envio=info['enviado_em'], ultimo_arquivo=ult['caminho'].replace('saves/', ''), erro=None,
+                      enviados_agora=n)
+        return n
     except Exception as e:
         status['erro'] = str(e)
-        return False
+        return n
     finally:
         status['enviando'] = False
         _lock.release()

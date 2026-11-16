@@ -23,6 +23,13 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.1.1:
+- Cópia para o Claude: agora cada gravação vira uma VERSÃO NOVA no repositório privado (nada é
+  substituído), com a hora no nome. Vão todos os espaços de save do Master League (não só o da
+  carreira ativa) e o arquivo EDIT quando ele muda. O envio acontece 2 minutos depois de o jogo
+  gravar. Ficam as versões dos últimos 7 dias. Os saves vão compactados (bem menores) e voltam
+  ao arquivo original exatamente igual. A tela mostra as últimas versões enviadas.
+
 Novidades da 4.1.0:
 - Elenco > Comissão técnica (novo): análise do próximo adversário (forma, gols, quem é perigoso,
   suspensos e pendurados), preleção antes do jogo (motivar, cobrar ou tranquilizar, avaliada depois
