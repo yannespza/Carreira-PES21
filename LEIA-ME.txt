@@ -439,3 +439,11 @@ VERSÃO 4.1.4
 - Uniformes: a prévia da camisa voltou para o lado das barras de ajuste (tamanho, posição, inclinação) e fica parada
   na tela enquanto você rola a lista de patrocínios. Em janela muito estreita ela fica em cima, também fixa.
 - O diagnóstico de memória da 4.1.3 foi desligado: o Sider não aceitou o módulo (dava erro e não fazia nada).
+
+VERSÃO 4.1.5 - Diagnóstico da memória do jogo refeito (somente leitura)
+- O módulo AppCarreiraMemoria.lua foi reescrito com a busca segura do próprio Sider (pula partes inválidas da memória)
+  e só lê dentro de áreas confirmadas. A busca tem limite de 8 segundos, na tela de escolha dos times.
+- Ele não altera nada no jogo. Grava memoria_antes_do_jogo.txt e memoria_menu.txt em GOGOSZ\AppCarreira,
+  que vão junto com a cópia do save para o GitHub.
+- Proteção: se o jogo travar no meio da busca ou o Sider registrar erro no módulo, o app desliga o diagnóstico
+  sozinho na próxima leitura do save (fica anotado o motivo em config.json, "memoria_diag_motivo").

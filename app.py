@@ -332,8 +332,16 @@ class App:
             self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
             try:    # diagnóstico somente leitura da memória do jogo (Sider): ajuda a achar lesão/energia/contrato na RAM
                 if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
-                    if CFG.get('memoria_diag', False):
-                        memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
+                    if CFG.get('memoria_diag', True):
+                        prob = memoria_jogo.saude(CFG['pasta_jogo'])
+                        if prob != 'ok':
+                            log('memória: desligada automaticamente:', prob)
+                            CFG['memoria_diag'] = False
+                            CFG['memoria_diag_motivo'] = prob
+                            jsave(os.path.join(DATA, 'config.json'), CFG)
+                            memoria_jogo.desligar(CFG['pasta_jogo'])
+                        else:
+                            memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
                     else:
                         memoria_jogo.desligar(CFG['pasta_jogo'])
             except Exception:

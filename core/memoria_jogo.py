@@ -23,16 +23,21 @@ TAM_ASSIN = 32
 
 LUA = r'''-- App Carreira PES 21: leitura da memória do jogo (SOMENTE LEITURA, diagnóstico).
 -- Procura na RAM a tabela de jogadores do clube (assinatura tirada do save pelo app) e grava o que achou em
--- GOGOSZ\AppCarreira\memoria_<evento>.txt. Não escreve nada na memória. Gerado pelo app; pode apagar.
+-- GOGOSZ\AppCarreira\memoria_<evento>.txt. Não escreve nada na memória do jogo. Gerado pelo app; pode apagar.
+-- Usa memory.safe_search (pula páginas inválidas) e só lê dentro de regiões confirmadas pelo VirtualQuery.
 local m = {}
 local root = ".\\GOGOSZ\\AppCarreira"
-local achado = nil      -- endereço (cdata) do 1º registro achado
-local assin_achada = nil
+local achado, achado_fim, assin_achada = nil, nil, nil
 local cdef_ok = false
+local LIMITE_SEG = 8
 
 local function tlog(...) log("AppCarreiraMemoria: " .. string.format(...)) end
-
 local function hex2bin(h) return (h:gsub("%x%x", function(c) return string.char(tonumber(c, 16)) end)) end
+
+local function status(txt)
+    local f = io.open(root .. "\\memoria_status.txt", "w")
+    if f then f:write(txt .. "\nquando=" .. os.date("%Y-%m-%d %H:%M:%S") .. "\n") f:close() end
+end
 
 local function ler_alvo()
     local f = io.open(root .. "\\memoria_alvo.txt", "r")
@@ -58,7 +63,7 @@ local function prepara_ffi()
         tlog("LuaJIT FFI desligado: ponha luajit.ext.enabled = 1 no sider.ini")
         return false
     end
-    pcall(ffi.cdef, [[
+    ffi.cdef([[
         typedef struct _AC_MBI { void* BaseAddress; void* AllocationBase; uint32_t AllocationProtect;
             size_t RegionSize; uint32_t State; uint32_t Protect; uint32_t Type; } AC_MBI;
         size_t VirtualQuery(const void* lpAddress, AC_MBI* lpBuffer, size_t dwLength);
@@ -67,25 +72,27 @@ local function prepara_ffi()
     return true
 end
 
-local function procurar(sig)
+-- devolve endereço achado e o fim da região onde ele está
+local function procurar(sig, t0)
     local mbi = ffi.new("AC_MBI[1]")
     local addr = ffi.cast("uint64_t", 0x10000)
     local limite = ffi.cast("uint64_t", 0x7FFFFFFF0000ULL)
     local regioes = 0
     while addr < limite do
+        if os.clock() - t0 > LIMITE_SEG then return nil, nil, regioes, true end
         if ffi.C.VirtualQuery(ffi.cast("void*", addr), mbi, ffi.sizeof("AC_MBI")) == 0 then break end
         local b = ffi.cast("uint64_t", mbi[0].BaseAddress)
         local sz = ffi.cast("uint64_t", mbi[0].RegionSize)
         if sz == 0 then break end
-        -- MEM_COMMIT (0x1000), PAGE_READWRITE (0x04), regiões de 1 MB ou mais (onde ficam os dados do Master League)
-        if mbi[0].State == 0x1000 and mbi[0].Protect == 0x04 and sz >= 0x100000 then
+        -- MEM_COMMIT, PAGE_READWRITE, MEM_PRIVATE, 1 MB ou mais (onde ficam os dados do Master League)
+        if mbi[0].State == 0x1000 and mbi[0].Protect == 0x04 and mbi[0].Type == 0x20000 and sz >= 0x100000 then
             regioes = regioes + 1
-            local ok, res = pcall(memory.search, sig, b, b + sz)
-            if ok and res then return res, regioes end
+            local res = memory.safe_search(sig, b, b + sz)
+            if res then return res, b + sz, regioes, false end
         end
         addr = b + sz
     end
-    return nil, regioes
+    return nil, nil, regioes, false
 end
 
 local function despejar(evento)
@@ -93,41 +100,44 @@ local function despejar(evento)
     if not a then return end
     if not prepara_ffi() then return end
     local t0 = os.clock()
-    local p = nil
+    status("busca=comecou\nevento=" .. evento)
+    local p, fim = nil, nil
     if achado and assin_achada == a.sig and memory.read(achado, #a.sig) == a.sig then
-        p = achado
+        p, fim = achado, achado_fim
     else
-        local res, regioes = procurar(a.sig)
+        local res, rfim, regioes, estourou = procurar(a.sig, t0)
         if not res then
-            tlog("assinatura NÃO encontrada (%d regiões olhadas, %.1fs)", regioes, os.clock() - t0)
+            tlog("assinatura NÃO encontrada (%d regiões, %.1fs%s)", regioes, os.clock() - t0, estourou and ", tempo esgotado" or "")
             local f = io.open(root .. "\\memoria_" .. evento .. ".txt", "w")
-            if f then f:write("achou=nao\nregioes=" .. regioes .. "\nquando=" .. os.date("%Y-%m-%d %H:%M:%S") .. "\n") f:close() end
+            if f then f:write("achou=nao\nregioes=" .. regioes .. "\ntempo_esgotado=" .. tostring(estourou)
+                .. "\nquando=" .. os.date("%Y-%m-%d %H:%M:%S") .. "\n") f:close() end
+            status("busca=terminou\nachou=nao")
             return
         end
-        p = res
-        achado, assin_achada = res, a.sig
+        p, fim = res, rfim
+        achado, achado_fim, assin_achada = res, rfim, a.sig
     end
-    local base = ffi.cast("char*", p) - a.desloc
+    local base = ffi.cast("uint64_t", p) - a.desloc
     local f = io.open(root .. "\\memoria_" .. evento .. ".txt", "w")
     if not f then return end
-    f:write("achou=sim\nendereco=" .. memory.hex(ffi.cast("uint64_t", base)) .. "\nquando=" .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
-    -- registros em sequência a partir do 1º (mesma ordem do save), até o id deixar de bater com a lista
+    f:write("achou=sim\nendereco=" .. string.format("%X", tonumber(base)) .. "\nquando=" .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
     local n = 0
     for i = 0, 120 do
         local r = base + i * a.passo
-        local ok, bytes = pcall(memory.read, r, a.passo)
-        if not ok then break end
+        if r + a.passo > fim then break end          -- nunca lê fora da região confirmada
+        local bytes = memory.read(r, a.passo)
         local id = memory.unpack("u32", bytes:sub(a.desloc + 1, a.desloc + 4))
         if id == 0 or id > 2000000 then break end
         f:write("reg=" .. i .. "|" .. id .. "|" .. memory.hex(bytes) .. "\n")
         n = n + 1
     end
     f:close()
+    status("busca=terminou\nachou=sim\nregistros=" .. n)
     tlog("%s: tabela achada, %d registros gravados (%.1fs)", evento, n, os.clock() - t0)
 end
 
-function m.set_teams(ctx, home, away) pcall(despejar, "antes_do_jogo") end
-function m.reset(ctx) pcall(despejar, "menu") end
+function m.set_teams(ctx, home, away) despejar("antes_do_jogo") end
+function m.reset(ctx) despejar("menu") end
 
 function m.init(ctx)
     ctx.register("set_teams", m.set_teams)
@@ -211,8 +221,32 @@ def ligar_ffi(pasta_jogo, backup_dir, log=print):
 STUB = '-- App Carreira: diagnóstico de memória DESLIGADO (o Sider não tem pcall; ficou sem efeito).\nlocal m = {}\nfunction m.init(ctx) end\nreturn m\n'
 
 
+def saude(pasta_jogo):
+    """'ok', ou o motivo para desligar: busca que começou e não terminou (jogo travou/fechou no meio) ou erro no log."""
+    pasta = os.path.join(pasta_jogo or '', PASTA)
+    try:
+        st = open(os.path.join(pasta, 'memoria_status.txt'), encoding='utf-8').read()
+        if 'busca=comecou' in st:
+            return 'a busca na memória começou e não terminou (o jogo pode ter travado)'
+    except OSError:
+        pass
+    try:
+        with open(os.path.join(pasta_jogo, 'sider.log'), 'rb') as f:
+            f.seek(0, 2); f.seek(max(0, f.tell() - 3_000_000))
+            for ln in f.read().splitlines():
+                if b'lua ERROR' in ln and b'AppCarreiraMemoria.lua' in ln and b"'pcall'" not in ln:
+                    return 'o Sider registrou erro no módulo de memória: ' + ln.decode('utf-8', 'replace')[-160:]
+    except OSError:
+        pass
+    return 'ok'
+
+
 def desligar(pasta_jogo):
     """Troca o módulo por uma versão vazia (não mexe no sider.ini)."""
+    try:
+        os.remove(os.path.join(pasta_jogo or '', PASTA, 'memoria_status.txt'))
+    except OSError:
+        pass
     mod = os.path.join(pasta_jogo or '', 'modules', MODULO)
     try:
         if os.path.exists(mod) and open(mod, encoding='utf-8', errors='replace').read() != STUB:
@@ -224,6 +258,6 @@ def desligar(pasta_jogo):
 def arquivos_lidos(pasta_jogo):
     p = os.path.join(pasta_jogo or '', PASTA)
     try:
-        return [os.path.join(p, n) for n in os.listdir(p) if re.fullmatch(r'memoria_(antes_do_jogo|menu)\.txt', n)]
+        return [os.path.join(p, n) for n in os.listdir(p) if re.fullmatch(r'memoria_(antes_do_jogo|menu|status)\.txt', n)]
     except OSError:
         return []
