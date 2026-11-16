@@ -49,6 +49,7 @@ Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o 
 - Partidas: registros 0x254 (`sumulas`).
 - Tabela de jogadores do clube: registros 0x170 (`jogadores.juniores`).
 - Detalhes completos: doc do projeto `claude/plano-de-jogo-no-save.md`.
+- Estrutura do arquivo EDIT (Team-Player 284 B, plano de jogo 628 B, ficha 240 B): doc do projeto `claude/edit-file-wiki-pes2021.md`. Para procurar a tabela Team-Player num save: `ferramentas/achar_team_player.py`.
 
 ## Gravações no save
 
