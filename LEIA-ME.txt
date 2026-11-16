@@ -26,7 +26,7 @@ Carreira com outro clube (versão 2.0):
 Novidades da 4.0.5:
 - Torcida no mercado: os posts não citam mais números. O tom vem dos números do jogador (fase boa,
   ruim, normal ou sem jogos) e de traços como goleador, garçom, em seca, titular absoluto, reserva,
-  regular, irregular, cartões, jovem, veterano e melhor ou pior que o seu titular. Mais de 300 frases,
+  regular, irregular, cartões, jovem, veterano e melhor ou pior que o seu titular. Quase 300 frases,
   com textos próprios para sondagem, contratação, negociação perdida, proposta, venda e recusa.
 - Imprensa continua citando os números, agora com mais manchetes e mais falas no debate.
 
