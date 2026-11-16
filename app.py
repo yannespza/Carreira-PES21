@@ -332,6 +332,11 @@ class App:
             self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
             try:    # diagnóstico somente leitura da memória do jogo (Sider): ajuda a achar lesão/energia/contrato na RAM
                 if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
+                    if CFG.get('memoria_diag_versao') != memoria_jogo.VERSAO_MOD:   # módulo novo: tenta de novo
+                        CFG.update(memoria_diag=True, memoria_diag_versao=memoria_jogo.VERSAO_MOD)
+                        CFG.pop('memoria_diag_motivo', None)
+                        jsave(os.path.join(DATA, 'config.json'), CFG)
+                        memoria_jogo.limpar_status(CFG['pasta_jogo'])
                     if CFG.get('memoria_diag', True):
                         prob = memoria_jogo.saude(CFG['pasta_jogo'])
                         if prob != 'ok':

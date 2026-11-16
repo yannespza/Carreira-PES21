@@ -447,3 +447,7 @@ VERSÃO 4.1.5 - Diagnóstico da memória do jogo refeito (somente leitura)
   que vão junto com a cópia do save para o GitHub.
 - Proteção: se o jogo travar no meio da busca ou o Sider registrar erro no módulo, o app desliga o diagnóstico
   sozinho na próxima leitura do save (fica anotado o motivo em config.json, "memoria_diag_motivo").
+
+VERSÃO 4.1.6
+- Diagnóstico de memória corrigido: outro módulo do Sider já usava a mesma função do Windows com outro formato,
+  e o nosso dava erro. Agora ele usa um nome próprio. O app religa o diagnóstico sozinho nesta versão.

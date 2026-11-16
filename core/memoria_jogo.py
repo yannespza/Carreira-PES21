@@ -16,6 +16,7 @@ NADA é gravado na memória do jogo nesta fase. Precisa de luajit.ext.enabled = 
 import os, re, shutil, time
 import numpy as np
 
+VERSAO_MOD = 3
 MODULO = 'AppCarreiraMemoria.lua'
 PASTA = os.path.join('GOGOSZ', 'AppCarreira')
 PASSO = 0x170
@@ -29,6 +30,7 @@ local m = {}
 local root = ".\\GOGOSZ\\AppCarreira"
 local achado, achado_fim, assin_achada = nil, nil, nil
 local cdef_ok = false
+local VQ = nil
 local LIMITE_SEG = 8
 
 local function tlog(...) log("AppCarreiraMemoria: " .. string.format(...)) end
@@ -63,11 +65,14 @@ local function prepara_ffi()
         tlog("LuaJIT FFI desligado: ponha luajit.ext.enabled = 1 no sider.ini")
         return false
     end
+    -- outro módulo do Sider já declara VirtualQuery com o tipo próprio; por isso declaramos só a estrutura
+    -- e ligamos a mesma função do Windows com outro nome (asm), sem conflito
     ffi.cdef([[
         typedef struct _AC_MBI { void* BaseAddress; void* AllocationBase; uint32_t AllocationProtect;
             size_t RegionSize; uint32_t State; uint32_t Protect; uint32_t Type; } AC_MBI;
-        size_t VirtualQuery(const void* lpAddress, AC_MBI* lpBuffer, size_t dwLength);
+        size_t AC_VirtualQuery(const void* lpAddress, AC_MBI* lpBuffer, size_t dwLength) asm("VirtualQuery");
     ]])
+    VQ = ffi.C.AC_VirtualQuery
     cdef_ok = true
     return true
 end
@@ -80,7 +85,7 @@ local function procurar(sig, t0)
     local regioes = 0
     while addr < limite do
         if os.clock() - t0 > LIMITE_SEG then return nil, nil, regioes, true end
-        if ffi.C.VirtualQuery(ffi.cast("void*", addr), mbi, ffi.sizeof("AC_MBI")) == 0 then break end
+        if VQ(ffi.cast("void*", addr), mbi, ffi.sizeof("AC_MBI")) == 0 then break end
         local b = ffi.cast("uint64_t", mbi[0].BaseAddress)
         local sz = ffi.cast("uint64_t", mbi[0].RegionSize)
         if sz == 0 then break end
@@ -239,6 +244,13 @@ def saude(pasta_jogo):
     except OSError:
         pass
     return 'ok'
+
+
+def limpar_status(pasta_jogo):
+    try:
+        os.remove(os.path.join(pasta_jogo or '', PASTA, 'memoria_status.txt'))
+    except OSError:
+        pass
 
 
 def desligar(pasta_jogo):
