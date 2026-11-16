@@ -434,3 +434,8 @@ VERSÃO 4.1.3 - Diagnóstico da memória do jogo (somente leitura)
 - Para isso o app liga o "luajit.ext.enabled" no sider.ini (com backup). Para desligar: "memoria_diag": false em config.
 - Os relatórios (pasta GOGOSZ\AppCarreira\memoria_*.txt) vão junto com a cópia do save para o GitHub, para eu analisar.
 - Depois de atualizar, feche o app com o botão ⏻ e abra de novo; abra o jogo, carregue a carreira e inicie uma partida.
+
+VERSÃO 4.1.4
+- Uniformes: a prévia da camisa voltou para o lado das barras de ajuste (tamanho, posição, inclinação) e fica parada
+  na tela enquanto você rola a lista de patrocínios. Em janela muito estreita ela fica em cima, também fixa.
+- O diagnóstico de memória da 4.1.3 foi desligado: o Sider não aceitou o módulo (dava erro e não fazia nada).

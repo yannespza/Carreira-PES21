@@ -208,6 +208,19 @@ def ligar_ffi(pasta_jogo, backup_dir, log=print):
     return True
 
 
+STUB = '-- App Carreira: diagnóstico de memória DESLIGADO (o Sider não tem pcall; ficou sem efeito).\nlocal m = {}\nfunction m.init(ctx) end\nreturn m\n'
+
+
+def desligar(pasta_jogo):
+    """Troca o módulo por uma versão vazia (não mexe no sider.ini)."""
+    mod = os.path.join(pasta_jogo or '', 'modules', MODULO)
+    try:
+        if os.path.exists(mod) and open(mod, encoding='utf-8', errors='replace').read() != STUB:
+            open(mod, 'w', encoding='utf-8').write(STUB)
+    except OSError:
+        pass
+
+
 def arquivos_lidos(pasta_jogo):
     p = os.path.join(pasta_jogo or '', PASTA)
     try:

@@ -331,8 +331,11 @@ class App:
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
             self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
             try:    # diagnóstico somente leitura da memória do jogo (Sider): ajuda a achar lesão/energia/contrato na RAM
-                if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')) and CFG.get('memoria_diag', True):
-                    memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
+                if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
+                    if CFG.get('memoria_diag', False):
+                        memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
+                    else:
+                        memoria_jogo.desligar(CFG['pasta_jogo'])
             except Exception:
                 log(traceback.format_exc())
             # moral: só existe no arquivo "Dados do time" (USERT...) que o jogo grava quando você salva o elenco
