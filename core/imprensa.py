@@ -270,12 +270,20 @@ def reportagem(noticia, ctx):
     outros = [k for k in JORNALISTAS if k != autor]
     r.shuffle(outros)
     mesa = []
-    if noticia.get('tipo') == 'campanha':          # camisa de campanha do marketing: o debate é sobre ela
+    if noticia.get('debate'):                       # notícia que já traz o debate pronto (mercado de transferências)
+        frases = list(noticia['debate'])
+        r.shuffle(frases)
+    elif noticia.get('tipo') == 'campanha':          # camisa de campanha do marketing: o debate é sobre ela
         from .marketing import MESA
         v['campanha'] = noticia.get('campanha_nome') or 'a campanha'
         frases = r.sample(MESA['ok' if noticia.get('aprovada') else 'nao'], 4)
     for i, k in enumerate([autor] + outros[:r.randint(2, 3)]):
         from . import posicao
+        if noticia.get('debate'):
+            if i >= len(frases):
+                break
+            mesa.append({'jornalista': k, **JORNALISTAS[k], 'texto': frases[i]})
+            continue
         t = frases[i] if noticia.get('tipo') == 'campanha' else r.choice(posicao.filtrar(C[k].get(sit) or C[k]['bastidores'], v))
         mesa.append({'jornalista': k, **JORNALISTAS[k], 'texto': _fmt(t, v)})
     prog = JORNALISTAS[r.choice([m['jornalista'] for m in mesa if m['jornalista'] != 'pilha'] or [autor])]['programa']

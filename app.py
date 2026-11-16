@@ -8,7 +8,7 @@ sys.path.insert(0, APP_DIR)
 from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota
+from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
 from core.logos import LogoBank
 
 PORT = 8765
@@ -742,6 +742,7 @@ class App:
                 log(traceback.format_exc())
             estrutura.registrar_marca(st, car.date)
             medico.processar(st, car.date, mu, self.engine)
+            self.mercado_processar(car)
             ingame.condicao_gramado(st, car.date, self.tid(), self.names)
             # cada carreira do jogo tem uma identidade própria: recomeçar no mesmo arquivo com o mesmo clube
             # vira uma passagem nova (o estado anterior foi arquivado) e não apaga a antiga
@@ -1021,6 +1022,98 @@ class App:
             self.juniores = sorted(jr, key=lambda j: -(j['cgj'] or 0))
         except Exception:
             log(traceback.format_exc())
+
+    def pool_mercado(self):
+        """Jogadores de todos os clubes da carreira (e os sem clube) para o auxiliar técnico, lidos do save.
+        Guardado até o save mudar."""
+        car = self.career
+        if car is None:
+            return []
+        chave = (self.save_path, self.save_mtime)
+        if getattr(self, '_pool_chave', None) == chave:
+            return self._pool
+        d = bytes(car.sf.data)
+        edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
+        nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
+        clubes = savedata.nomes_clubes(d)
+        # idade: a ficha tem a idade da base de dados; a diferença para a idade real do elenco (save) dá os anos
+        # que se passaram na carreira
+        difs = []
+        for j in self.elenco or []:
+            f = jogadores.ficha(savedata.FICHAS.get(j['id']))
+            if f and j.get('idade') and f.get('idade_base'):
+                difs.append(j['idade'] - f['idade_base'])
+        anos = sorted(difs)[len(difs) // 2] if difs else 0
+        stats = {}
+        try:
+            for p_ in sumulas.partidas(d):
+                for x in p_['escalacao_mandante'] + p_['escalacao_visitante']:
+                    s_ = stats.setdefault(x['id'], {'jogos': 0, 'titular': 0, 'gols': 0, 'assist': 0, 'amarelos': 0,
+                                                    'vermelhos': 0, 'minutos': 0, '_n': []})
+                    s_['jogos'] += 1
+                    s_['titular'] += x['titular']
+                    s_['gols'] += x['gols']
+                    s_['assist'] += x['assist']
+                    s_['amarelos'] += x['amarelo']
+                    s_['vermelhos'] += x['vermelho']
+                    s_['minutos'] += x['min']
+                    if x['nota'] is not None:
+                        s_['_n'].append(x['nota'])
+            for s_ in stats.values():
+                n_ = s_.pop('_n')
+                s_['nota_media'] = round(sum(n_) / len(n_), 2) if n_ else None
+        except Exception:
+            log(traceback.format_exc())
+        cgj_meu = {j['id']: j.get('cgj') for j in (self.elenco or [])}
+        pool, com_clube = [], set()
+
+        def jogador(pid, tid, clube):
+            n = nomes.get(pid) or {}
+            f = jogadores.ficha(savedata.FICHAS.get(pid))
+            if not n or not f:
+                return None
+            pos = n.get('pos') or ''
+            idade = (f.get('idade_base') + anos) if f.get('idade_base') else None
+            return {'id': pid, 'nome': n.get('nome') or f'Jogador {pid}', 'pos': pos, 'idade': idade,
+                    'cgj': cgj_meu.get(pid) or mercado.cgj_estimado(f, pos), 'time_id': tid, 'clube': clube,
+                    'estilo': f.get('estilo'), 'stats': stats.get(pid) or {}}
+        for tid, nome in clubes.items():
+            try:
+                ids = savedata.elenco(d, savedata.team_index(d, tid))
+            except Exception:
+                continue
+            for pid in ids:
+                com_clube.add(pid)
+                j = jogador(pid, tid, nome)
+                if j:
+                    pool.append(j)
+        for pid in nomes:              # sem clube: estão no banco de dados e em nenhum elenco da carreira
+            if pid not in com_clube:
+                j = jogador(pid, None, 'Sem clube')
+                if j and (j['cgj'] or 0) >= 60:
+                    pool.append(j)
+        self._pool_chave, self._pool = chave, pool
+        log('mercado: jogadores lidos', len(pool))
+        return pool
+
+    def mercado_processar(self, car):
+        try:
+            orc = (car.money() or {}).get('orc_transf')
+            st_ = {x['id']: x for x in (self.estatisticas or {}).get('jogadores', [])}
+            el = [{**j, 'stats': st_.get(j['id']) or {}} for j in (self.elenco or [])]
+            mercado.processar(self.state, self.engine, car.date, self.tid(), self.clube(), el, orc)
+        except Exception:
+            log(traceback.format_exc())
+
+    def mercado_view(self):
+        st = self.state
+        if st is None:
+            return None
+        try:
+            return mercado.view(st, sim.s2d(st['data']) if st.get('data') else None)
+        except Exception:
+            log(traceback.format_exc())
+            return None
 
     def elenco_view(self):
         st = self.state or {}
@@ -1537,7 +1630,7 @@ class App:
                        'tecnico_nome': CFG.get('tecnico_nome', ''), 'primeira': not CFG.get('configurado')},
             'clube': self.clube() if (self.time or self.state is not None or CFG.get('clube')) else '', 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
-                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'mercado': self.mercado_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
@@ -1910,6 +2003,29 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send(400, {'erro': f'Não consegui abrir a janela de pastas ({e}). Cole o caminho no campo.'})
             return self.send(200, {'pasta': os.path.normpath(p) if p else ''})
+        if u.path.startswith('/api/mercado/'):
+            if A.state is None:
+                return self.send(400, {'erro': 'Carregue uma carreira primeiro.'})
+            hoje = sim.s2d(A.state['data']) if A.state.get('data') else None
+            try:
+                with LOCK:
+                    if u.path == '/api/mercado/varrer':
+                        pos = [p for p in body.get('posicoes', []) if p in mercado.POSICOES]
+                        if not pos:
+                            return self.send(400, {'erro': 'Escolha pelo menos uma posição.'})
+                        mercado.varrer(A.state, pos, A.pool_mercado(), A.tid(), A.elenco or [], hoje)
+                    elif u.path == '/api/mercado/indicar':
+                        mercado.indicar(A.state, int(body['id']), hoje, A.tid(), A.clube(), A.engine)
+                    elif u.path == '/api/mercado/cancelar':
+                        mercado.cancelar(A.state, body['id'])
+                    elif u.path == '/api/mercado/responder':
+                        mercado.responder(A.state, body['id'], bool(body.get('aprovar')), hoje, A.clube(), A.engine)
+                    else:
+                        return self.send(404, {'erro': 'não encontrado'})
+                    A.persist()
+            except ValueError as e:
+                return self.send(400, {'erro': str(e)})
+            return self.send(200, {'ok': True, 'mercado': A.mercado_view()})
         if u.path == '/api/copia':
             c = copia_remota.ler_cfg(DATA)
             if 'repo' in body:

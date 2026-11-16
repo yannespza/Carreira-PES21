@@ -70,6 +70,7 @@ def ficha(raw: bytes):
         'pe_ruim_uso': _f(v, 126, 2) + 1, 'pe_ruim_precisao': _f(v, 318, 2) + 1,
         'forma': _f(v, 252, 3) + 1, 'resistencia_lesao': _f(v, 327, 2) + 1,
         'altura': raw[0x0a], 'peso': raw[0x0b] & 0x7f,
+        'idade_base': _f(v, 263, 6),      # idade da base de dados (4ccEditor); na carreira soma os anos passados
     }
 
 

@@ -371,7 +371,18 @@ dialog select,dialog input{width:100%}
 .ncard small{color:var(--mut);font-size:11px;margin-top:auto}
 .ntag{align-self:flex-start;font-family:var(--head);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:2px;background:rgba(255,255,255,.07);color:var(--mut)}
 .c-jogo .ntag{background:rgba(61,220,132,.15);color:var(--green)}.c-tabela .ntag{background:rgba(90,169,255,.15);color:var(--blue)}
-.c-mercado .ntag{background:rgba(242,194,48,.15);color:var(--gold)}.c-elenco .ntag{background:rgba(255,90,95,.14);color:var(--red)}
+.mk-jan{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.mk-jan .big{font-size:22px;font-weight:700}
+.mk-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.mk-chips a{cursor:pointer;padding:6px 12px;border-radius:16px;border:1px solid var(--line,rgba(255,255,255,.15));font-size:13px}
+.mk-chips a.on{background:var(--lime);color:#06210f;border-color:transparent;font-weight:700}
+.mk-c{border:1px solid var(--line,rgba(255,255,255,.12));border-radius:14px;padding:12px 14px;margin:8px 0;display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center}
+.mk-c .cg{font-size:22px;font-weight:800;text-align:center;line-height:1}.mk-c .cg small{display:block;font-size:10px;color:var(--mut);font-weight:600;margin-top:3px}
+.mk-c b{font-size:15px}.mk-c .meta{font-size:12px;color:var(--mut);margin-top:2px}.mk-c .nums{font-size:12px;margin-top:5px;display:flex;gap:10px;flex-wrap:wrap}
+.mk-c .obs{font-size:12px;margin-top:5px;color:var(--txt)}.mk-c .obs span:not(:last-child)::after{content:' · ';color:var(--mut)}
+.mk-c .acts{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.mk-ch{font-size:11px;padding:3px 8px;border-radius:9px;font-weight:700}.mk-ch.a{background:rgba(61,220,132,.15);color:var(--green)}
+.mk-ch.b{background:rgba(242,194,48,.15);color:var(--gold)}.mk-ch.c{background:rgba(255,90,95,.13);color:var(--red)}
+.mk-pos{margin:16px 0 4px;font-size:12px;letter-spacing:.08em;color:var(--mut)}
+.c-transf .ntag{background:rgba(80,170,255,.15);color:#6cb8ff}.c-mercado .ntag{background:rgba(242,194,48,.15);color:var(--gold)}.c-elenco .ntag{background:rgba(255,90,95,.14);color:var(--red)}
 .c-diretoria .ntag{background:rgba(190,140,255,.15);color:#c39bff}
 .nmedia{height:118px;position:relative;display:flex;align-items:center;justify-content:center;gap:12px;overflow:hidden;
   background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 70%,#000),color-mix(in srgb,var(--c1) 25%,#111))}
@@ -709,7 +720,7 @@ dialog{border-radius:20px}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="jun">Juniores</a><a data-e="pran">Escalação</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="jun">Juniores</a><a data-e="pran">Escalação</a><a data-e="merc">Mercado</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div id="elCtr"></div><div class="cards-el" id="elList"></div>
       <p style="font-size:12px;color:var(--mut);margin-top:14px">CGJ e idade vêm do save; atributos, habilidades e estilo de jogo da base de dados do patch; moral e fim de contrato do arquivo "Dados do time" (o jogo grava quando você salva o elenco). Clique num jogador para ver a ficha completa.</p></div></div>
     <div id="e-jun" class="hidden"><div class="box"><h3>Time de juniores <small id="junInfo"></small></h3><div class="cards-el" id="junList"></div>
@@ -735,6 +746,7 @@ dialog{border-radius:20px}
     <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
       <div class="kanban"><div class="kcol"><h4>NEGOCIANDO</h4><div id="kNeg"></div></div><div class="kcol"><h4>CHEGADAS</h4><div id="kIn"></div></div><div class="kcol"><h4>SAÍDAS</h4><div id="kOut"></div></div></div>
       <p style="font-size:12px;color:var(--mut);margin-top:12px">O valor é estimado pela variação do orçamento de transferências entre dois saves. Se você fizer várias negociações antes de salvar, o valor fica dividido entre elas.</p></div></div>
+    <div id="e-merc" class="hidden"><div id="mercBox"></div></div>
     <div id="e-evt" class="hidden"><div id="vestBox"></div><div class="box"><h3>Acontecimentos <small>afastamentos, lesões e o que rola no vestiário</small></h3><div id="evList"></div></div></div>
   </section>
 
@@ -1313,8 +1325,8 @@ const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'j
  lesao:'elenco',retorno:'elenco',evento:'elenco',vazamento:'bastidores',jog_elogio:'elenco',jog_critica:'elenco',
  diretoria_cobra:'diretoria',diretoria_elogia:'diretoria',coletiva:'imprensa',bastidores:'bastidores',
  classico_v:'jogo',classico_e:'jogo',classico_d:'jogo',vestiario_racha:'elenco',vestiario_unido:'elenco',jog_reclama:'elenco',vestiario:'elenco',
- tecnico_demitido:'diretoria',tecnico_sondado:'diretoria',tecnico_fica:'diretoria',tecnico_renova:'diretoria',tecnico_ultimato:'diretoria',tecnico_chega:'diretoria',estrutura:'bastidores'};
-const CATN={jogo:['Jogos','⚽'],tabela:['Tabela','📊'],mercado:['Patrocínio','💼'],elenco:['Elenco','🩺'],diretoria:['Diretoria','🏛️'],imprensa:['Coletiva','🎙️'],bastidores:['Bastidores','👀']};
+ transferencia:'transf',tecnico_demitido:'diretoria',tecnico_sondado:'diretoria',tecnico_fica:'diretoria',tecnico_renova:'diretoria',tecnico_ultimato:'diretoria',tecnico_chega:'diretoria',estrutura:'bastidores'};
+const CATN={jogo:['Jogos','⚽'],transf:['Mercado da bola','🔁'],tabela:['Tabela','📊'],mercado:['Patrocínio','💼'],elenco:['Elenco','🩺'],diretoria:['Diretoria','🏛️'],imprensa:['Coletiva','🎙️'],bastidores:['Bastidores','👀']};
 let NF='todas',NLIST=[],POSTSEL=0;
 const jnAv=j=>`<div class="jn" style="background:${j.cor}" title="${esc(j.nome)}">${esc(iniciais(j.nome.replace(/"[^"]*"/,'')))}</div>`;
 function fecharMat(){$('mat').classList.remove('on')}
@@ -1553,12 +1565,62 @@ document.addEventListener('click',e=>{const a=e.target.closest('.tabs2 a');if(!a
   if(b&&sec.id!='t-patro'&&sec.id!='t-kits')b.textContent=a.textContent.trim()});
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['cartas','jun','pran','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+  ['cartas','jun','pran','merc','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function fimContrato(p){if(!p.contrato_ate||!S.data)return false;const h=new Date(S.data),f=new Date(p.contrato_ate);return f>=h&&(f-h)<=366*864e5}
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
 function iniciais(n){return n.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
-function rElenco(){const el=S.elenco||[];const G=S.gestao||{};
+
+let MKSEL=new Set();
+const mkNums=s=>{s=s||{};if(!s.jogos)return '<span style="color:var(--mut)">sem jogos na temporada</span>';
+  return `<span>${s.jogos} J</span><span>${s.titular||0} titular</span><span>⚽ ${s.gols||0} ${(s.gols||0)==1?'gol':'gols'}</span><span>👟 ${s.assist||0} assist.</span>${s.nota_media?`<span>nota ${String(s.nota_media.toFixed(1)).replace('.',',')}</span>`:''}${(s.amarelos||s.vermelhos)?`<span>🟨 ${s.amarelos||0} 🟥 ${s.vermelhos||0}</span>`:''}`};
+const mkCh=t=>`<span class="mk-ch ${/muito prov|^prov/.test(t)?'a':/poss/.test(t)?'b':'c'}">${esc(t)}</span>`;
+function mkPos(p){MKSEL.has(p)?MKSEL.delete(p):MKSEL.add(p);rMercado()}
+async function mkVarrer(){if(!MKSEL.size)return toast('Escolha pelo menos uma posição.',true);$('mkMsg').textContent='O auxiliar está varrendo os clubes…';
+  try{const r=await api('/api/mercado/varrer',{posicoes:[...MKSEL]});S.mercado=r.mercado;rMercado();toast('Relatório do auxiliar pronto.')}catch(x){$('mkMsg').textContent=''}}
+async function mkIndicar(id,nome){if(!confirm(`Indicar ${nome} à diretoria? O diretor de futebol conduz a negociação e te avisa do resultado.`))return;
+  try{const r=await api('/api/mercado/indicar',{id});S.mercado=r.mercado;rMercado();toast('Indicação enviada ao diretor de futebol.')}catch(x){}}
+async function mkCancelar(id){if(!confirm('Pedir à diretoria para encerrar essa negociação?'))return;try{const r=await api('/api/mercado/cancelar',{id});S.mercado=r.mercado;rMercado()}catch(x){}}
+async function mkResp(id,ap,nome){if(!confirm(ap?`Aprovar a venda de ${nome}?`:`Recusar a proposta por ${nome}?`))return;
+  try{const r=await api('/api/mercado/responder',{id,aprovar:ap});S.mercado=r.mercado;rMercado();toast(ap?'Venda aprovada.':'Proposta recusada.')}catch(x){}}
+function rMercado(){const box=$('mercBox');if(!box)return;const M=S.mercado;
+  if(!M){box.innerHTML='<div class="box"><div class="empty">O mercado abre quando o app ler a carreira.</div></div>';return}
+  const J=M.janela||{};const ddmm=s=>s?dt(s):'—';
+  let h=`<div class="box"><h3>Janela de transferências <small>calendário do jogo${J.confirmada?'':' · datas padrão do PES, a confirmar no save'}</small></h3>
+   <div class="mk-jan"><span class="pill ${J.aberta?'ok':'off'}" style="font-size:13px;padding:4px 10px">${J.aberta?'ABERTA':'FECHADA'}</span>
+   <div><div class="big">${esc(J.nome||'')}</div><small style="color:var(--mut)">${J.aberta?`aberta até ${ddmm(J.fecha)}`:`abre em ${ddmm(J.abre)}${J.dias_para_abrir!=null?` · faltam ${J.dias_para_abrir} dias`:''}`}</small></div></div>
+   <p style="font-size:12px;color:var(--mut);margin:10px 0 0">Com a janela fechada a diretoria continua negociando: quem for contratado ou vendido troca de clube quando a janela abrir.${M.gravar_no_save?'':' Nesta versão a troca de clube no save ainda não é gravada: o negócio fica "pronto" até o teste no PC.'}</p></div>`;
+  // consultas de venda
+  if((M.consultas||[]).length)h+=`<div class="box" style="margin-top:14px;border-color:var(--gold)"><h3>🔔 A diretoria quer a sua opinião <small>propostas por jogadores do elenco</small></h3>${M.consultas.map(p=>{const j=p.jogador;
+    return `<div class="mk-c"><div class="cg">${j.cgj||'—'}<small>CGJ</small></div><div><b>${esc(j.nome)}</b> <span class="pill">${esc(j.pos||'')}</span>
+     <div class="meta">Proposta do <b style="color:var(--txt)">${esc(p.comprador)}</b>: ${eurM(p.valor)} · a diretoria avalia que está <b style="color:var(--txt)">${esc(p.avaliacao)}</b> do que ele vale hoje · responda até ${ddmm(p.prazo)}</div>
+     <div class="nums">${mkNums(j.stats)}</div>${(p.momento_por||[]).length?`<div class="obs">Momento: ${p.momento_por.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}</div>
+     <div class="acts"><button class="lime" onclick="mkResp('${p.id}',true,'${esc(j.nome)}')">Aprovar venda</button><button class="ghost" onclick="mkResp('${p.id}',false,'${esc(j.nome)}')">Recusar</button></div></div>`}).join('')}</div>`;
+  // auxiliar
+  h+=`<div class="box" style="margin-top:14px"><h3>Pedir ao auxiliar técnico <small>escolha as posições que precisa reforçar</small></h3>
+   <div class="mk-chips">${(M.posicoes||[]).map(p=>`<a class="${MKSEL.has(p.sigla)?'on':''}" onclick="mkPos('${p.sigla}')">${esc(p.nome)}</a>`).join('')}</div>
+   <div style="display:flex;gap:10px;align-items:center"><button class="lime" onclick="mkVarrer()">Varrer o mercado</button><span id="mkMsg" style="font-size:12px;color:var(--mut)"></span></div>`;
+  const R=M.relatorio;
+  if(R){h+=`<h4 class="mk-pos" style="margin-top:20px">RELATÓRIO DO AUXILIAR · ${ddmm(R.data)}</h4>`;
+    for(const P of R.posicoes){const cs=R.candidatos.filter(c=>c.para==P.pos);
+      h+=`<div class="mk-pos">${esc(P.nome.toUpperCase())} · ${P.titular?`hoje: ${esc(P.titular)} (CGJ ${P.titular_cgj})`:'sem titular de ofício'} · ${P.achados} opções analisadas</div>`;
+      h+=cs.length?cs.map(c=>`<div class="mk-c"><div class="cg">${c.cgj}<small>CGJ</small></div><div><b>${esc(c.nome)}</b> <span class="pill">${esc(c.pos||'')}</span>
+        <div class="meta">${esc(c.clube)} · ${c.idade||'?'} anos${c.estilo?' · '+esc(c.estilo):''}</div><div class="nums">${mkNums(c.stats)}</div>
+        <div class="obs">${(c.obs||[]).map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>
+        <div class="acts">${mkCh(c.chance_texto)}<button class="lime" onclick="mkIndicar(${c.id},'${esc(c.nome).replace(/'/g,"\\'")}')">Indicar à diretoria</button></div></div>`).join(''):'<div class="empty" style="font-size:12px">Ninguém melhor que o titular atual nessa posição.</div>'}}
+  h+=`</div>`;
+  // diretoria
+  const lista=(t,arr,f)=>`<h4 class="mk-pos">${t}</h4>`+(arr.length?arr.map(f).join(''):'<div class="empty" style="font-size:12px">Nada por enquanto.</div>');
+  const st={negociando:'negociando',acertada:'acertada · chega na janela',pronta:'pronta · aguardando gravação no save',aprovada:'vendida · sai na janela',fracassou:'não deu certo',cancelada:'cancelada'};
+  h+=`<div class="box" style="margin-top:14px"><h3>Diretoria de futebol <small>negociações conduzidas pelo diretor</small></h3>
+   ${lista('EM NEGOCIAÇÃO',M.negociando||[],n=>`<div class="ev"><div class="ic">⏳</div><div style="flex:1"><div><b>${esc(n.jogador.nome)}</b> · ${esc(n.jogador.clube||'')}</div><small>aberta em ${ddmm(n.inicio)} · resposta prevista até ${ddmm(n.previsto)}</small></div><button class="ghost" onclick="mkCancelar('${n.id}')">Encerrar</button></div>`)}
+   ${lista('CHEGADAS',M.chegadas||[],n=>`<div class="ev"><div class="ic">🟢</div><div><div><b>${esc(n.jogador.nome)}</b> · do ${esc(n.jogador.clube||'')} · ${esc(n.para)}</div><small>${st[n.status]} · acertado em ${ddmm(n.resolvido)}</small></div></div>`)}
+   ${lista('SAÍDAS',M.saidas||[],p=>`<div class="ev"><div class="ic">🔴</div><div><div><b>${esc(p.jogador.nome)}</b> → ${esc(p.comprador)} · ${eurM(p.valor)}</div><small>${st[p.status]||p.status} · aprovada em ${ddmm(p.respondida)}</small></div></div>`)}
+   ${lista('ENCERRADAS',[...(M.encerradas||[]),...(M.propostas_passadas||[])],x=>x.comprador?`<div class="ev"><div class="ic">✖️</div><div><b>Proposta do ${esc(x.comprador)} por ${esc(x.jogador.nome)}</b><small>${x.status=='recusada'?'recusada pelo técnico':esc(x.motivo||x.status)}</small></div></div>`:`<div class="ev"><div class="ic">✖️</div><div><div><b>${esc(x.jogador.nome)}</b> · ${esc(x.jogador.clube||'')}</div><small>${esc(x.motivo||st[x.status])}</small></div></div>`)}
+  </div>`;
+  box.innerHTML=h}
+
+function rElenco(){try{rMercado()}catch(x){console.error(x)}const el=S.elenco||[];const G=S.gestao||{};
   const ult=el.filter(fimContrato);$('elCtr').innerHTML=ult.length?`<div class="banner" style="margin-bottom:12px"><p><b>📝 Contrato terminando até o fim da temporada:</b> ${ult.map(p=>esc(p.nome)).join(', ')}. Renove no jogo ou planeje a reposição.</p></div>`:'';
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral e contratos de '+S.moral_data+' (Dados do time)':' · para ver a moral e os contratos, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
