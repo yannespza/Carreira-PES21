@@ -23,6 +23,27 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.1.0:
+- Elenco > Comissão técnica (novo): análise do próximo adversário (forma, gols, quem é perigoso,
+  suspensos e pendurados), preleção antes do jogo (motivar, cobrar ou tranquilizar, avaliada depois
+  do resultado), relatório do auxiliar após cada jogo (destaques, quedas de rendimento, sugestão de
+  mudança), metas individuais do mês e juniores prontos para subir.
+- Elenco > Gestão (novo): renovações dos contratos que acabam em até 6 meses (o jogador pode recusar),
+  insatisfeitos com pouco tempo de campo (conversar, prometer minutos ou liberar para negociação),
+  conversa individual (elogiar, cobrar, acalmar: o efeito depende da fase), empréstimos de jovens
+  e o histórico de cada jogador no clube.
+- Mercado: planejamento da temporada (posições prioritárias: o diretor se empenha mais e entrega um
+  relatório perto da janela), pedido de venda da diretoria quando o orçamento fica no vermelho
+  (recusar custa confiança) e propostas de clubes europeus pelas joias de até 21 anos.
+- Campeonatos: prêmios da liga montados pelas súmulas de todos os clubes: craque da rodada,
+  artilharia, garçom, revelação, craque da temporada e seleção do campeonato.
+- Diretoria: no início de cada temporada as metas são revistas pelo resultado da anterior; o cargo
+  continua sendo avaliado por elas (renovação ou demissão no fim da temporada).
+- Torcida protesta depois de 5 jogos sem vencer e faz festa depois de 4 vitórias seguidas.
+- Convocação para a seleção nas datas FIFA para quem vive grande fase (valoriza no mercado).
+- O ídolo da torcida agora também leva em conta os números do jogador no clube.
+- Renovações e empréstimos ainda não são gravados no save (ficam "prontos" até o teste no PC).
+
 Novidades da 4.0.5:
 - Torcida no mercado: os posts não citam mais números. O tom vem dos números do jogador (fase boa,
   ruim, normal ou sem jogos) e de traços como goleador, garçom, em seca, titular absoluto, reserva,

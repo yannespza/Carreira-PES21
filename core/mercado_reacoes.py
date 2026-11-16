@@ -158,6 +158,17 @@ def _manchete(evento, j, fs, clube, ff, r):
                              f'{clube} diz não ao {comp} e mantém {n}, apesar de {lado}'],
         ('recusa', 'normal'): [f'{clube} recusa oferta do {comp} por {n} ({lado})'],
     }
+    if evento in ('proposta_europa', 'venda_europa', 'recusa_europa'):
+        idade = j.get('idade') or '?'
+        M2 = {'proposta_europa': [f'{comp} faz proposta milionária por {n}, joia de {idade} anos do {clube}',
+                                  f'Europa de olho: {comp} quer {n}, de {idade} anos ({lado})',
+                                  f'{comp} oferece valor bem acima do mercado por {n}, do {clube}'],
+              'venda_europa': [f'{n}, de {idade} anos, é vendido ao {comp} em negócio milionário',
+                               f'{clube} fecha a venda de {n} ao {comp} ({lado})',
+                               f'Mais uma joia rumo à Europa: {n} acerta com o {comp}'],
+              'recusa_europa': [f'{clube} recusa proposta milionária do {comp} por {n}',
+                                f'{clube} diz não ao {comp} e segura a joia {n} ({lado})']}
+        return r.choice(M2[evento])
     ops = M.get((evento, fs)) or M.get((evento, 'normal')) or [n]
     return r.choice(ops)
 
@@ -183,6 +194,13 @@ def _materia(evento, j, fs, clube, ff, r):
             p.append(f'Aos {j["idade"]} anos, ' + ('é visto como aposta para o futuro.' if j['idade'] <= 22 else
                      'chegaria para resolver de imediato, num contrato mais curto.' if j['idade'] >= 31 else
                      'está na idade em que costuma render o melhor futebol.'))
+    elif evento in ('proposta_europa', 'venda_europa', 'recusa_europa'):
+        abre = {'proposta_europa': f'O {comp} apresentou proposta bem acima do valor de mercado por {n}, do {clube}.',
+                'venda_europa': f'O {clube} aceitou vender {n} ao {comp}.',
+                'recusa_europa': f'O {clube} recusou a proposta do {comp} por {n}.'}[evento]
+        p.append(abre + (f' Aos {j.get("idade")} anos, o {pos} tem {linha} na temporada.' if linha else f' Ele tem {j.get("idade")} anos.'))
+        p.append('A negociação divide opiniões: o valor é alto para o mercado brasileiro, mas o clube abre mão de um '
+                 'jogador que ainda pode crescer muito em casa.')
     else:
         abre = {'proposta': f'O {comp} apresentou proposta ao {clube} por {n}.',
                 'venda': f'O {clube} aceitou vender {n} ao {comp}.',
@@ -229,6 +247,8 @@ def _materia(evento, j, fs, clube, ff, r):
 
 
 def _humor(evento, fs):
+    if evento in ('proposta_europa', 'venda_europa', 'recusa_europa'):
+        return 'neutro'                           # torcida dividida
     bom = {('sondagem', 'boa'), ('acertada', 'boa'), ('recusa', 'boa'), ('venda', 'ruim'), ('proposta', 'ruim')}
     ruim = {('sondagem', 'ruim'), ('acertada', 'ruim'), ('fracassou', 'boa'), ('venda', 'boa'), ('proposta', 'boa'),
             ('recusa', 'ruim')}

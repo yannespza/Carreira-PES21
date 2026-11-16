@@ -9,6 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
+from core import comissao, gestao_elenco, clube_eventos, premios
 from core.logos import LogoBank
 
 PORT = 8765
@@ -743,6 +744,7 @@ class App:
             estrutura.registrar_marca(st, car.date)
             medico.processar(st, car.date, mu, self.engine)
             self.mercado_processar(car)
+            self.extras_processar(car, mu)
             ingame.condicao_gramado(st, car.date, self.tid(), self.names)
             # cada carreira do jogo tem uma identidade própria: recomeçar no mesmo arquivo com o mesmo clube
             # vira uma passagem nova (o estado anterior foi arquivado) e não apaga a antiga
@@ -1100,10 +1102,97 @@ class App:
         try:
             orc = (car.money() or {}).get('orc_transf')
             st_ = {x['id']: x for x in (self.estatisticas or {}).get('jogadores', [])}
-            el = [{**j, 'stats': st_.get(j['id']) or {}} for j in (self.elenco or [])]
-            mercado.processar(self.state, self.engine, car.date, self.tid(), self.clube(), el, orc)
+            conv = clube_eventos.convocados_recentes(self.state, car.date)
+            el = [{**j, 'stats': st_.get(j['id']) or {}, 'convocado': j['id'] in conv} for j in (self.elenco or [])]
+            jovens = el + [{**j, 'junior': True} for j in (self.juniores or [])]
+            mercado.processar(self.state, self.engine, car.date, self.tid(), self.clube(), el, orc, jovens=jovens)
         except Exception:
             log(traceback.format_exc())
+
+    def extras_processar(self, car, mu):
+        """Comissão técnica, gestão do elenco, eventos do clube e prêmios (um bloco protegido por vez)."""
+        st, hoje, clube, eng = self.state, car.date, self.clube(), self.engine
+        el, est = self.elenco or [], self.estatisticas
+        nomes_cl = self.names or {}
+        d = bytes(car.sf.data)
+        try:
+            todas = sumulas.partidas(d)
+        except Exception:
+            log(traceback.format_exc())
+            todas = []
+        passos = [
+            lambda: gestao_elenco.registrar_historico(st, est, el, hoje),
+            lambda: comissao.relatorio_pos_jogo(st, est, el, clube, eng, nomes_cl),
+            lambda: comissao.avaliar_prelecoes(st, st.get('partidas', []), self.tid(), clube, eng),
+            lambda: comissao.avaliar_metas(st, est, hoje, clube, eng, mu),
+            lambda: comissao.propor_metas(st, est, el, hoje, clube, eng),
+            lambda: setattr(self, 'base_rec', comissao.recomendar_base(st, self.juniores, el, hoje, clube, eng)),
+            lambda: gestao_elenco.checar_contratos(st, el, hoje, clube, eng),
+            lambda: gestao_elenco.checar_insatisfacao(st, el, est, hoje, clube, mu, eng,
+                                                      {x.get('jogador') for x in medico.view(st, hoje).get('ativos', [])}),
+            lambda: gestao_elenco.cobrar_promessas(st, est, hoje, clube, eng),
+            lambda: gestao_elenco.processar_emprestimos(st, hoje, mercado.janela(st, hoje), clube, eng,
+                                                        {j['id']: j['stats'] for j in (getattr(self, '_pool', None) or [])}),
+            lambda: clube_eventos.vencer_pedidos(st, hoje, clube, mu, eng),
+            lambda: clube_eventos.checar_caixa(st, car.money(), el, hoje, clube, eng, vestiario.idolo(st)),
+            lambda: clube_eventos.lembrete_planejamento(st, hoje, clube, eng),
+            lambda: clube_eventos.relatorio_prioridades(st, self.pool_mercado(), self.tid(), el, hoje,
+                                                        mercado.janela(st, hoje), clube, eng),
+            lambda: clube_eventos.checar_sequencia(st, hoje, clube, mu),
+            lambda: clube_eventos.checar_convocacao(st, est, el, hoje, clube, mu, eng),
+        ]
+        for f in passos:
+            try:
+                f()
+            except Exception:
+                log(traceback.format_exc())
+        try:
+            prox = (st.get('proximos') or [None])[0]
+            nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000'))
+            self.analise_adv = comissao.analise_adversario(todas, prox, self.tid(), nj, nomes_cl)
+        except Exception:
+            log(traceback.format_exc())
+            self.analise_adv = None
+        try:
+            nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000'))
+            idades = {j['id']: j.get('idade') for j in (getattr(self, '_pool', None) or []) if j.get('idade')}
+            idades.update({j['id']: j.get('idade') for j in el if j.get('idade')})
+            self.premios = premios.calcular(todas, self.tid(), nj, nomes_cl, idades)
+            for c in premios.noticiar(st, self.premios, clube, lambda n: mu.m['noticias'].append(n)):
+                gestao.moral_ajuste(st, c['nome'], 1, c['data'], 'craque da rodada', 10)
+        except Exception:
+            log(traceback.format_exc())
+            self.premios = None
+
+    def extras_view(self):
+        st = self.state
+        if st is None:
+            return {}
+        hoje = sim.s2d(st['data']) if st.get('data') else None
+        out = {}
+        try:
+            c = comissao._c(st)
+            prox = (st.get('proximos') or [None])[0]
+            chave = f"{prox['data']}|{prox['m']}|{prox['v']}" if prox else None
+            out['comissao'] = {'relatorios': c['relatorios'][-6:][::-1], 'analise': getattr(self, 'analise_adv', None),
+                               'proximo': prox, 'tons': comissao.TONS,
+                               'prelecao': next((p for p in c['prelecoes'] if p['chave'] == chave), None),
+                               'prelecoes': [p for p in c['prelecoes'] if p.get('avaliada') and p.get('texto')][-5:][::-1],
+                               'metas': [m for m in c['metas'] if m['status'] == 'ativa'],
+                               'metas_passadas': [m for m in c['metas'] if m['status'] != 'ativa'][-6:][::-1],
+                               'base': getattr(self, 'base_rec', []) or []}
+        except Exception:
+            log(traceback.format_exc())
+        try:
+            out['gestao_elenco'] = gestao_elenco.view(st, self.elenco or [], self.estatisticas, hoje)
+        except Exception:
+            log(traceback.format_exc())
+        try:
+            out['clube_eventos'] = clube_eventos.view(st)
+        except Exception:
+            log(traceback.format_exc())
+        out['premios'] = getattr(self, 'premios', None)
+        return out
 
     def mercado_view(self):
         st = self.state
@@ -1630,7 +1719,7 @@ class App:
                        'tecnico_nome': CFG.get('tecnico_nome', ''), 'primeira': not CFG.get('configurado')},
             'clube': self.clube() if (self.time or self.state is not None or CFG.get('clube')) else '', 'time': self.time_view(),
             'moeda': {'cod': sim.MOEDA['cod'], 'simbolo': sim.moeda()[0], 'taxa': sim.moeda()[1],
-                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'mercado': self.mercado_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
+                      'opcoes': {k: v[0] for k, v in sim.MOEDAS.items()}}, 'elenco': self.elenco_view(), 'mercado': self.mercado_view(), **self.extras_view(), 'moral_data': self.moral_data, 'data': st.get('data'), 'dinheiro': st.get('dinheiro', {}),
             'atratividade': eng.atratividade() if eng else None, 'forma': eng.forma() if eng else '',
             'partidas': partidas[::-1], 'tabela': st.get('tabela'),
             'linha_tempo': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
@@ -2003,6 +2092,37 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send(400, {'erro': f'Não consegui abrir a janela de pastas ({e}). Cole o caminho no campo.'})
             return self.send(200, {'pasta': os.path.normpath(p) if p else ''})
+        if u.path.startswith(('/api/comissao/', '/api/elenco/', '/api/clube/')):
+            if A.state is None:
+                return self.send(400, {'erro': 'Carregue uma carreira primeiro.'})
+            hoje = sim.s2d(A.state['data']) if A.state.get('data') else None
+            st, clube, eng = A.state, A.clube(), A.engine
+            try:
+                with LOCK:
+                    mu = mundo.Mundo(st, clube, A.tid())
+                    if u.path == '/api/comissao/prelecao':
+                        comissao.prelecao(st, (st.get('proximos') or [None])[0], body.get('tom'), st.get('data'))
+                    elif u.path == '/api/elenco/renovar':
+                        gestao_elenco.decidir_renovacao(st, int(body['id']), bool(body.get('renovar')), hoje, clube,
+                                                        A.estatisticas, eng, A.tid())
+                    elif u.path == '/api/elenco/emprestar':
+                        gestao_elenco.emprestar(st, int(body['id']), A.elenco or [], hoje, clube, eng)
+                    elif u.path == '/api/elenco/insatisfeito':
+                        gestao_elenco.responder_insatisfeito(st, int(body['id']), body.get('acao'), hoje, clube, eng)
+                    elif u.path == '/api/elenco/conversar':
+                        r_ = gestao_elenco.conversar(st, int(body['id']), body.get('tipo'), A.elenco or [], A.estatisticas, hoje, clube)
+                        A.persist()
+                        return self.send(200, {'ok': True, 'conversa': r_})
+                    elif u.path == '/api/clube/prioridades':
+                        clube_eventos.definir_prioridades(st, body.get('posicoes') or [], hoje)
+                    elif u.path == '/api/clube/pedido_venda':
+                        clube_eventos.responder_pedido_venda(st, bool(body.get('aceitar')), hoje, clube, mu, eng)
+                    else:
+                        return self.send(404, {'erro': 'não encontrado'})
+                    A.persist()
+            except ValueError as e:
+                return self.send(400, {'erro': str(e)})
+            return self.send(200, {'ok': True})
         if u.path.startswith('/api/mercado/'):
             if A.state is None:
                 return self.send(400, {'erro': 'Carregue uma carreira primeiro.'})

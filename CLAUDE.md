@@ -27,6 +27,15 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Diretoria, emprego, carreira do técnico | `core/diretoria.py`, `core/diretor.py`, `core/tecnico_carreira.py` |
 | Foto/cena da coletiva | `core/tecnico.py`, `core/cena.py` |
 | Visual no estádio via Sider (faixas, gramado) | `core/ingame.py` |
+| Mercado: auxiliar, diretor de futebol, propostas, janelas, Europa | `core/mercado.py`; reações `core/mercado_reacoes.py` (imprensa com números) e `core/mercado_torcida.py` (torcida sem números) |
+| Finanças reais dos clubes (índice de poder, caixa por janela) | `core/financas_clubes.py` + `core/clubes_financas_2025.json` |
+| Comissão técnica: relatório pós-jogo, adversário, preleção, metas, base | `core/comissao.py` |
+| Gestão do elenco: renovação, empréstimo, insatisfeitos, conversa, histórico | `core/gestao_elenco.py` |
+| Pressão por vendas, planejamento, protestos/festa, convocação | `core/clube_eventos.py` |
+| Prêmios da liga (craque da rodada, artilharia, seleção) | `core/premios.py` |
+| Cópia do save para o GitHub privado (análise a distância) | `core/copia_remota.py` (repo yannespza/carreira-pes21-saves) |
+Esses módulos são chamados em `App.mercado_processar` e `App.extras_processar`; a tela recebe `extras_view()`.
+Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o teste no PC).
 
 ## O save (ML0000000X), já decriptado com `pescrypt.decrypt(raw).data`
 

@@ -382,6 +382,13 @@ dialog select,dialog input{width:100%}
 .mk-ch{font-size:11px;padding:3px 8px;border-radius:9px;font-weight:700}.mk-ch.a{background:rgba(61,220,132,.15);color:var(--green)}
 .mk-ch.b{background:rgba(242,194,48,.15);color:var(--gold)}.mk-ch.c{background:rgba(255,90,95,.13);color:var(--red)}
 .mk-pos{margin:16px 0 4px;font-size:12px;letter-spacing:.08em;color:var(--mut)}
+:is(#comBox,#gesBox,#premiosBox,#mercBox) .ev b{display:inline}:is(#comBox,#gesBox,#premiosBox,#mercBox) .ev small{display:block;margin-top:2px}
+.fx{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.forma i{display:inline-block;width:22px;height:22px;border-radius:6px;text-align:center;line-height:22px;font-style:normal;font-weight:800;font-size:12px;margin-right:3px}
+.forma .V{background:rgba(61,220,132,.2);color:var(--green)}.forma .E{background:rgba(242,194,48,.18);color:var(--gold)}.forma .D{background:rgba(255,90,95,.16);color:var(--red)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0}.kv div{background:var(--panel2);border-radius:12px;padding:10px 12px}.kv b{display:block;font-size:20px}.kv small{color:var(--mut);font-size:11px}
+.tom{display:flex;gap:8px;flex-wrap:wrap}.tom button.on{outline:2px solid var(--lime)}
+.sel11{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.sel11 div{background:var(--panel2);border-radius:10px;padding:8px 10px}.sel11 div.eu{outline:1px solid var(--lime)}
+.sel11 small{display:block;color:var(--mut);font-size:11px}
 .c-transf .ntag{background:rgba(80,170,255,.15);color:#6cb8ff}.c-mercado .ntag{background:rgba(242,194,48,.15);color:var(--gold)}.c-elenco .ntag{background:rgba(255,90,95,.14);color:var(--red)}
 .c-diretoria .ntag{background:rgba(190,140,255,.15);color:#c39bff}
 .nmedia{height:118px;position:relative;display:flex;align-items:center;justify-content:center;gap:12px;overflow:hidden;
@@ -720,7 +727,7 @@ dialog{border-radius:20px}
   <!-- ELENCO -->
   <section id="t-elenco" class="hidden">
     <div class="crumb">Início / Elenco / <b>Jogadores</b></div>
-    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="jun">Juniores</a><a data-e="pran">Escalação</a><a data-e="merc">Mercado</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
+    <div class="tabs2" id="etabs"><a data-e="cartas" class="on">Jogadores</a><a data-e="jun">Juniores</a><a data-e="pran">Escalação</a><a data-e="com">Comissão técnica</a><a data-e="ges">Gestão</a><a data-e="merc">Mercado</a><a data-e="transf">Transferências</a><a data-e="evt">Vestiário</a><a data-e="dm">Departamento médico</a><a data-e="stats">Estatísticas</a></div>
     <div id="e-cartas"><div class="box"><h3>Elenco do clube <small id="elInfo"></small></h3><div id="elCtr"></div><div class="cards-el" id="elList"></div>
       <p style="font-size:12px;color:var(--mut);margin-top:14px">CGJ e idade vêm do save; atributos, habilidades e estilo de jogo da base de dados do patch; moral e fim de contrato do arquivo "Dados do time" (o jogo grava quando você salva o elenco). Clique num jogador para ver a ficha completa.</p></div></div>
     <div id="e-jun" class="hidden"><div class="box"><h3>Time de juniores <small id="junInfo"></small></h3><div class="cards-el" id="junList"></div>
@@ -746,6 +753,8 @@ dialog{border-radius:20px}
     <div id="e-transf" class="hidden"><div class="box"><h3>Central de transferências <small>o app compara o elenco a cada save lido</small></h3>
       <div class="kanban"><div class="kcol"><h4>NEGOCIANDO</h4><div id="kNeg"></div></div><div class="kcol"><h4>CHEGADAS</h4><div id="kIn"></div></div><div class="kcol"><h4>SAÍDAS</h4><div id="kOut"></div></div></div>
       <p style="font-size:12px;color:var(--mut);margin-top:12px">O valor é estimado pela variação do orçamento de transferências entre dois saves. Se você fizer várias negociações antes de salvar, o valor fica dividido entre elas.</p></div></div>
+    <div id="e-com" class="hidden"><div id="comBox"></div></div>
+    <div id="e-ges" class="hidden"><div id="gesBox"></div></div>
     <div id="e-merc" class="hidden"><div id="mercBox"></div></div>
     <div id="e-evt" class="hidden"><div id="vestBox"></div><div class="box"><h3>Acontecimentos <small>afastamentos, lesões e o que rola no vestiário</small></h3><div id="evList"></div></div></div>
   </section>
@@ -758,6 +767,7 @@ dialog{border-radius:20px}
       <div class="box"><h3 id="campNome">—</h3><div id="campTab"></div></div>
       <div class="box"><h3>Jogos do clube nesta competição</h3><div id="campMeus"></div></div>
     </div>
+    <div id="premiosBox" style="margin-top:18px"></div>
   </section>
 
   <section id="t-fin" class="hidden">
@@ -1565,7 +1575,7 @@ document.addEventListener('click',e=>{const a=e.target.closest('.tabs2 a');if(!a
   if(b&&sec.id!='t-patro'&&sec.id!='t-kits')b.textContent=a.textContent.trim()});
 let etab='cartas';
 document.querySelectorAll('#etabs a').forEach(a=>a.onclick=()=>{etab=a.dataset.e;document.querySelectorAll('#etabs a').forEach(x=>x.classList.toggle('on',x==a));
-  ['cartas','jun','pran','merc','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
+  ['cartas','jun','pran','com','ges','merc','transf','evt','dm','stats'].forEach(k=>$('e-'+k).classList.toggle('hidden',k!=etab));rElenco()});
 function fimContrato(p){if(!p.contrato_ate||!S.data)return false;const h=new Date(S.data),f=new Date(p.contrato_ate);return f>=h&&(f-h)<=366*864e5}
 function afastamento(id){return ((S.gestao||{}).eventos||[]).find(e=>e.ativo&&e.jogador_id==id)}
 const POSN={GL:'Goleiro',ZAG:'Zagueiro',LE:'Lateral Esquerdo',LD:'Lateral Direito',VOL:'Volante',MEI:'Meio campo',MD:'Meia Direita',ME:'Meia Esquerda',PD:'Ponta Direita',PE:'Ponta Esquerda',ATA:'Atacante'};
@@ -1575,6 +1585,8 @@ let MKSEL=new Set();
 const mkNums=s=>{s=s||{};if(!s.jogos)return '<span style="color:var(--mut)">sem jogos na temporada</span>';
   return `<span>${s.jogos} J</span><span>${s.titular||0} titular</span><span>⚽ ${s.gols||0} ${(s.gols||0)==1?'gol':'gols'}</span><span>👟 ${s.assist||0} assist.</span>${s.nota_media?`<span>nota ${String(s.nota_media.toFixed(1)).replace('.',',')}</span>`:''}${(s.amarelos||s.vermelhos)?`<span>🟨 ${s.amarelos||0} 🟥 ${s.vermelhos||0}</span>`:''}`};
 const mkCh=t=>`<span class="mk-ch ${/muito prov|^prov/.test(t)?'a':/poss/.test(t)?'b':'c'}">${esc(t)}</span>`;
+async function mkPrio(p){const s=new Set((S.clube_eventos||{}).prioridades||[]);s.has(p)?s.delete(p):s.add(p);if(s.size>4)return toast('No máximo 4 posições.',true);
+  await postar('/api/clube/prioridades',{posicoes:[...s]},'Planejamento atualizado.')}
 function mkPos(p){MKSEL.has(p)?MKSEL.delete(p):MKSEL.add(p);rMercado()}
 async function mkVarrer(){if(!MKSEL.size)return toast('Escolha pelo menos uma posição.',true);$('mkMsg').textContent='O auxiliar está varrendo os clubes…';
   try{const r=await api('/api/mercado/varrer',{posicoes:[...MKSEL]});S.mercado=r.mercado;rMercado();toast('Relatório do auxiliar pronto.')}catch(x){$('mkMsg').textContent=''}}
@@ -1593,9 +1605,17 @@ function rMercado(){const box=$('mercBox');if(!box)return;const M=S.mercado;
   // consultas de venda
   if((M.consultas||[]).length)h+=`<div class="box" style="margin-top:14px;border-color:var(--gold)"><h3>🔔 A diretoria quer a sua opinião <small>propostas por jogadores do elenco</small></h3>${M.consultas.map(p=>{const j=p.jogador;
     return `<div class="mk-c"><div class="cg">${j.cgj||'—'}<small>CGJ</small></div><div><b>${esc(j.nome)}</b> <span class="pill">${esc(j.pos||'')}</span>
-     <div class="meta">Proposta do <b style="color:var(--txt)">${esc(p.comprador)}</b>: ${eurM(p.valor)} · a diretoria avalia que está <b style="color:var(--txt)">${esc(p.avaliacao)}</b> do que ele vale hoje · responda até ${ddmm(p.prazo)}</div>
+     ${p.estrangeiro?'<div class="meta" style="color:#6cb8ff;font-weight:700">🌍 PROPOSTA DA EUROPA · a torcida vai se dividir</div>':''}<div class="meta">Proposta do <b style="color:var(--txt)">${esc(p.comprador)}</b>: ${eurM(p.valor)} · a diretoria avalia que está <b style="color:var(--txt)">${esc(p.avaliacao)}</b> do que ele vale hoje · responda até ${ddmm(p.prazo)}</div>
      <div class="nums">${mkNums(j.stats)}</div>${(p.momento_por||[]).length?`<div class="obs">Momento: ${p.momento_por.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:''}</div>
      <div class="acts"><button class="lime" onclick="mkResp('${p.id}',true,'${esc(j.nome)}')">Aprovar venda</button><button class="ghost" onclick="mkResp('${p.id}',false,'${esc(j.nome)}')">Recusar</button></div></div>`}).join('')}</div>`;
+  const CE=S.clube_eventos||{};const PV=CE.pedido_venda;
+  if(PV)h+=`<div class="box" style="margin-top:14px;border-color:var(--red)"><h3>💰 A diretoria pede uma venda <small>orçamento de transferências no vermelho</small></h3>
+    <p style="margin:0 0 10px">A diretoria quer negociar <b>${esc(PV.nome)}</b> para equilibrar as contas. Responda até ${dt(PV.prazo)}. Recusar desgasta a relação com a diretoria.</p>
+    <div class="fx"><button class="lime" onclick="postar('/api/clube/pedido_venda',{aceitar:true},'Ele entra na vitrine do mercado.')">Aceitar: colocar à venda</button><button class="ghost" onclick="postar('/api/clube/pedido_venda',{aceitar:false},'Venda recusada.')">Recusar</button></div></div>`;
+  const PR=new Set(CE.prioridades||M.prioridades||[]);
+  h+=`<div class="box" style="margin-top:14px"><h3>Planejamento da temporada <small>posições prioritárias para a diretoria</small></h3>
+   <div class="mk-chips">${(M.posicoes||[]).map(p=>`<a class="${PR.has(p.sigla)?'on':''}" onclick="mkPrio('${p.sigla}')">${esc(p.nome)}</a>`).join('')}</div>
+   <p style="font-size:12px;color:var(--mut);margin:0">Até 4 posições. O diretor se empenha mais nessas negociações e, perto da janela, entrega um relatório pronto com os melhores nomes.</p></div>`;
   // auxiliar
   h+=`<div class="box" style="margin-top:14px"><h3>Pedir ao auxiliar técnico <small>escolha as posições que precisa reforçar</small></h3>
    <div class="mk-chips">${(M.posicoes||[]).map(p=>`<a class="${MKSEL.has(p.sigla)?'on':''}" onclick="mkPos('${p.sigla}')">${esc(p.nome)}</a>`).join('')}</div>
@@ -1620,7 +1640,78 @@ function rMercado(){const box=$('mercBox');if(!box)return;const M=S.mercado;
   </div>`;
   box.innerHTML=h}
 
-function rElenco(){try{rMercado()}catch(x){console.error(x)}const el=S.elenco||[];const G=S.gestao||{};
+const nx=v=>v==null?'—':(typeof v=='number'?v.toFixed(1):String(v)).replace('.',',');
+const POSNM={GL:'Goleiro',ZAG:'Zagueiro',LD:'Lateral direito',LE:'Lateral esquerdo',VOL:'Volante',MEI:'Meia',MD:'Meia direita',ME:'Meia esquerda',PD:'Ponta direita',PE:'Ponta esquerda',ATA:'Atacante'};
+async function postar(url,body,ok){try{const r=await api(url,body);if(ok)toast(ok);await load();return r}catch(x){}}
+function rComissao(){const box=$('comBox');if(!box)return;const C=S.comissao;
+  if(!C){box.innerHTML='<div class="box"><div class="empty">A comissão técnica começa a trabalhar quando o app ler a carreira.</div></div>';return}
+  const A=C.analise,P=C.proximo;let h='';
+  h+=`<div class="box"><h3>Próximo adversário <small>análise do auxiliar pelas súmulas</small></h3>`;
+  if(!P)h+='<div class="empty">Sem jogos marcados.</div>';
+  else if(!A||A.sem_dados)h+=`<p><b>${esc((A&&A.nome)||(P.mn==S.clube?P.vn:P.mn))}</b> · ${dt(P.data)}</p><div class="empty">Ainda sem jogos do adversário na súmula.</div>`;
+  else{h+=`<p style="margin:0 0 8px"><b style="font-size:18px">${esc(A.nome)}</b> · ${A.casa?'em casa':'fora'} · ${dt(A.data)}${A.comp?' · '+esc(A.comp):''}</p>
+    <div class="fx"><span style="font-size:12px;color:var(--mut)">ÚLTIMOS JOGOS</span><span class="forma">${A.forma.map(x=>`<i class="${x}">${x}</i>`).join('')}</span></div>
+    <div class="kv"><div><b>${nx(A.gols_marcados)}</b><small>gols marcados por jogo</small></div><div><b>${nx(A.gols_sofridos)}</b><small>gols sofridos por jogo</small></div>
+     <div><b>${A.perigo.length?esc(A.perigo[0].nome):'—'}</b><small>mais perigoso${A.perigo.length?` · ${A.perigo[0].gols} gols, ${A.perigo[0].assist} assist.`:''}</small></div></div>
+    ${A.perigo.length>1?`<p style="font-size:13px;margin:4px 0">⚠️ Fique de olho: ${A.perigo.map(x=>`${esc(x.nome)} (${x.gols} gols, ${x.assist} assist.)`).join(' · ')}</p>`:''}
+    ${A.melhores.length?`<p style="font-size:13px;margin:4px 0">⭐ Melhores notas: ${A.melhores.map(x=>`${esc(x.nome)} (${nx(x.nota)})`).join(' · ')}</p>`:''}
+    ${A.suspensos.length?`<p style="font-size:13px;margin:4px 0">🟥 Suspensos (vermelho no último jogo): ${A.suspensos.map(esc).join(', ')}</p>`:''}
+    ${A.pendurados.length?`<p style="font-size:13px;margin:4px 0">🟨 Pendurados: ${A.pendurados.map(esc).join(', ')}</p>`:''}
+    ${A.dicas.length?`<p style="font-size:13px;margin:8px 0 0"><b>Leitura do auxiliar:</b> ${A.dicas.map(esc).join('; ')}.</p>`:''}`}
+  if(P){const pr=C.prelecao;h+=`<h4 class="mk-pos" style="margin-top:18px">PRELEÇÃO PARA ESSE JOGO</h4><div class="tom">${Object.entries(C.tons).map(([k,v])=>`<button class="${pr&&pr.tom==k?'lime on':'ghost'}" onclick="postar('/api/comissao/prelecao',{tom:'${k}'},'Preleção definida.')">${esc(v)}</button>`).join('')}</div>
+    <p style="font-size:12px;color:var(--mut)">Depois do jogo o auxiliar avalia se o tom funcionou. Mexe na moral e no clima do grupo.</p>`}
+  h+=`</div>`;
+  const R=C.relatorios||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Relatórios pós-jogo <small>destaques, quedas de rendimento e sugestões</small></h3>${R.length?R.map(r=>`<div class="ev"><div class="ic">${r.resultado=='vitória'?'✅':r.resultado=='empate'?'➖':'❌'}</div><div style="flex:1"><b>${esc(r.placar)} contra o ${esc(r.adv)}</b><small>${dt(r.data)}</small>
+    ${r.destaques.length?`<div style="font-size:13px;margin-top:4px">⭐ ${r.destaques.map(d=>`${esc(d.nome)} (${esc(d.texto)})`).join(' · ')}</div>`:''}
+    ${r.quedas.length?`<div style="font-size:13px;margin-top:4px">📉 ${r.quedas.map(d=>`${esc(d.nome)}: ${esc(d.texto)}`).join(' · ')}</div>`:''}
+    ${r.sugestoes.length?`<div style="font-size:13px;margin-top:4px">💡 ${r.sugestoes.map(esc).join(' · ')}</div>`:''}</div></div>`).join(''):'<div class="empty">O primeiro relatório sai depois do próximo jogo.</div>'}
+    ${(C.prelecoes||[]).length?`<h4 class="mk-pos">PRELEÇÕES ANTERIORES</h4>${C.prelecoes.map(p=>`<div class="ev"><div class="ic">${p.ok?'👍':'👎'}</div><div><b>${esc(C.tons[p.tom])} · ${esc(p.placar)}</b><small>${esc(p.texto)}</small></div></div>`).join('')}`:''}</div>`;
+  const M=C.metas||[],MP=C.metas_passadas||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Metas individuais <small>o auxiliar combina com os jogadores todo mês</small></h3>${M.length?M.map(m=>{const pct=Math.min(100,Math.round(100*(m.progresso||0)/m.alvo));
+    return `<div class="ev"><div class="ic">🎯</div><div style="flex:1"><b>${esc(m.nome)}</b> · ${esc(m.texto)}<small>até ${dt(m.fim)} · ${m.tipo=='nota'?'média atual '+nx(m.progresso||0):'feito: '+(m.progresso||0)+' de '+m.alvo}</small><div class="bar" style="margin-top:6px;height:6px;border-radius:4px;background:var(--panel2)"><i style="display:block;height:100%;width:${pct}%;background:var(--lime);border-radius:4px"></i></div></div></div>`}).join(''):'<div class="empty">Sem metas ativas.</div>'}
+    ${MP.length?`<h4 class="mk-pos">ANTERIORES</h4>${MP.map(m=>`<div class="ev"><div class="ic">${m.status=='cumprida'?'✅':'❌'}</div><div><b>${esc(m.nome)}</b> · ${esc(m.texto)}<small>${m.status=='cumprida'?'cumprida':'não cumprida'}</small></div></div>`).join('')}`:''}</div>`;
+  const B=C.base||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Base <small>juniores prontos para o profissional</small></h3>${B.length?B.map(j=>`<div class="mk-c"><div class="cg">${j.cgj}<small>CGJ</small></div><div><b>${esc(j.nome)}</b> <span class="pill">${esc(j.pos||'')}</span><div class="meta">${j.idade||'?'} anos</div><div class="obs">${esc(j.motivo)}</div></div><div class="acts"><span class="mk-ch a">pronto</span></div></div>`).join('')+'<p style="font-size:12px;color:var(--mut)">A promoção é feita no jogo (Juniores → promover). O app reconhece no próximo save.</p>':'<div class="empty">Nenhum júnior pronto agora.</div>'}</div>`;
+  box.innerHTML=h}
+function rGestao(){const box=$('gesBox');if(!box)return;const G=S.gestao_elenco;
+  if(!G){box.innerHTML='<div class="box"><div class="empty">A gestão do elenco começa quando o app ler a carreira.</div></div>';return}
+  let h='';const st={renovado:'renovou',liberado:'não renovado',recusou:'recusou renovar',negociando:'procurando clube',acertado:'acertado · vai na janela',pronta:'pronto · aguardando gravação no save',emprestado:'emprestado'};
+  h+=`<div class="box"><h3>Renovações <small>contratos que terminam em até 6 meses</small></h3>${(G.renovacoes||[]).length?G.renovacoes.map(r=>`<div class="mk-c"><div class="cg">${r.cgj||'—'}<small>CGJ</small></div><div><b>${esc(r.nome)}</b> <span class="pill">${esc(r.pos||'')}</span><div class="meta">${r.idade||'?'} anos · contrato até ${dt(r.fim)}</div></div>
+    <div class="acts"><button class="lime" onclick="postar('/api/elenco/renovar',{id:${r.id},renovar:true},'Diretoria vai renovar.')">Renovar</button><button class="ghost" onclick="postar('/api/elenco/renovar',{id:${r.id},renovar:false},'Ele não será renovado.')">Deixar sair</button></div></div>`).join(''):'<div class="empty">Nenhum contrato terminando nos próximos 6 meses.</div>'}
+    ${(G.renovacoes_feitas||[]).length?`<h4 class="mk-pos">DECISÕES</h4>${G.renovacoes_feitas.map(r=>`<div class="ev"><div class="ic">${r.status=='renovado'?'✍️':'👋'}</div><div><b>${esc(r.nome)}</b> · ${esc(st[r.status]||r.status)}${r.anos?` por ${r.anos} ano${r.anos>1?'s':''}`:''}<small>${dt(r.decidido)}</small></div></div>`).join('')}`:''}</div>`;
+  const I=G.insatisfeitos||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Insatisfeitos <small>bons jogadores com pouco tempo de campo</small></h3>${I.length?I.map(i=>`<div class="mk-c"><div class="cg">😠</div><div><b>${esc(i.nome)}</b> <span class="pill">${esc(i.pos||'')}</span><div class="meta">${i.minutos} minutos nos últimos ${i.jogos} jogos${i.status=='promessa'?` · promessa de minutos até ${dt(i.prazo)}`:''}</div></div>
+    <div class="acts">${i.status=='insatisfeito'?`<button class="ghost" onclick="postar('/api/elenco/insatisfeito',{id:${i.id},acao:'conversar'})">Conversar</button><button class="lime" onclick="postar('/api/elenco/insatisfeito',{id:${i.id},acao:'prometer'},'Promessa feita.')">Prometer minutos</button><button class="ghost" onclick="postar('/api/elenco/insatisfeito',{id:${i.id},acao:'liberar'},'Liberado para negociação.')">Liberar para negociação</button>`:'<span class="mk-ch b">promessa em andamento</span>'}</div></div>`).join(''):'<div class="empty">Ninguém reclamando de tempo de jogo.</div>'}
+    ${(G.insatisfeitos_passados||[]).length?`<h4 class="mk-pos">RESOLVIDOS</h4>${G.insatisfeitos_passados.map(i=>`<div class="ev"><div class="ic">💬</div><div><b>${esc(i.nome)}</b><small>${esc(i.texto||'')}</small></div></div>`).join('')}`:''}</div>`;
+  const pode=G.pode_conversar||{};
+  h+=`<div class="box" style="margin-top:14px"><h3>Conversa individual <small>o efeito depende da fase do jogador</small></h3>
+    <div class="fx"><select id="cvJog" style="min-width:220px">${(S.elenco||[]).filter(p=>!p.nome.startsWith('Jogador ')).map(p=>`<option value="${p.id}" ${pode[p.id]===false?'disabled':''}>${esc(p.nome)}${pode[p.id]===false?' (conversou há pouco)':''}</option>`).join('')}</select>
+    <button class="ghost" onclick="cvFalar('elogiar')">Elogiar</button><button class="ghost" onclick="cvFalar('cobrar')">Cobrar</button><button class="ghost" onclick="cvFalar('acalmar')">Acalmar</button></div>
+    ${(G.conversas||[]).map(c=>`<div class="ev"><div class="ic">${c.efeito>0?'🙂':c.efeito<0?'😤':'😐'}</div><div><b>${esc(c.nome)}</b> · ${esc(c.tipo)}<small>${esc(c.texto)} · ${dt(c.data)}</small></div></div>`).join('')}</div>`;
+  const E=G.emprestimos||[],SE=G.sugestoes_emprestimo||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Empréstimos <small>jovens que precisam de minutos</small></h3>${SE.length?SE.map(j=>`<div class="mk-c"><div class="cg">${j.cgj||'—'}<small>CGJ</small></div><div><b>${esc(j.nome)}</b> <span class="pill">${esc(j.pos||'')}</span><div class="meta">${j.idade} anos · ${esc(j.motivo)}</div></div><div class="acts"><button class="lime" onclick="postar('/api/elenco/emprestar',{id:${j.id}},'A diretoria vai procurar um clube.')">Emprestar</button></div></div>`).join(''):'<div class="empty">O auxiliar não vê ninguém precisando sair para jogar.</div>'}
+    ${E.length?`<h4 class="mk-pos">EM ANDAMENTO</h4>${E.map(e=>`<div class="ev"><div class="ic">🔁</div><div><b>${esc(e.nome)}</b>${e.destino?' → '+esc(e.destino):''}<small>${esc(st[e.status]||e.status)}${e.no_destino&&e.no_destino.jogos?` · no destino: ${e.no_destino.jogos} jogos, ${e.no_destino.gols} gols, nota ${nx(e.no_destino.nota_media)}`:''}</small></div></div>`).join('')}`:''}
+    ${G.gravar_no_save?'':'<p style="font-size:12px;color:var(--mut)">Renovações e empréstimos ficam "prontos" até o teste de gravação no PC.</p>'}</div>`;
+  const H=G.historico||[];
+  h+=`<div class="box" style="margin-top:14px"><h3>Histórico no clube <small>todas as temporadas que o app acompanhou</small></h3><div style="overflow-x:auto"><table class="tabcl"><tr><th>Jogador</th><th>Temp.</th><th>Jogos</th><th>Titular</th><th>Gols</th><th>Assist.</th><th>Nota</th></tr>
+    ${H.map(x=>`<tr style="${x.no_elenco?'':'opacity:.55'}"><td><b>${esc(x.nome)}</b>${x.nome==((S.gestao||{}).vestiario||{}).idolo?' ⭐':''}</td><td>${x.temporadas}</td><td>${x.jogos}</td><td>${x.titular}</td><td>${x.gols}</td><td>${x.assist}</td><td>${nx(x.nota_media)}</td></tr>`).join('')}</table></div></div>`;
+  box.innerHTML=h}
+async function cvFalar(t){const id=+$('cvJog').value;try{const r=await api('/api/elenco/conversar',{id,tipo:t});toast(r.conversa.nome+': '+r.conversa.texto);load()}catch(x){}}
+function rPremios(){const box=$('premiosBox');if(!box)return;const P=S.premios;
+  if(!P){box.innerHTML='';return}
+  const lin=(x,v)=>`<div class="ev"><div class="ic">${x.meu?'💚':'•'}</div><div style="flex:1"><b>${esc(x.nome)}</b> · ${esc(x.clube)}<small>${v}</small></div></div>`;
+  box.innerHTML=`<div class="box"><h3>Prêmios da ${esc(P.liga)} <small>montados pelas súmulas de todos os clubes · ${P.rodadas} rodadas</small></h3>
+   <div class="kv">${P.craque_temporada?`<div><small>CRAQUE DA TEMPORADA</small><b>${esc(P.craque_temporada.nome)}</b><small>${esc(P.craque_temporada.clube)} · nota ${nx(P.craque_temporada.nota)}</small></div>`:''}
+    ${P.artilharia[0]?`<div><small>ARTILHEIRO</small><b>${esc(P.artilharia[0].nome)}</b><small>${esc(P.artilharia[0].clube)} · ${P.artilharia[0].gols} gols</small></div>`:''}
+    ${P.assistencias[0]?`<div><small>GARÇOM</small><b>${esc(P.assistencias[0].nome)}</b><small>${esc(P.assistencias[0].clube)} · ${P.assistencias[0].assist} assist.</small></div>`:''}
+    ${P.revelacao?`<div><small>REVELAÇÃO</small><b>${esc(P.revelacao.nome)}</b><small>${esc(P.revelacao.clube)} · ${P.revelacao.idade} anos</small></div>`:''}</div>
+   <h4 class="mk-pos">SELEÇÃO DO CAMPEONATO · ${P.meus_na_selecao} do seu clube</h4>
+   <div class="sel11">${P.selecao.map(x=>`<div class="${x.meu?'eu':''}"><small>${esc(POSNM[x.vaga]||x.vaga)}</small><b>${esc(x.nome)}</b><small>${esc(x.clube)} · nota ${nx(x.nota)}</small></div>`).join('')}</div>
+   <div class="grid2" style="margin-top:14px"><div><h4 class="mk-pos">ARTILHARIA</h4>${P.artilharia.slice(0,6).map(x=>lin(x,`${x.gols} gols em ${x.jogos} jogos`)).join('')}</div>
+    <div><h4 class="mk-pos">CRAQUE DA RODADA</h4>${P.craques.slice(0,6).map(x=>lin(x,`${dt(x.data)} · nota ${nx(x.nota_jogo)}${x.gols_jogo?` · ${x.gols_jogo} gol${x.gols_jogo>1?'s':''}`:''}${x.assist_jogo?` · ${x.assist_jogo} assist.`:''}`)).join('')}</div></div></div>`}
+
+function rElenco(){for(const f of [rMercado,rComissao,rGestao]){try{f()}catch(x){console.error(x)}}const el=S.elenco||[];const G=S.gestao||{};
   const ult=el.filter(fimContrato);$('elCtr').innerHTML=ult.length?`<div class="banner" style="margin-bottom:12px"><p><b>📝 Contrato terminando até o fim da temporada:</b> ${ult.map(p=>esc(p.nome)).join(', ')}. Renove no jogo ou planeje a reposição.</p></div>`:'';
   $('elInfo').textContent=el.length?el.length+' jogadores no save'+(S.moral_data?' · moral e contratos de '+S.moral_data+' (Dados do time)':' · para ver a moral e os contratos, salve o elenco no jogo (Dados do time)'):'';
   if(etab=='cartas'){const chegou=new Set((G.transferencias||[]).filter(t=>t.tipo=='chegada').slice(0,8).map(t=>t.id));
@@ -1750,7 +1841,7 @@ function verPartida(i){const p=S.linha_tempo[i];const R={V:'Vitória',E:'Empate'
 const escT=(id,cls)=>id?`<img class="${cls||'escT'}" src="/escudo/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`:'';
 const timeN=(id,nome,cls)=>`<span class="timeN">${escT(id,cls)}${esc(nome||'')}</span>`;
 let CAMP=null,CAMPT=0,CAMPSEL=null;
-async function rCamp(){
+async function rCamp(){try{rPremios()}catch(x){console.error(x)}
   if(!CAMP||Date.now()-CAMPT>60000||CAMP._lido!=(S.save||{}).lido_em){try{CAMP=await (await fetch('/api/campeonatos')).json();CAMP._lido=(S.save||{}).lido_em;CAMPT=Date.now()}catch(e){return}}
   const C=CAMP.comps||[],meu=CAMP.meu;
   if(!C.length){$('campChips').innerHTML='';$('campTab').innerHTML='<div class="empty">Os campeonatos aparecem depois que o app ler o save.</div>';$('campMeus').innerHTML='';$('campProx').innerHTML='';return}

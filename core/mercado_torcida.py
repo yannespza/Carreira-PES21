@@ -331,6 +331,29 @@ TRACO['perdeu'] = {
 CONTEXTO = {'sondagem': 'chegada', 'acertada': 'chegada', 'fracassou': 'perdeu', 'proposta': 'saida',
             'venda': 'saida', 'recusa': 'fica'}
 
+EUROPA_TXT = {
+    'proposta_europa': {
+        'normal': ['é muito dinheiro, mas o {n} ainda nem chegou no auge', 'vende e reforça o elenco todo com esse valor',
+                   'sonho de todo garoto, não dá pra segurar pra sempre', 'segura mais um ano, ele vale o dobro depois',
+                   'o {comp} sabe o que tá fazendo. joia de verdade', 'dividido: o dinheiro é absurdo, mas a gente perde o futuro',
+                   'se vender, que pelo menos tenha percentual numa venda futura', 'esse valor resolve o caixa do clube',
+                   'mais uma joia indo embora cedo demais', 'o garoto merece a Europa, mas não agora'],
+    },
+    'venda_europa': {
+        'normal': ['vai com Deus, {n}. brilha lá no {comp}', 'dinheiro bom, mas dói ver a joia indo embora',
+                   'agora quero ver esse dinheiro virar reforço', 'sempre a mesma história: forma e vende',
+                   'orgulho de ver um cria no {comp}', 'negócio da vida pro clube, entendo',
+                   'perdemos o futuro do time por dinheiro', 'que volte um dia pra fechar a carreira aqui'],
+    },
+    'recusa_europa': {
+        'normal': ['segurou a joia! o {n} vai ser gigante aqui', 'recusou esse valor? coragem',
+                   'fez certo, o garoto vale mais daqui a um ano', 'não sei... dinheiro assim não aparece toda hora',
+                   'agora tem que renovar o contrato dele logo', 'o {n} fica e a torcida agradece'],
+    },
+}
+FASE.update(EUROPA_TXT)
+CONTEXTO.update({'proposta_europa': 'saida', 'venda_europa': 'saida', 'recusa_europa': 'fica'})
+
 # traços que combinam com cada tom (não elogiar com traço ruim nem criticar com traço bom)
 BONS = {'goleador', 'garcom', 'titular_absoluto', 'nota_alta', 'jovem', 'melhora'}
 RUINS = {'seca', 'reserva', 'nota_baixa', 'cartoes', 'piora'}

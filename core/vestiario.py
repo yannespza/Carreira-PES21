@@ -39,13 +39,21 @@ def mexer(state, delta, motivo=None, data=None):
 
 
 def idolo(state):
-    """Ídolo da torcida: o jogador mais elogiado nas notícias (do elenco atual)."""
+    """Ídolo da torcida: elogios nas notícias somados aos números dele no clube (do elenco atual)."""
     el = set(state.get('elenco_nomes') or [])
     cont = {}
     for n in (state.get('mundo') or {}).get('noticias', []):
         j = n.get('jogador')
         if j and j in el:
             cont[j] = cont.get(j, 0) + (2 if n.get('tipo') == 'jog_elogio' else -1 if n.get('tipo') == 'jog_critica' else 0)
+    # números no clube (todas as temporadas): gols, assistências, jogos, nota e anos de casa
+    try:
+        from . import gestao_elenco
+        for h in gestao_elenco.historico_view(state):
+            if h['nome'] in el and h['jogos'] >= 10:
+                cont[h['nome']] = cont.get(h['nome'], 0) + max(0, gestao_elenco.pontos_idolo(h)) / 8
+    except Exception:
+        pass
     if not cont:
         return None
     j, p = max(cont.items(), key=lambda x: x[1])

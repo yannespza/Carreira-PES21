@@ -40,6 +40,19 @@ def metas_da_temporada(state, engine, hoje):
     linhas = (state.get('tabela') or {}).get('linhas') or []
     n = len(linhas) or 20
     atr = state.get('atr_base', 60) + ((state.get('prestigio_tecnico') or 50) - 50) / 10
+    # revisão de metas: o resultado da temporada anterior pesa na régua da nova
+    revisao = None
+    ant = next((t for t in g.get('temporadas', []) if t['ano'] == ano - 1), None)
+    meta_ant = (mt.get(str(ano - 1)) or {}).get('liga')
+    if ant and meta_ant and ant.get('divisao') == meta_ant.get('div'):
+        dif = meta_ant['alvo'] - ant['pos']           # positivo = terminou acima da meta
+        ajuste = max(-6, min(10, dif * 1.5)) + (6 if ant.get('titulos') else 0)
+        atr += ajuste
+        revisao = {'pos': ant['pos'], 'alvo_anterior': meta_ant['alvo'], 'ajuste': round(ajuste, 1),
+                   'texto': (f"Terminamos em {ant['pos']}º, acima da meta ({meta_ant['alvo']}º). A régua subiu." if dif > 0 else
+                             f"Terminamos em {ant['pos']}º, abaixo da meta ({meta_ant['alvo']}º). A diretoria baixou a régua, "
+                             "mas a paciência diminuiu." if dif < 0 else
+                             f"Terminamos em {ant['pos']}º, exatamente na meta. A régua se mantém.")}
     comps = engine.competicoes_do_ano(ano) if engine else set()
     div = 'B' if 'serie_b' in comps else 'A'
     if div == 'B':
@@ -57,7 +70,15 @@ def metas_da_temporada(state, engine, hoje):
     copa = None
     if 'libertadores' in comps:
         copa = {'comp': 'libertadores', 'texto': 'Passar da fase de grupos da Libertadores'}
-    mt[str(ano)] = {'ano': ano, 'liga': liga, 'copa': copa, 'definida': d2s(hoje)}
+    mt[str(ano)] = {'ano': ano, 'liga': liga, 'copa': copa, 'definida': d2s(hoje), 'revisao': revisao}
+    if revisao and engine:
+        _msg(engine, d2s(hoje), f'Metas da temporada {ano}',
+             revisao['texto'] + f" Meta da liga: {liga['texto'].lower()}." + (f" Copa: {copa['texto'].lower()}." if copa else '')
+             + ' O cargo será avaliado por essas metas no fim da temporada.')
+        if revisao['pos'] > revisao['alvo_anterior']:
+            e = _e(state)
+            e['historico'].append({'data': d2s(hoje), 'tipo': 'ultimato' if revisao['pos'] - revisao['alvo_anterior'] >= 4 else 'renovacao',
+                                   'texto': f"Metas revistas após {revisao['pos']}º lugar (meta era {revisao['alvo_anterior']}º)"})
     return mt[str(ano)]
 
 

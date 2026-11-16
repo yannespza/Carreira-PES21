@@ -157,11 +157,15 @@ def momento(j):
     if pg:
         f += min(0.45, part * 0.6)
         if s.get('gols') or s.get('assist'):
-            por.append(f"{s.get('gols', 0)} gols e {s.get('assist', 0)} assistências")
+            g_, a_ = s.get('gols', 0), s.get('assist', 0)
+            por.append(f"{g_} gol{'s' if g_ != 1 else ''} e {a_} assistência{'s' if a_ != 1 else ''}")
     nota = s.get('nota_media')
     if nota:
         f += (nota - 6.2) * 0.18
         por.append(f'nota média {nota:.1f}'.replace('.', ','))
+    if j.get('convocado'):
+        f += 0.1
+        por.append('convocado para a seleção')
     cart = (s.get('amarelos') or 0) + 3 * (s.get('vermelhos') or 0)
     if cart >= 6:
         f -= 0.08
@@ -244,6 +248,8 @@ def varrer(state, posicoes, pool, meu_tid, elenco, hoje, por_posicao=5):
                 continue
             f, por = momento(j)
             c = chance(meu_tid, j, por_clube.get(j.get('time_id')))
+            if pos in (m.get('prioridades') or []):
+                c = round(min(0.92, c + 0.08), 2)       # o diretor se empenha nas prioridades do planejamento
             idade = j.get('idade') or 27
             nota = j['cgj'] + (f - 1) * 10 - max(0, idade - 29) * 1.2 + max(0, 23 - idade) * 0.8 + c * 6
             if j.get('pos') != pos:
@@ -374,7 +380,8 @@ def _nova_proposta(state, m, hoje, meu_tid, elenco, jan, r, engine, clube, pool_
     cands = [j for j in elenco if j.get('cgj') and j['id'] not in ja]
     if not cands:
         return None
-    pesos = [max(1, valor_momento(j)[0]) ** 0.5 for j in cands]
+    lst = set(m.get('listados') or [])
+    pesos = [max(1, valor_momento(j)[0]) ** 0.5 * (6 if j['id'] in lst else 1) for j in cands]
     j = r.choices(cands, pesos)[0]
     valor, f, por = valor_momento(j)
     compradores = [c for c in _compradores(meu_tid, pool_tids) if caixa(m, c['time_id'], jan) >= valor * 0.85]
@@ -398,6 +405,35 @@ def _nova_proposta(state, m, hoje, meu_tid, elenco, jan, r, engine, clube, pool_
     return p
 
 
+EUROPA = ['Benfica', 'Porto', 'Sporting', 'Ajax', 'PSV', 'Chelsea', 'Manchester City', 'Real Madrid', 'Barcelona',
+          'Atlético de Madrid', 'Lyon', 'Monaco', 'Brighton', 'RB Leipzig', 'Bayer Leverkusen', 'Juventus', 'Milan',
+          'Internazionale', 'Zenit', 'Shakhtar Donetsk', 'Lille', 'Villarreal', 'Real Betis', 'Feyenoord']
+CHANCE_EUROPA_SEMANA = 0.12
+
+
+def _proposta_europa(state, m, hoje, jovens, jan, r, engine, clube):
+    """Clube europeu sonda uma joia (até 21 anos, CGJ 70+ ou evolução forte). Valores bem acima do mercado."""
+    ja = {p['jogador']['id'] for p in m['propostas'] if p['status'] in ('consulta', 'aprovada', 'pronta')}
+    cands = [j for j in jovens if (j.get('idade') or 99) <= 21 and (j.get('cgj') or 0) >= 68 and j['id'] not in ja]
+    if not cands:
+        return None
+    j = max(cands, key=lambda j: (j.get('cgj') or 0) + r.random() * 4)
+    valor, f, por = valor_momento(j)
+    oferta = int(round(valor * r.uniform(1.8, 3.0), -4))
+    comp = r.choice(EUROPA)
+    p = {'id': _id(m, 'p'), 'jogador': {k: j.get(k) for k in ('id', 'nome', 'pos', 'idade', 'cgj', 'stats')},
+         'comprador': comp, 'comprador_id': None, 'estrangeiro': True, 'valor': oferta, 'valor_momento': valor,
+         'momento': f, 'momento_por': por, 'status': 'consulta', 'data': d2s(hoje), 'avaliacao': 'muito acima',
+         'prazo': d2s(hoje + dt.timedelta(days=PRAZO_RESPOSTA)), 'junior': bool(j.get('junior'))}
+    m['propostas'].append(p)
+    mercado_reacoes.reagir(state, 'proposta_europa', {**p['jogador'], 'momento': f, 'comprador': comp}, d2s(hoje), clube)
+    _msg(engine, d2s(hoje), f'{comp} quer {j["nome"]}',
+         f'O {comp} fez uma proposta muito acima do valor de mercado por {j["nome"]}, de {j.get("idade")} anos. '
+         f'É a chance de uma grande venda, mas a torcida vai se dividir. Responda até {_dbr(p["prazo"])} na aba Elenco > Mercado.',
+         clube)
+    return p
+
+
 def responder(state, prop_id, aprovar, hoje, clube, engine=None):
     m = _m(state)
     p = next((x for x in m['propostas'] if x['id'] == prop_id), None)
@@ -406,7 +442,8 @@ def responder(state, prop_id, aprovar, hoje, clube, engine=None):
     p['status'] = 'aprovada' if aprovar else 'recusada'
     p['respondida'] = d2s(hoje)
     jan = janela(state, hoje)
-    mercado_reacoes.reagir(state, 'venda' if aprovar else 'recusa',
+    ev = ('venda_europa' if aprovar else 'recusa_europa') if p.get('estrangeiro') else ('venda' if aprovar else 'recusa')
+    mercado_reacoes.reagir(state, ev,
                            {**p['jogador'], 'momento': p.get('momento'), 'comprador': p['comprador']}, d2s(hoje), clube)
     if aprovar:
         quando = 'Ele se despede agora, com a janela aberta.' if jan['aberta'] else \
@@ -414,11 +451,13 @@ def responder(state, prop_id, aprovar, hoje, clube, engine=None):
         _msg(engine, d2s(hoje), f'Venda acertada: {p["jogador"]["nome"]}',
              f'Aceitamos a proposta do {p["comprador"]}. {quando}', clube)
         _gastar(m, p['comprador_id'], p['valor'], jan)
+        if p['jogador']['id'] in (m.get('listados') or []):
+            m['listados'].remove(p['jogador']['id'])
     return p
 
 
 # ---------------------------------------------------------------- a cada save lido
-def processar(state, engine, hoje, meu_tid, clube, elenco, orcamento=None, pool_tids=None):
+def processar(state, engine, hoje, meu_tid, clube, elenco, orcamento=None, pool_tids=None, jovens=None):
     """Resolve negociações, cria propostas, vence consultas e cumpre os negócios quando a janela abre."""
     if not hoje:
         return
@@ -436,8 +475,11 @@ def processar(state, engine, hoje, meu_tid, clube, elenco, orcamento=None, pool_
     if (jan['aberta'] or (jan.get('dias_para_abrir') or 999) <= 21) and (not ult or (hoje - s2d(ult)).days >= 7):
         m['ult_semana'] = d2s(hoje)
         r = random.Random(_seed('prop', d2s(hoje), meu_tid))
-        if r.random() < CHANCE_PROPOSTA_SEMANA:
+        lst = bool(m.get('listados'))
+        if r.random() < CHANCE_PROPOSTA_SEMANA * (2 if lst else 1):
             _nova_proposta(state, m, hoje, meu_tid, elenco, jan, r, engine, clube, pool_tids)
+        if r.random() < CHANCE_EUROPA_SEMANA:
+            _proposta_europa(state, m, hoje, jovens if jovens is not None else elenco, jan, r, engine, clube)
     # janela aberta: os negócios fechados ficam prontos para a troca de clube no save
     if jan['aberta']:
         for n in m['negociacoes']:
@@ -464,4 +506,5 @@ def view(state, hoje):
         'consultas': [p for p in m['propostas'] if p['status'] == 'consulta'][::-1],
         'saidas': [p for p in m['propostas'] if p['status'] in ('aprovada', 'pronta')][::-1],
         'propostas_passadas': [p for p in m['propostas'] if p['status'] in ('recusada', 'expirada')][-6:][::-1],
+        'prioridades': m.get('prioridades') or [], 'listados': m.get('listados') or [],
     }
