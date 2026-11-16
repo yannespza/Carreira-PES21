@@ -1797,6 +1797,11 @@ class H(BaseHTTPRequestHandler):
                 out = io.BytesIO()
                 img.save(out, 'JPEG', quality=86)
                 return self.send(200, out.getvalue(), 'image/jpeg')
+            if u.path == '/api/clubes_financas':
+                from core import financas_clubes
+                if q.get('time_id'):
+                    return self.send(200, {'clube': financas_clubes.clube(q['time_id'])})
+                return self.send(200, {'clubes': financas_clubes.todos()})
             if u.path == '/api/valor_justo':
                 with LOCK:
                     return self.send(200, {'valor': A.engine.valor_justo(q['empresa'], q['slot'])})
