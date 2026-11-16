@@ -780,7 +780,7 @@ dialog{border-radius:20px}
     </div>
   </section>
 
-<div class="mksub ajustes" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span></div>
+<div class="mksub ajustes" id="sub"><span>Carreira: <select id="saveSel" onchange="escolherSave(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span>Lido às <b id="sRead">—</b></span><span id="sKits">Uniformes: —</span><span>Moeda: <select id="moSel" onchange="trocarMoeda(this.value)" style="padding:3px 6px;font-size:12px;background:#fff;color:#222;border-color:#bbb"></select></span><span><a style="cursor:pointer;text-decoration:underline" onclick="trocarTema()" id="temaBtn">Tema claro</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirSetup(true)">Pastas do jogo</a></span><span><a style="cursor:pointer;text-decoration:underline" onclick="abrirCopia()">Cópia para o Claude</a></span></div>
   <div class="foot">App de Carreira · uso pessoal · versão <span id="ver">—</span>. Os dados vêm do último save gravado pelo jogo.</div>
 </main>
 
@@ -940,6 +940,19 @@ function abrirSetup(manual){const C=S.config||{};SETUP=true;$('setup').classList
     <div style="display:flex;gap:8px;margin-top:20px;align-items:center"><button class="lime" onclick="salvarSetup()">Salvar e abrir</button>${manual&&!P.length?'<button class="ghost" onclick="fecharSetup()">Fechar</button>':''}<span id="cfMsg" style="color:var(--mut);font-size:12px"></span></div>`;
   if(P.length)api('/api/config/detectar',{}).then(r=>{const sug=(id,l)=>{if(l.length>1||(l.length&&!$(id).value))$(id+'_sug').innerHTML='Encontrei: '+l.slice(0,4).map(x=>`<a style="cursor:pointer;color:var(--lime)" onclick="$('${id}').value=this.textContent">${esc(x)}</a>`).join(' · ')};
     sug('cfJogo',r.jogo);sug('cfSaves',r.saves);if(!$('cfJogo').value&&r.jogo.length)$('cfJogo').value=r.jogo[0];if(!$('cfSaves').value&&r.saves.length)$('cfSaves').value=r.saves[0]}).catch(()=>{})}
+async function abrirCopia(){let C={};try{C=await (await fetch('/api/copia')).json()}catch(x){}
+  SETUP=true;$('setup').classList.remove('hidden');
+  const est=C.enviando?'<span class="pill">enviando…</span>':C.erro?`<span class="pill off">erro</span> ${esc(C.erro)}`:C.ultimo_envio?`<span class="pill ok">ok</span> último envio ${esc(C.ultimo_envio.replace('T',' '))} (${esc(C.ultimo_arquivo||'')})`:(C.ativo?'<span class="pill">aguardando o próximo save</span>':'<span class="pill off">desligado</span>');
+  $('setupBox').innerHTML=`<h3>Cópia do save para o Claude <small>análise a distância</small></h3>
+    <p style="color:var(--mut);margin-top:0">Quando o jogo salva a carreira, o app espera ${C.espera_min||10} minutos sem mudança e manda uma cópia do save para um repositório <b>privado</b> do seu GitHub. Cada dia guarda a última versão; ficam os últimos ${C.dias||7} dias. Assim o Claude consegue analisar o save com o PC desligado. Nada muda no jogo.</p>
+    <label style="display:block;margin:14px 0 4px;font-weight:600">Repositório privado</label><input id="cpRepo" value="${esc(C.repo||'yannespza/carreira-pes21-saves')}" style="max-width:360px">
+    <label style="display:block;margin:14px 0 4px;font-weight:600">Token do GitHub ${C.tem_token?'<span class="pill ok">guardado</span>':'<span class="pill off">falta</span>'}</label><input id="cpTok" type="password" placeholder="${C.tem_token?'já guardado (cole outro só para trocar)':'cole aqui o token (github_pat_...)'}" style="max-width:360px">
+    <label style="display:flex;gap:8px;align-items:center;margin-top:14px"><input type="checkbox" id="cpOn" ${C.ativo?'checked':''} style="width:auto"> Enviar a cópia automaticamente</label>
+    <p style="margin:14px 0 0">${est}</p>
+    <div style="display:flex;gap:8px;margin-top:20px;align-items:center"><button class="lime" onclick="salvarCopia(false)">Salvar</button><button class="ghost" onclick="salvarCopia(true)">Salvar e enviar agora</button><button class="ghost" onclick="fecharSetup()">Fechar</button><span id="cpMsg" style="color:var(--mut);font-size:12px"></span></div>`}
+async function salvarCopia(agora){$('cpMsg').textContent='Conferindo o repositório…';
+  try{await api('/api/copia',{repo:$('cpRepo').value,token:$('cpTok').value,ativo:$('cpOn').checked,enviar_agora:agora});
+    $('cpMsg').textContent=agora?'Enviando… pode fechar.':'Salvo.';setTimeout(abrirCopia,agora?4000:800)}catch(x){$('cpMsg').textContent=''}}
 function fecharSetup(){SETUP=false;$('setup').classList.add('hidden')}
 async function escolherPasta(id){try{const r=await api('/api/config/escolher',{inicial:$(id).value});if(r.pasta)$(id).value=r.pasta}catch(x){}}
 async function salvarSetup(){$('cfMsg').textContent='Salvando…';

@@ -23,6 +23,12 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.0.3:
+- "Cópia para o Claude" (na barra do fim da página, ao lado de "Pastas do jogo"): o app manda uma
+  cópia do save da carreira para um repositório PRIVADO do seu GitHub, 10 minutos depois de o jogo
+  salvar. Cada dia guarda a última versão e ficam os últimos 7 dias. Serve para o Claude analisar o
+  save com o PC desligado. Precisa de um token do GitHub (fica só no PC). Nada muda no jogo.
+
 Novidades da 4.0.2:
 - Finanças reais dos 20 clubes da Série A 2026 (balanços de 2025): receita, dívida, vendas de
   jogadores, índice de poder financeiro e orçamento sugerido por janela. Base para o futuro mercado

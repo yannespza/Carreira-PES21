@@ -8,7 +8,7 @@ sys.path.insert(0, APP_DIR)
 from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import assessor, dirigentes, diretor, presidente, escalacao, posicao
+from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota
 from core.logos import LogoBank
 
 PORT = 8765
@@ -1605,6 +1605,16 @@ def atualizar_logos():
     return novos, atualizados
 
 
+def copia_watcher():
+    """Cópia do save para análise a distância (core/copia_remota.py): confere a cada minuto."""
+    while True:
+        try:
+            copia_remota.enviar(DATA, A.save_path, A.state_path, VERSAO)
+        except Exception:
+            log(traceback.format_exc())
+        time.sleep(60)
+
+
 def logos_watcher():
     while True:
         try:
@@ -1797,6 +1807,8 @@ class H(BaseHTTPRequestHandler):
                 out = io.BytesIO()
                 img.save(out, 'JPEG', quality=86)
                 return self.send(200, out.getvalue(), 'image/jpeg')
+            if u.path == '/api/copia':
+                return self.send(200, copia_remota.publico(DATA))
             if u.path == '/api/clubes_financas':
                 from core import financas_clubes
                 if q.get('time_id'):
@@ -1898,6 +1910,26 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send(400, {'erro': f'Não consegui abrir a janela de pastas ({e}). Cole o caminho no campo.'})
             return self.send(200, {'pasta': os.path.normpath(p) if p else ''})
+        if u.path == '/api/copia':
+            c = copia_remota.ler_cfg(DATA)
+            if 'repo' in body:
+                c['repo'] = (body.get('repo') or '').strip().strip('/').replace('https://github.com/', '')
+            if (body.get('token') or '').strip():
+                c['token'] = body['token'].strip()
+            if 'ativo' in body:
+                c['ativo'] = bool(body['ativo'])
+            if c.get('ativo') and c.get('token') and c.get('repo'):
+                try:
+                    t = copia_remota.testar(c['token'], c['repo'])
+                except Exception as e:
+                    t = {'ok': False, 'erro': str(e)}
+                if not t['ok']:
+                    return self.send(400, {'erro': t['erro']})
+            copia_remota.salvar_cfg(DATA, c)
+            if body.get('enviar_agora'):
+                threading.Thread(target=copia_remota.enviar, args=(DATA, A.save_path, A.state_path, VERSAO, True),
+                                 daemon=True).start()
+            return self.send(200, copia_remota.publico(DATA))
         if u.path == '/api/config':
             jogo = (body.get('pasta_jogo') or '').strip().strip('"')
             saves = (body.get('pasta_saves') or '').strip().strip('"')
@@ -2393,6 +2425,7 @@ def main():
     # e a janela do app não precisa esperar)
     threading.Thread(target=watcher, daemon=True).start()
     threading.Thread(target=logos_watcher, daemon=True).start()
+    threading.Thread(target=copia_watcher, daemon=True).start()
     class Servidor(ThreadingHTTPServer):
         daemon_threads = True
 
