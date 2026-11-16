@@ -23,6 +23,13 @@ Carreira com outro clube (versão 2.0):
 - Carreira nova (sem jogos no save): a receita de patrocínio do jogo é zerada e chegam pelo menos
   2 propostas para cada posição do uniforme. Recarregue a carreira no jogo depois do aviso.
 
+Novidades da 4.0.5:
+- Torcida no mercado: os posts não citam mais números. O tom vem dos números do jogador (fase boa,
+  ruim, normal ou sem jogos) e de traços como goleador, garçom, em seca, titular absoluto, reserva,
+  regular, irregular, cartões, jovem, veterano e melhor ou pior que o seu titular. Mais de 300 frases,
+  com textos próprios para sondagem, contratação, negociação perdida, proposta, venda e recusa.
+- Imprensa continua citando os números, agora com mais manchetes e mais falas no debate.
+
 Novidades da 4.0.4:
 - Elenco > Mercado (novo): escolha as posições e o auxiliar técnico varre os jogadores dos outros clubes
   e os sem clube. Ele traz os melhores de cada posição com CGJ, idade, números da temporada e a
