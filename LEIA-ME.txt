@@ -465,3 +465,7 @@ VERSÃO 4.2.0 - Segurança das gravações, espaço de teste, capitão e batedor
   A gravação só fica liberada na carreira principal depois de testada no espaço de teste ("Funcionou no jogo").
 - Painel pré-jogo dentro do PES: abra o painel do Sider (no menu ou na partida). Mostra o próximo adversário,
   a forma dele, quem é perigoso, os afastados, os cansados, o capitão e os batedores. Só mostra; não mexe no jogo.
+
+VERSÃO 4.2.1
+- Quando o app está no espaço de teste, aparece um aviso no topo com o botão "Voltar para a carreira principal".
+  Só abrir o save no PES não faz o app trocar (o jogo não grava ao carregar); o app troca sozinho quando o jogo salva.

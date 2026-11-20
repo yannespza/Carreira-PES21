@@ -1062,6 +1062,7 @@ function render(){
   $('somBtn').textContent=somOn?'🔔':'🔕';
   // banners
   let bn='';
+  {const G=S.gravacao||{};if(G.teste)bn+=`<div class="banner" style="border-color:#f5b041"><p><b>🧪 O app está lendo o espaço de teste (${esc(G.slot||'')}).</b> Se você já voltou para a carreira principal no PES, clique ao lado: só ao abrir o save o jogo não grava nada, então o app não percebe sozinho.</p><button class="lime" onclick="sisPrincipal()">Voltar para a carreira principal</button></div>`}
   {const mk=S.marketing||{},ns=(mk.sugestoes||[]).length;$('bMkt').textContent=ns;$('bMkt').classList.toggle('hidden',!ns);
    if(ns)bn+=`<div class="banner"><p><b>O marketing sugere ${ns>1?ns+' campanhas':'uma campanha'} nos uniformes:</b> ${(mk.sugestoes||[]).map(x=>esc(x.nome)).join(' · ')}</p><button class="lime" onclick="go('kits')">Ver e decidir</button></div>`;
    rMarketing()}
