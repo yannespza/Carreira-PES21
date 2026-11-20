@@ -373,8 +373,13 @@ class Career:
             v = struct.unpack_from('<i', self.sf.data, o)[0]
             struct.pack_into('<i', self.sf.data, o, v + u)
 
-    def write(self, backup_dir, log=print):
-        """Grava com segurança: backup, confere que o arquivo não mudou, grava, relê e confere."""
+    def write(self, backup_dir, log=print, motivo=''):
+        """Grava com segurança: backup, confere que o arquivo não mudou, grava, relê e confere.
+        TRAVA (definida pelo app) pode recusar a gravação, por exemplo com uma partida em andamento."""
+        if TRAVA:
+            barrado = TRAVA(self.path)
+            if barrado:
+                raise RuntimeError(barrado)
         if os.path.getmtime(self.path) != self.mtime:
             raise RuntimeError('O jogo gravou o save de novo enquanto o app trabalhava. Vou tentar de novo.')
         os.makedirs(backup_dir, exist_ok=True)
@@ -382,6 +387,7 @@ class Career:
         bk = os.path.join(backup_dir, f'ML_{int(self.mtime)}.bak')
         if not os.path.exists(bk):
             shutil.copy2(self.path, bk)
+        anotar_backup(bk, self, motivo)
         limpar_backups(backup_dir)
         new = pescrypt.encrypt(self.sf)
         chk = pescrypt.decrypt(new)
@@ -430,7 +436,7 @@ class Career:
             shutil.copyfile(bk, self.path)
             raise RuntimeError('A gravação do save não conferiu; o backup foi restaurado. Nada mudou.')
         self.mtime = os.path.getmtime(self.path)
-        baks = sorted((f for f in os.listdir(backup_dir) if f.startswith('ML_')),
+        baks = sorted((f for f in os.listdir(backup_dir) if f.startswith('ML_') and f.endswith('.bak')),
                       key=lambda f: os.path.getmtime(os.path.join(backup_dir, f)))
         for f in baks[:-30]:
             try:
@@ -455,15 +461,93 @@ def nomes_clubes(data: bytes):
     return out
 
 
-def limpar_backups(backup_dir, manter=10):
+TRAVA = None          # função(caminho) -> motivo para não gravar agora, ou None (o app define)
+
+
+def anotar_backup(bk, car, motivo):
+    """Ficha da cópia de segurança: de qual save ela é (arquivo, carreira, data do jogo) e por que o app gravou."""
+    import json
+    ficha = bk + '.json'
+    try:
+        info = json.load(open(ficha, encoding='utf-8')) if os.path.exists(ficha) else {}
+    except (OSError, ValueError):
+        info = {}
+    if not info:
+        info = {'arquivo': os.path.basename(car.path), 'caminho': car.path, 'carreira': car.slot_name,
+                'clube': car.club_line.split('/')[0].strip(), 'data_jogo': car.date.isoformat() if car.date else None,
+                'copiado_em': time.strftime('%Y-%m-%d %H:%M:%S'), 'motivos': []}
+    if motivo and motivo not in info['motivos']:
+        info['motivos'].append(motivo)
+    try:
+        json.dump(info, open(ficha, 'w', encoding='utf-8'), ensure_ascii=False)
+    except OSError:
+        pass
+
+
+def listar_backups(backup_dir):
+    """Cópias de segurança do save, da mais nova para a mais antiga, com a ficha de cada uma."""
+    import glob, json
+    out = []
+    for bk in sorted(glob.glob(os.path.join(backup_dir, 'ML_*.bak')), key=os.path.getmtime, reverse=True):
+        try:
+            info = json.load(open(bk + '.json', encoding='utf-8'))
+        except (OSError, ValueError):
+            info = {}
+        if not info:          # cópia antiga, sem ficha: lê o cabeçalho uma vez e guarda
+            try:
+                sf = pescrypt.decrypt(open(bk, 'rb').read())
+                desc = '\n'.join(sf.subtitle)
+                m = DATE_RE.search(desc)
+                linhas = desc.split('\n')
+                info = {'arquivo': None, 'caminho': None, 'carreira': sf.subtitle[0] if sf.subtitle else '',
+                        'clube': linhas[1].split('/')[0].strip() if len(linhas) > 1 else '',
+                        'data_jogo': f'{int(m.group(3)):04d}-{int(m.group(2)):02d}-{int(m.group(1)):02d}' if m else None,
+                        'copiado_em': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(bk))), 'motivos': []}
+                json.dump(info, open(bk + '.json', 'w', encoding='utf-8'), ensure_ascii=False)
+            except Exception:
+                continue
+        out.append({'id': os.path.basename(bk), 'tamanho': os.path.getsize(bk), **info})
+    return out
+
+
+def restaurar_backup(backup_dir, bk_id, destino, log=print):
+    """Volta o save para uma cópia de segurança. Antes guarda o save atual (dá para desfazer o desfazer)."""
+    import json
+    if not re.fullmatch(r'ML_\d+\.bak', bk_id or ''):
+        raise ValueError('Cópia inválida.')
+    bk = os.path.join(backup_dir, bk_id)
+    if not os.path.exists(bk):
+        raise ValueError('Essa cópia não existe mais.')
+    pescrypt.decrypt(open(bk, 'rb').read())          # confere que a cópia abre
+    atual = os.path.join(backup_dir, f'ML_{int(os.path.getmtime(destino))}.bak')
+    if not os.path.exists(atual):
+        shutil.copy2(destino, atual)
+        try:
+            sf = pescrypt.decrypt(open(destino, 'rb').read())
+            desc = '\n'.join(sf.subtitle)
+            m = DATE_RE.search(desc)
+            car = Career.__new__(Career)
+            car.path, car.slot_name = destino, sf.subtitle[0] if sf.subtitle else ''
+            car.club_line = desc.split('\n')[1] if '\n' in desc else ''
+            car.date = dt.date(int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None
+            anotar_backup(atual, car, 'antes de restaurar outra cópia')
+        except Exception:
+            pass
+    shutil.copyfile(bk, destino)
+    log('save restaurado da cópia', bk_id, '->', destino)
+    return atual
+
+
+def limpar_backups(backup_dir, manter=15):
     """Guarda só as cópias de segurança mais recentes do save (cada uma tem uns 21 MB)."""
     import glob
     bks = sorted(glob.glob(os.path.join(backup_dir, 'ML_*.bak')), key=os.path.getmtime, reverse=True)
     for velho in bks[manter:]:
-        try:
-            os.remove(velho)
-        except OSError:
-            pass
+        for f in (velho, velho + '.json'):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
 
 
 def classificacoes(data: bytes):

@@ -451,3 +451,17 @@ VERSÃO 4.1.5 - Diagnóstico da memória do jogo refeito (somente leitura)
 VERSÃO 4.1.6
 - Diagnóstico de memória corrigido: outro módulo do Sider já usava a mesma função do Windows com outro formato,
   e o nosso dava erro. Agora ele usa um nome próprio. O app religa o diagnóstico sozinho nesta versão.
+
+VERSÃO 4.2.0 - Segurança das gravações, espaço de teste, capitão e batedores, painel pré-jogo
+- Selo no topo: verde (jogo fechado), âmbar (jogo aberto: o que o app grava vale ao recarregar a carreira),
+  vermelho (partida em andamento: o app não grava; espera o jogo acabar e grava sozinho).
+- Nova aba Sistema (último ícone do menu):
+  - Cópias de segurança: o app copia o save antes de cada gravação (guarda 15) e anota o motivo.
+    "Voltar para esta" desfaz no save o que o app gravou depois (pede o PES fechado).
+  - Espaço de teste: copia a carreira para outro espaço do Master League e o app passa a usá-lo, com ficha
+    própria. Nada do que for feito ali mexe na carreira principal. "Voltar para a carreira principal" desfaz a troca.
+  - Painel pré-jogo e lista dos módulos do Sider.
+- Elenco > Escalação: capitão e batedores (faltas, escanteios, pênalti) lidos do plano de jogo do save.
+  A gravação só fica liberada na carreira principal depois de testada no espaço de teste ("Funcionou no jogo").
+- Painel pré-jogo dentro do PES: abra o painel do Sider (no menu ou na partida). Mostra o próximo adversário,
+  a forma dele, quem é perigoso, os afastados, os cansados, o capitão e os batedores. Só mostra; não mexe no jogo.

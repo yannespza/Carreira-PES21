@@ -135,7 +135,8 @@ def ler(d: bytes, team_index):
     vg = vagas(d, team_index)
     if not vg:
         return None
-    return {'off': off, 'ordem': list(d[off:off + TAM]), 'vagas': vg, 'formacao': formacao(d, off)}
+    return {'off': off, 'ordem': list(d[off:off + TAM]), 'vagas': vg, 'formacao': formacao(d, off),
+            'bola': ler_bola_parada(d, off)}
 
 
 def grupos(ordem):
@@ -237,3 +238,49 @@ def gravar(car, esc, ordem):
         raise RuntimeError('A escalação mudou de lugar no save.')
     car.sf.data[off:off + TAM] = bytes(ordem)
     esc['ordem'] = list(ordem)
+
+
+# ---------------------------------------------------------------- capitão e batedores
+# Logo depois da lista de 40 vagas, na mesma ordem do plano de jogo do arquivo EDIT (wiki do PES 2021:
+# escalação em 0x1E4, batedores a partir de 0x20C, capitão em 0x215). No save, a partir de lista + 0x28.
+# Cada byte é a VAGA do jogador no elenco (como a lista), 0xFF = ninguém. Conferido no save de 20/11/2026:
+# capitão = Gustavo Gómez, escanteios e falta curta = Andreas Pereira, falta longa e pênalti = Piquerez,
+# "atacantes extras" (sobem na bola parada) = Murilo e Gustavo Gómez.
+OFF_BOLA = TAM
+BOLA_PARADA = [('falta_longa', 0, 'Falta longa'), ('falta_curta', 1, 'Falta curta'), ('falta_2', 2, '2º batedor de falta'),
+               ('esc_esq', 3, 'Escanteio esquerdo'), ('esc_dir', 4, 'Escanteio direito'), ('penalti', 5, 'Pênalti'),
+               ('capitao', 9, 'Capitão')]
+SOBEM = (6, 7, 8)          # quem sobe para a área na bola parada (só leitura por enquanto)
+
+
+def ler_bola_parada(d: bytes, off):
+    b = d[off + OFF_BOLA:off + OFF_BOLA + 10]
+    if len(b) < 10:
+        return None
+    out = {k: (None if b[i] == VAZIO else b[i]) for k, i, _ in BOLA_PARADA}
+    out['sobem'] = [b[i] for i in SOBEM if b[i] != VAZIO]
+    # conferência: toda vaga apontada existe (0..39)
+    if any(v is not None and v >= TAM for k, v in out.items() if k != 'sobem'):
+        return None
+    return out
+
+
+def gravar_bola_parada(car, esc, valores):
+    """valores: {campo: vaga}. Só aceita titulares do plano atual. A gravação no disco é feita por car.write.
+    Devolve os bytes anteriores (para desfazer se o disco recusar)."""
+    off = esc['off']
+    if not lista_valida(car.sf.data[off:off + TAM]):
+        raise RuntimeError('A escalação mudou de lugar no save.')
+    titulares = set(esc['ordem'][:N_TIT])
+    ini = off + OFF_BOLA
+    antes = bytes(car.sf.data[ini:ini + 10])
+    novo = bytearray(antes)
+    for k, i, rot in BOLA_PARADA:
+        if k not in valores:
+            continue
+        v = int(valores[k])
+        if v not in titulares:
+            raise ValueError(f'{rot}: escolha um dos titulares.')
+        novo[i] = v
+    car.sf.data[ini:ini + 10] = bytes(novo)
+    return antes

@@ -1,5 +1,5 @@
 """App de Carreira – Patrocínios (PES 2021 · GOGOSZ). Servidor local + motor de simulação."""
-import os, sys, json, time, threading, glob, re, io, subprocess, traceback, webbrowser, datetime as dt
+import os, sys, json, time, threading, glob, re, io, shutil, subprocess, traceback, webbrowser, datetime as dt
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -13,6 +13,7 @@ from core import comissao, gestao_elenco, clube_eventos, premios
 from core.logos import LogoBank
 
 PORT = 8765
+TESTE_SUFIXO = ' - TESTE'          # ficha do app para o espaço de teste (separada da carreira de verdade)
 DATA = os.path.join(APP_DIR, 'data')
 LOG_PATH = os.path.join(DATA, 'app.log')
 LOCK = threading.RLock()
@@ -254,6 +255,7 @@ class App:
         # partida ao vivo: o módulo Lua grava live_match_data.json; esta thread lê sem travar nada
         self.aovivo = aovivo.Monitor(lambda: CFG.get('pasta_jogo'), self.ao_vivo_evento, log=log)
         self.aovivo.start()
+        savedata.TRAVA = self.trava_gravacao
         if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
             try:
                 aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
@@ -439,13 +441,220 @@ class App:
 
     def game_running(self):
         if os.name != 'nt':
-            return False
+            return bool(CFG.get('_sim_jogo_aberto'))          # só para os testes fora do Windows
+        c = getattr(self, '_jogo_cache', None)
+        if c and time.time() - c[0] < 2:
+            return c[1]
         try:
             out = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq PES2021.exe', '/NH'], capture_output=True,
                                  text=True, creationflags=0x08000000).stdout
-            return 'PES2021.exe' in out
+            r = 'PES2021.exe' in out
+        except Exception:
+            r = False
+        self._jogo_cache = (time.time(), r)
+        return r
+
+    # ----- segurança das gravações (Etapa 0) -----
+    def partida_ao_vivo(self):
+        try:
+            return bool(self.aovivo.estado().get('ativo'))
         except Exception:
             return False
+
+    def trava_gravacao(self, caminho=None):
+        """Motivo para não gravar no save agora (ou None). Com uma partida em andamento o jogo segura a
+        carreira na memória e grava por cima depois: o app espera o fim do jogo e tenta de novo sozinho."""
+        if self.partida_ao_vivo():
+            return 'Partida em andamento no PES: o app grava no save quando o jogo acabar.'
+        return None
+
+    def estado_gravacao(self):
+        """Selo do topo da tela."""
+        aberto = self.game_running()
+        teste = self.no_slot_teste()
+        if self.partida_ao_vivo():
+            s = {'cor': 'vermelho', 'texto': 'Partida em andamento · gravação em espera'}
+        elif aberto:
+            s = {'cor': 'ambar', 'texto': 'Jogo aberto · o que o app gravar vale ao recarregar a carreira'}
+        else:
+            s = {'cor': 'verde', 'texto': 'Jogo fechado · gravação liberada'}
+        s.update(jogo_aberto=aberto, teste=teste, slot=os.path.basename(self.save_path) if self.save_path else None)
+        return s
+
+    def exigir_jogo_fechado(self, oque):
+        if self.game_running():
+            raise ValueError(f'Feche o PES antes de {oque}. Com o jogo aberto ele pode gravar por cima.')
+
+    def backups_view(self):
+        bks = savedata.listar_backups(os.path.join(DATA, 'backups_save'))
+        atual = os.path.basename(self.save_path) if self.save_path else None
+        for b in bks:
+            b['deste_save'] = (b.get('arquivo') == atual) if b.get('arquivo') else None
+        return bks
+
+    def restaurar_backup(self, bk_id):
+        self.exigir_jogo_fechado('desfazer uma gravação')
+        if not self.save_path:
+            raise ValueError('O app ainda não leu o save.')
+        info = next((b for b in self.backups_view() if b['id'] == bk_id), None)
+        if not info:
+            raise ValueError('Essa cópia não existe mais.')
+        if info.get('arquivo') and info['arquivo'] != os.path.basename(self.save_path):
+            raise ValueError(f"Essa cópia é do arquivo {info['arquivo']}, não do save que o app está usando agora.")
+        if self.career and info.get('carreira') and info['carreira'] != self.career.slot_name:
+            raise ValueError(f"Essa cópia é da carreira \"{info['carreira']}\", não da atual.")
+        savedata.restaurar_backup(os.path.join(DATA, 'backups_save'), bk_id, self.save_path, log)
+        self.save_mtime = None          # relê na próxima volta
+        self.state.setdefault('restauracoes', []).append({'em': time.strftime('%Y-%m-%d %H:%M'), 'copia': bk_id,
+                                                          'data_jogo': info.get('data_jogo')})
+        self.persist()
+
+    # ----- painel pré-jogo no PES (overlay do Sider) -----
+    def briefing_texto(self):
+        st = self.state or {}
+        if not st.get('data'):
+            return ''
+        hoje = sim.s2d(st['data'])
+        L = []
+        a = getattr(self, 'analise_adv', None)
+        prox = (st.get('proximos') or [None])[0]
+        if a:
+            casa = a.get('casa')
+            br = '/'.join(reversed(str(a.get('data') or '').split('-')))
+            adv = (getattr(self, 'names', None) or {}).get(a.get('adv')) or a['nome']
+            L.append(f"PRÓXIMO JOGO: {CFG.get('clube') or self.clube()} {'x' if casa else '(fora) x'} {adv} · {br}")
+            f = ''.join(a.get('forma') or [])
+            L.append(f"Adversário: forma {f or '—'} · marca {str(a.get('gols_marcados', '—')).replace('.', ',')} e sofre "
+                     f"{str(a.get('gols_sofridos', '—')).replace('.', ',')} por jogo")
+            if a.get('perigo'):
+                L.append('Perigo: ' + ', '.join(f"{x['nome']} ({x['gols']}G {x['assist']}A)" for x in a['perigo']))
+            if a.get('suspensos') or a.get('pendurados'):
+                L.append(('Suspensos deles: ' + ', '.join(a['suspensos']) + '   ' if a.get('suspensos') else '') +
+                         ('Pendurados: ' + ', '.join(a['pendurados']) if a.get('pendurados') else ''))
+            for d in (a.get('dicas') or [])[:2]:
+                L.append('Comissão: ' + d)
+        elif prox:
+            L.append('PRÓXIMO JOGO: ' + str(prox.get('data', '')))
+        dm = medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None).get('ativos') or []
+        if dm:
+            L.append('DM: ' + ', '.join(f"{x['jogador']} (até {'/'.join(reversed(x['volta'].split('-')))[:5]})" for x in dm[:6]))
+        cans = sorted(((self.energia_pct(j['id']), j) for j in (self.elenco or [])), key=lambda t: (t[0] is None, t[0] or 0))
+        cans = [f"{self._nome(j['id'])} {round(e)}%" for e, j in cans if e is not None and e < 70][:6]
+        if cans:
+            L.append('Cansados: ' + ', '.join(cans))
+        esc = self.escalacao or {}
+        b = self._bola_view(esc) if esc.get('bola') else None
+        if b:
+            c = {x['k']: x['nome'] for x in b['campos']}
+            L.append(f"Capitão: {c.get('capitao') or '—'} · Pênalti: {c.get('penalti') or '—'} · "
+                     f"Falta: {c.get('falta_longa') or '—'} · Escanteios: {c.get('esc_esq') or '—'}")
+        return '\n'.join(L)
+
+    def briefing_gravar(self):
+        pj = CFG.get('pasta_jogo')
+        if not pj or not os.path.isdir(pj):
+            return
+        txt = self.briefing_texto()
+        pasta = os.path.join(pj, 'GOGOSZ', 'AppCarreira')
+        os.makedirs(pasta, exist_ok=True)
+        arq = os.path.join(pasta, 'briefing.txt')
+        try:
+            if os.path.exists(arq) and open(arq, encoding='utf-8').read() == txt:
+                return
+            tmp = arq + '.tmp'
+            open(tmp, 'w', encoding='utf-8').write(txt)
+            os.replace(tmp, arq)
+        except OSError as e:
+            log('não gravou o painel pré-jogo:', e)
+
+    def sistema_view(self):
+        pj = CFG.get('pasta_jogo') or ''
+        mods = []
+        try:
+            for ln in open(os.path.join(pj, 'sider.ini'), encoding='utf-8', errors='replace'):
+                m_ = re.match(r'\s*lua\.module\s*=\s*"([^"]+)"', ln)
+                if m_:
+                    mods.append({'nome': m_.group(1), 'nosso': m_.group(1).startswith('AppCarreira')})
+        except OSError:
+            pass
+        return {'gravacao': self.estado_gravacao(), 'backups': self.backups_view(), 'slots': self.slots_view(),
+                'modulos': mods, 'memoria': {'ligado': CFG.get('memoria_diag', True), 'motivo': CFG.get('memoria_diag_motivo')},
+                'briefing': self.briefing_texto(), 'aovivo': self.aovivo.estado(self.names),
+                'restauracoes': (self.state or {}).get('restauracoes', [])[-5:][::-1]}
+
+    # ----- espaço de teste (Etapa 0, regra 2) -----
+    def no_slot_teste(self, caminho=None):
+        caminho = caminho or self.save_path
+        return bool(caminho and CFG.get('slot_teste') and os.path.basename(caminho) == CFG['slot_teste'])
+
+    def slots_view(self):
+        pasta = os.path.dirname(self.save_path) if self.save_path else None
+        lista = {os.path.basename(x['caminho']): x for x in self.listar_saves()
+                 if not pasta or os.path.normcase(os.path.dirname(x['caminho'])) == os.path.normcase(pasta)}
+        out = []
+        for i in range(8):
+            nome = f'ML{i:08X}'
+            x = lista.get(nome)
+            out.append({'arquivo': nome, 'espaco': i + 1, 'existe': bool(x), 'nome': (x or {}).get('nome'),
+                        'clube': (x or {}).get('clube'), 'data': (x or {}).get('data'), 'salvo_em': (x or {}).get('salvo_em'),
+                        'atual': bool(self.save_path) and os.path.basename(self.save_path) == nome,
+                        'principal': CFG.get('slot_principal') == nome, 'teste': CFG.get('slot_teste') == nome})
+        return {'pasta': pasta, 'espacos': out, 'teste': CFG.get('slot_teste'), 'principal': CFG.get('slot_principal'),
+                'no_teste': self.no_slot_teste(), 'confirmadas': CFG.get('gravacoes_confirmadas', [])}
+
+    def criar_slot_teste(self, destino):
+        """Copia o save da carreira atual para outro espaço e passa o app para ele."""
+        self.exigir_jogo_fechado('criar o espaço de teste')
+        if not re.fullmatch(r'ML0000000[0-7]', destino or ''):
+            raise ValueError('Espaço inválido.')
+        if not self.save_path or not self.state_path:
+            raise ValueError('O app ainda não leu o save da carreira.')
+        if self.no_slot_teste():
+            raise ValueError('O app já está no espaço de teste. Volte para a carreira principal antes.')
+        origem = self.save_path
+        if os.path.basename(origem) == destino:
+            raise ValueError('Esse é o espaço da sua carreira. Escolha outro.')
+        alvo = os.path.join(os.path.dirname(origem), destino)
+        bdir = os.path.join(DATA, 'backups_save')
+        os.makedirs(bdir, exist_ok=True)
+        if os.path.exists(alvo):          # guarda o que havia no espaço escolhido
+            shutil.copy2(alvo, os.path.join(bdir, f'espaco_{destino}_{time.strftime("%Y%m%d_%H%M%S")}.bak'))
+            for velho in sorted(glob.glob(os.path.join(bdir, 'espaco_*.bak')), key=os.path.getmtime)[:-3]:
+                try:
+                    os.remove(velho)
+                except OSError:
+                    pass
+        self.persist()
+        shutil.copyfile(origem, alvo)
+        # a carreira de teste tem a própria ficha do app (começa igual à verdadeira)
+        teste_json = self.career_state_path(self.career.slot_name + TESTE_SUFIXO, self.career.team_id)
+        shutil.copyfile(self.state_path, teste_json)
+        CFG['slot_teste'] = destino
+        CFG['slot_principal'] = os.path.basename(origem)
+        CFG['save_escolhido'] = alvo
+        CFG['save_escolhido_em'] = time.time()
+        jsave(os.path.join(DATA, 'config.json'), CFG)
+        log('espaço de teste criado:', origem, '->', alvo)
+        self.save_path = None; self.save_mtime = None; self.state = None; self.state_path = None
+        self.engine = None; self.career = None
+
+    def voltar_slot_principal(self):
+        p = CFG.get('slot_principal')
+        if not p or not self.save_path:
+            raise ValueError('Não há espaço de teste em uso.')
+        self.persist()
+        CFG['save_escolhido'] = os.path.join(os.path.dirname(self.save_path), p)
+        CFG['save_escolhido_em'] = time.time()
+        jsave(os.path.join(DATA, 'config.json'), CFG)
+        self.save_path = None; self.save_mtime = None; self.state = None; self.state_path = None
+        self.engine = None; self.career = None
+
+    def gravacao_liberada(self, tipo):
+        """Gravação nova (ainda não testada no jogo): só no espaço de teste até você confirmar que funcionou."""
+        if tipo in CFG.get('gravacoes_confirmadas', []) or self.no_slot_teste():
+            return
+        raise ValueError('Essa gravação ainda não foi testada no jogo. Crie o espaço de teste na aba Sistema, '
+                         'grave lá, carregue esse espaço no PES e confira. Depois marque "Funcionou no jogo".')
 
     def career_state_path(self, slot_name, team_id=None):
         """Arquivo do app para esta carreira. O nome vem do save ("Liga Master 03"), mas o jogo pode ter dois
@@ -515,7 +724,7 @@ class App:
         with LOCK:
             self.usar_time(car.team_id or CFG.get('time_id'))
             self.save_path, self.save_mtime, self.career = path, m, car
-            sp = self.career_state_path(car.slot_name, car.team_id)
+            sp = self.career_state_path(car.slot_name + (TESTE_SUFIXO if self.no_slot_teste(path) else ''), car.team_id)
             novo = False
             if sp != self.state_path or self.state is None:
                 self.state_path = sp
@@ -603,6 +812,10 @@ class App:
             self.carreira_processar(car, novo)
             self.assessor_processar(car, novas)
             self.escalacao_processar(car)
+            try:
+                self.briefing_gravar()
+            except Exception:
+                log(traceback.format_exc())
             if any(x['status'] == 'pendente' for x in st.get('debitos', [])) or st.get('energia_pend') or st.get('energia_set'):
                 self.aplicar_creditos()        # punição do diretor de futebol (verba retirada)
             st['eventos'] = [e for e in st.get('eventos', []) if e['tipo'] != 'kits']
@@ -910,7 +1123,7 @@ class App:
         antes = list(esc['ordem'])
         try:
             escalacao.gravar(car, esc, ordem)
-            bk = car.write(os.path.join(DATA, 'backups_save'), log)
+            bk = car.write(os.path.join(DATA, 'backups_save'), log, 'escalação ajustada pelo app')
         except Exception as e:
             car.sf.data[esc['off']:esc['off'] + escalacao.TAM] = bytes(antes)
             esc['ordem'] = antes
@@ -979,7 +1192,38 @@ class App:
         return {'titulares': [item(s) for s in tit], 'reservas': [item(s) for s in res], 'formacao_nome': nome_f,
                 'fora': [item(s) for s in fora if s < len(esc['vagas']) and esc['vagas'][s] is not None],
                 'ordem': esc['ordem'], 'formacao': esc.get('formacao'), 'auto': CFG.get('escalacao_auto', True),
-                'hist': (self.state or {}).get('escalacao_hist', [])[-5:][::-1]}
+                'hist': (self.state or {}).get('escalacao_hist', [])[-5:][::-1],
+                'bola': self._bola_view(esc), 'bola_liberada': 'bola_parada' in CFG.get('gravacoes_confirmadas', []) or self.no_slot_teste()}
+
+    def _bola_view(self, esc):
+        b = esc.get('bola')
+        if not b:
+            return None
+        nome = lambda s: self._nome(esc['vagas'][s]) if s is not None and s < len(esc['vagas']) and esc['vagas'][s] else None
+        return {'campos': [{'k': k, 'rotulo': r, 'vaga': b.get(k), 'nome': nome(b.get(k))} for k, _, r in escalacao.BOLA_PARADA],
+                'sobem': [nome(s) for s in b.get('sobem', []) if nome(s)]}
+
+    def bola_parada_salvar(self, valores):
+        car, esc = self.career, self.escalacao
+        if not car or not esc or not esc.get('bola'):
+            raise ValueError('Ainda não li o capitão e os batedores no save.')
+        self.gravacao_liberada('bola_parada')
+        if os.path.getmtime(car.path) != car.mtime:
+            raise ValueError('O jogo salvou de novo. Espere o app ler o save e tente outra vez.')
+        antes = escalacao.gravar_bola_parada(car, esc, valores)
+        try:
+            car.write(os.path.join(DATA, 'backups_save'), log, 'capitão e batedores')
+        except Exception:
+            ini = esc['off'] + escalacao.OFF_BOLA
+            car.sf.data[ini:ini + 10] = antes
+            raise
+        self.save_mtime = car.mtime
+        esc['bola'] = escalacao.ler_bola_parada(bytes(car.sf.data), esc['off'])
+        try:
+            self.briefing_gravar()
+        except Exception:
+            pass
+        self.status['aviso'] = 'Escalação: capitão e batedores gravados no save. Volte ao menu do PES e carregue a carreira para valer.'
 
     def escalacao_salvar(self, ordem):
         """Grava no save a escalação montada na tela."""
@@ -997,7 +1241,7 @@ class App:
             return False
         try:
             escalacao.gravar(car, esc, ordem)
-            car.write(os.path.join(DATA, 'backups_save'), log)
+            car.write(os.path.join(DATA, 'backups_save'), log, 'escalação montada na tela')
         except Exception:
             car.sf.data[esc['off']:esc['off'] + escalacao.TAM] = bytes(antes)
             esc['ordem'] = antes
@@ -1174,6 +1418,10 @@ class App:
         except Exception:
             log(traceback.format_exc())
             self.analise_adv = None
+        try:
+            self.briefing_gravar()
+        except Exception:
+            log(traceback.format_exc())
         try:
             nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000'))
             idades = {j['id']: j.get('idade') for j in (getattr(self, '_pool', None) or []) if j.get('idade')}
@@ -1506,7 +1754,7 @@ class App:
         for k_, v_ in (car.definir_energia(ener_set, so_sobe=False) if ener_set else {}).items():
             ener_antes.setdefault(k_, v_)
         try:
-            bk = car.write(os.path.join(DATA, 'backups_save'), log)
+            bk = car.write(os.path.join(DATA, 'backups_save'), log, 'dinheiro (patrocínio, multas, gastos)')
         except Exception as e:
             self.status['erro'] = str(e)
             log('não gravou o crédito:', e)
@@ -1757,7 +2005,7 @@ class App:
             'slots': [{'id': k, **{kk: vv for kk, vv in kits.SLOTS[k].items() if kk != 'lugares'}} for k in kits.SLOT_ORDER],
             'livres': eng.slots_livres(eng.hoje()) if eng and eng.hoje() else [],
             'familias': kits.FAMILIAS if self.time else {},
-            'save': st.get('save_info'), 'jogo_aberto': self.game_running(),
+            'save': st.get('save_info'), 'jogo_aberto': self.game_running(), 'gravacao': self.estado_gravacao(),
             'status': self.status, 'avisos': st.pop('avisos', []) if st else [],
             'kits_pendentes': self.kits_pendentes(), 'multas': st.get('multas', []),
             'fin_hist': st.get('fin_hist', [])[-60:],
@@ -1869,6 +2117,9 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
+            if u.path == '/api/sistema':
+                with LOCK:
+                    return self.send(200, A.sistema_view())
             if u.path == '/api/aovivo':
                 return self.send(200, {**A.aovivo.estado(A.names), 'meu': A.tid()})
             if u.path == '/api/estado':
@@ -2351,7 +2602,7 @@ class H(BaseHTTPRequestHandler):
                             valor = (p.get('acordo') or {}).get('valor', p['valor'])
                             if p['tipo'] == 'mover':
                                 novo = car.redistribuir(valor)
-                                car.write(os.path.join(DATA, 'backups_save'), log)
+                                car.write(os.path.join(DATA, 'backups_save'), log, 'orçamento redistribuído')
                                 A.save_mtime = car.mtime
                                 A.state['dinheiro'] = car.money()
                                 A.state.setdefault('redistrib', []).append({'data': A.state.get('data'), 'valor': valor, **novo})
@@ -2387,8 +2638,8 @@ class H(BaseHTTPRequestHandler):
                     valor = int(body['valor'])
                     try:
                         novo = car.redistribuir(valor)
-                        car.write(os.path.join(DATA, 'backups_save'), log)
-                    except ValueError as e:
+                        car.write(os.path.join(DATA, 'backups_save'), log, 'orçamento redistribuído')
+                    except (ValueError, RuntimeError) as e:
                         return self.send(400, {'erro': str(e)})
                     A.save_mtime = car.mtime
                     A.state['dinheiro'] = car.money()
@@ -2498,6 +2749,32 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/rivais':
                     A.state.setdefault('gestao', {})['rivais_manual'] = [int(x) for x in body.get('ids') or []]
                     A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/escalacao/bola':
+                    A.bola_parada_salvar({k: v for k, v in (body.get('valores') or {}).items() if v is not None})
+                    cap = (A.escalacao or {}).get('bola', {}).get('capitao')
+                    if cap is not None:
+                        vestiario.definir_capitao(A.state, A._nome(A.escalacao['vagas'][cap]), A.state.get('data'))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/sistema/restaurar':
+                    A.restaurar_backup(body.get('id'))
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/sistema/slot_teste':
+                    A.criar_slot_teste(body.get('destino'))
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/sistema/slot_principal':
+                    A.voltar_slot_principal()
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/sistema/confirmar':
+                    tipo = body.get('tipo')
+                    if tipo not in ('bola_parada',):
+                        raise ValueError('Tipo de gravação desconhecido.')
+                    conf = CFG.setdefault('gravacoes_confirmadas', [])
+                    if body.get('ok', True) and tipo not in conf:
+                        conf.append(tipo)
+                    if not body.get('ok', True) and tipo in conf:
+                        conf.remove(tipo)
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    return self.send(200, {'ok': True})
                 if u.path == '/api/escalacao':
                     mudou = A.escalacao_salvar(body.get('ordem') or [])
                     A.persist(); return self.send(200, {'ok': True, 'mudou': mudou})

@@ -11,7 +11,7 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Assunto | Arquivo |
 |---|---|
 | Servidor, leitura do save, API `/api/...`, view para a tela | `app.py` (classe App: `tick`, `ler_elenco`, `aplicar_creditos`, `view`, `carreira_view`; rotas no fim) |
-| Interface (uma página: HTML+CSS+JS) | `web/index.html`. Funções `rXxx()` desenham cada aba; `api()` chama o servidor. Visual vertical = bloco CSS "visual 4.0" no fim do `<style>`; o menu `#nav` fica no fim do body, fixo embaixo. |
+| Interface (uma página: HTML+CSS+JS) | `web/index.html`. Aba Sistema: `rSistema()`; capitão/batedores: `rBola()`. Funções `rXxx()` desenham cada aba; `api()` chama o servidor. Visual vertical = bloco CSS "visual 4.0" no fim do `<style>`; o menu `#nav` fica no fim do body, fixo embaixo. |
 | Ler/gravar o save (dinheiro, elenco, energia, contratos) | `core/savedata.py` (classe `Career`) e `core/pescrypt.py` (cripto) |
 | Escalação/formação do plano de jogo | `core/escalacao.py` |
 | Súmulas e partidas da temporada | `core/sumulas.py`, `core/campeonatos.py` |
@@ -50,6 +50,24 @@ Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o 
 - Tabela de jogadores do clube: registros 0x170 (`jogadores.juniores`).
 - Detalhes completos: doc do projeto `claude/plano-de-jogo-no-save.md`.
 - Estrutura do arquivo EDIT (Team-Player 284 B, plano de jogo 628 B, ficha 240 B): doc do projeto `claude/edit-file-wiki-pes2021.md`. Para procurar a tabela Team-Player num save: `ferramentas/achar_team_player.py`.
+
+## Segurança das gravações (4.2.0) · contrato para outros modelos
+Não reescreva a parte binária (`pescrypt.py`, `savedata.Career.write`, `escalacao.py`); use as funções abaixo.
+- `savedata.TRAVA(caminho) -> motivo|None`: definida em `App.trava_gravacao`; bloqueia `Career.write` com partida ao vivo
+  (`live_match_data.json` status `ao_vivo` < 90 s). Gravar com o PES aberto no menu é permitido e testado (vale ao recarregar).
+- `Career.write(backup_dir, log, motivo)`: backup `data/backups_save/ML_<mtime>.bak` + ficha `.bak.json` (arquivo, carreira,
+  data do jogo, motivos). `savedata.listar_backups`, `savedata.restaurar_backup` (guarda o atual antes). Mantém 15.
+- `App.exigir_jogo_fechado(oque)`: restaurar e criar espaço de teste.
+- Espaço de teste: `App.criar_slot_teste('ML0000000X')`, `voltar_slot_principal`, `no_slot_teste()`. CFG `slot_teste`,
+  `slot_principal`. Ficha do app separada: nome da carreira + `TESTE_SUFIXO` (' - TESTE').
+- Gravação nova ainda não testada no jogo: chame `App.gravacao_liberada('<tipo>')` (só passa no espaço de teste até
+  `CFG['gravacoes_confirmadas']` ter o tipo; botão "Funcionou no jogo" → `/api/sistema/confirmar`). Tipos: `bola_parada`.
+- Capitão e batedores: `escalacao.ler_bola_parada / gravar_bola_parada` (lista de escalação + 0x28: falta longa, curta,
+  2ª, escanteio esq., dir., pênalti, 3 que sobem, capitão em +0x31; valores = vaga no elenco, 0xFF vazio).
+- Painel pré-jogo: `App.briefing_texto/briefing_gravar` → `<pasta_jogo>\GOGOSZ\AppCarreira\briefing.txt` (texto UTF-8);
+  `AppCarreiraAoVivo.lua` 1.5 mostra no `overlay_on`. Aba Sistema: `GET /api/sistema` (`App.sistema_view`).
+- Ainda NÃO feito (depende de achar no save/memória): efetivar transferências/empréstimos/renovações, escrever na RAM.
+- Versão: cada publicação vai direto para o PC do usuário; marque etapas concluídas com `git tag`.
 
 ## Gravações no save
 

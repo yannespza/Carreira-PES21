@@ -23,7 +23,7 @@ LUA = r'''-- AppCarreiraAoVivo.lua (App de Carreira PES 21)
 -- ponteiros do goleador que o próprio GOGOSZ usa (GolsJogador.lua) e grava arquivos.
 -- Modo sondagem: no menu do Sider, com este módulo na tela, as teclas C, L, S e R gravam uma "foto" da memória
 -- para descobrirmos onde o jogo guarda cartões, lesões e substituições.
-local m = { version = "1.4" }
+local m = { version = "1.5" }
 
 local ARQ, TMP, PASTA_SONDA
 local quadro = 0
@@ -258,9 +258,28 @@ function m.key_down(ctx, vkey)
     if r then sonda(r) end
 end
 
+-- painel pré-jogo: o app grava GOGOSZ\AppCarreira\briefing.txt (texto pronto); aqui só lemos e mostramos
+local BRIEF, brief_txt, brief_q = nil, "", -1000
+
+local function briefing()
+    if BRIEF and quadro - brief_q > 300 then          -- relê a cada ~5 s com o painel aberto
+        brief_q = quadro
+        local f = io.open(BRIEF, "r")
+        if f then
+            brief_txt = f:read("*a") or ""
+            f:close()
+        end
+    end
+    return brief_txt
+end
+
 function m.overlay_on(ctx)
+    local b = briefing()
+    if not ativo and b ~= "" then
+        return "App de Carreira · painel pré-jogo\n\n" .. b
+    end
     local p, q, r = cadeia()
-    return string.format([[App de Carreira · partida ao vivo %s
+    return (b ~= "" and (b .. "\n\n") or "") .. string.format([[App de Carreira · partida ao vivo %s
 Cadeia do goleador: %s
 
 MODO SONDAGEM (ajuda o app a achar cartões e lesões)
@@ -276,6 +295,7 @@ function m.init(ctx)
     ARQ = base .. "live_match_data.json"
     TMP = base .. "live_match_data.tmp"
     PASTA_SONDA = base .. "GOGOSZ\\AppCarreira\\sondas\\"
+    BRIEF = base .. "GOGOSZ\\AppCarreira\\briefing.txt"
     m.sondar_gols = true      -- grava uma sonda em cada gol (serve de referência conhecida)
     ctx.register("set_teams", m.set_teams)
     ctx.register("display_frame", m.display_frame)
