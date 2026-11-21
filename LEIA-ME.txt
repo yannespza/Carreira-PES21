@@ -574,3 +574,15 @@ VERSÃO 4.8.0
 - Mensagens: a caixa guarda só as 10 mais recentes (mais as que têm proposta aberta para responder).
 - Finanças: novo quadro com o clube na vida real (balanço 2025): receita, dívida, superávit, vendas e índice
   de poder financeiro.
+
+VERSÃO 4.9.0
+- Visual novo (layout aprovado no Canva): verde-neon sobre fundo preto esverdeado, cartões com brilho e menu
+  lateral destacado. A Central ganhou 6 cartões: clima e horário, fadiga do elenco, moral do grupo, bilheteria
+  e sócios, última coletiva e mensagens recentes (clique leva à aba de cada um).
+- Finanças: gráficos da temporada (orçamento de transferências e humor da torcida).
+- Clube > Diretoria: Conselho deliberativo. Meta da temporada (título, G4, caixa maior ou minutos para a base):
+  cumprida, o conselho libera verba no orçamento e sobe a confiança; não cumprida, a confiança cai. Eleição a
+  cada 3 temporadas: se a oposição vencer, a confiança volta a 50; se a situação vencer, ganha confiança e
+  verba.
+- Aba Jogo: perfil do árbitro de cada partida (rigoroso, caseiro ou deixa o jogo correr), também no painel do
+  jogo. Com árbitro rigoroso, a pena no tribunal tende a ser maior.

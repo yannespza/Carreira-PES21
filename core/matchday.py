@@ -193,3 +193,19 @@ def formas(partidas, torneio=17):
         f[p['mandante']] = f.get(p['mandante'], '') + rm
         f[p['visitante']] = f.get(p['visitante'], '') + rv
     return f
+
+
+ARBITROS = {
+    'rigoroso': ('Rigoroso', 'apita tudo e dá cartão fácil: cuidado com carrinhos e reclamação'),
+    'caseiro': ('Caseiro', 'costuma favorecer o time da casa nos lances divididos'),
+    'deixa': ('Deixa o jogo correr', 'marca pouca falta: jogo mais físico e corrido'),
+}
+
+
+def arbitro(data_iso, chave, eh_classico=False):
+    """Perfil do árbitro da partida (sorteio fixo por jogo; clássicos têm mais chance de árbitro rigoroso)."""
+    r = random.Random(f'arb|{data_iso}|{chave}')
+    pesos = [45, 25, 30] if eh_classico else [30, 30, 40]
+    k = r.choices(list(ARBITROS), weights=pesos)[0]
+    nome, efeito = ARBITROS[k]
+    return {'perfil': k, 'nome': nome, 'efeito': efeito, 'texto': f'{nome} ({efeito})'}

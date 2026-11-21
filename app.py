@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho
 from core.logos import LogoBank
 
 PORT = 8765
@@ -559,6 +559,8 @@ class App:
             L.append('Clima: ' + md['clima']['texto'] + ''.join(' · ' + a for a in md['clima'].get('alertas', [])))
         if md.get('torcida'):
             L.append(md['torcida']['texto'])
+        if md.get('arbitro'):
+            L.append('Árbitro: ' + md['arbitro']['texto'])
         dm = medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None).get('ativos') or []
         if dm:
             L.append('DM: ' + ', '.join(f"{x['jogador']} (até {'/'.join(reversed(x['volta'].split('-')))[:5]})" for x in dm[:6]))
@@ -585,6 +587,12 @@ class App:
             nomes = getattr(self, 'names', None) or {}
             mand = nomes.get(prox['m']) or prox.get('mn', '')
             md['clima'] = matchday.clima_partida(mand, prox['data'], f"{prox['m']}x{prox['v']}")
+            md['arbitro'] = matchday.arbitro(prox['data'], f"{prox['m']}x{prox['v']}", eh_classico=int(prox['v'] if int(prox['m']) == int(self.tid() or 0) else prox['m']) in set(self.rivais_ids()))
+            if self.state is not None:
+                arb = self.state.setdefault('arbitros', {})
+                arb[prox['data']] = md['arbitro']['perfil']
+                for k in sorted(arb)[:-30]:
+                    arb.pop(k, None)
             loc_m = cidades.do_time(mand)
             loc_c = cidades.do_time(self.clube())
             md['fora'] = int(prox['m']) != int(self.tid() or 0)
@@ -1010,6 +1018,10 @@ class App:
             st['save_info'] = {'arquivo': path, 'slot': car.slot_name, 'clube': car.club_line,
                                'lido_em': time.strftime('%d/%m %H:%M:%S')}
             st['dinheiro'] = car.money()
+            try:
+                self.caixa_conselho(st)
+            except Exception:
+                log(traceback.format_exc())
             self._fin_delta(st, car)
             try:
                 nm_save = savedata.nomes_clubes(bytes(car.sf.data))
@@ -1100,6 +1112,35 @@ class App:
                 log('recuperação do DM:', len(novos), 'jogadores com energia extra')
         except Exception:
             log(traceback.format_exc())
+
+    def caixa_conselho(self, st):
+        """Histórico do orçamento (gráfico de Finanças) e metas/eleição do conselho."""
+        d = st.get('data')
+        orc = (st.get('dinheiro') or {}).get('orc_transf')
+        if d and orc is not None:
+            h = st.setdefault('caixa_hist', [])
+            if h and h[-1][0] == d:
+                h[-1] = [d, orc]
+            else:
+                h.append([d, orc])
+            del h[:-160]
+        tab = (st.get('tabela') or {}).get('linhas') or []
+        pos = next((l['pos'] for l in tab if l['id'] == self.tid()), None)
+        jov = 0
+        for j in (getattr(self, 'estatisticas', None) or {}).get('jogadores', []):
+            el = next((x for x in self.elenco or [] if x['id'] == j.get('id')), None)
+            if el and (el.get('idade') or 99) <= 21 and j.get('jogos', 0) >= 10:
+                jov += 1
+        try:
+            rr = rivais.retrospecto(st.get('partidas', []), self.tid(), set(self.rivais_ids()))
+            saldo = sum((x.get('V', 0) - x.get('D', 0)) for x in (rr or {}).values())
+        except Exception:
+            saldo = 0
+        mu = mundo.Mundo(st, self.clube(), self.tid())
+        for de, ass, txt in conselho.processar(st, pos, jov, mu.m, {'pos': pos, 'saldo_classicos': saldo}):
+            self._msg_app(de, ass, txt)
+        if any(x.get('origem') == 'conselho' and x.get('status') == 'pendente' for x in st.get('debitos', [])):
+            self._conselho_pagar = True
 
     def imprensa_moral(self, p, mu):
         """A imprensa elogia quem foi muito bem (nota 7,5+) e detona quem foi muito mal (5 ou menos):
@@ -2443,7 +2484,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(), 'ofertas_jogo': self.ofertas_jogo_view(), 'clube_real': financas_clubes.clube(self.tid()) if self.tid() else None, 'planos_salvos': (self.state or {}).get('planos_salvos', []),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(), 'ofertas_jogo': self.ofertas_jogo_view(), 'clube_real': financas_clubes.clube(self.tid()) if self.tid() else None, 'planos_salvos': (self.state or {}).get('planos_salvos', []), 'conselho': conselho.view(self.state) if self.state else None, 'caixa_hist': (self.state or {}).get('caixa_hist', [])[-60:],
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -3236,6 +3277,9 @@ class H(BaseHTTPRequestHandler):
                                 'formacao': body['formacao'], 'rotulo': str(body.get('rotulo') or '')[:20],
                                 'criado': A.state.get('data')}]
                         del P[:-12]
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/conselho/meta':
+                    conselho.escolher(A.state, body.get('meta'))
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/museu/aposentar':
                     museu.aposentar(A.state, int(body.get('numero')), str(body.get('nome') or '')[:60])

@@ -58,8 +58,9 @@ def julgar(st, proc_id, estrategia, proximos, hoje):
     if estrategia not in ESTRATEGIAS:
         raise ValueError('Defesa inválida.')
     r = random.Random(f"trib|{proc_id}|{estrategia}")
+    rigoroso = (st.get('arbitros') or {}).get(proc['data_jogo']) == 'rigoroso'
     if estrategia == 'padrao':
-        total = r.choices([2, 3, 4], weights=[45, 35, 20])[0]
+        total = r.choices([2, 3, 4], weights=[30, 35, 35] if rigoroso else [45, 35, 20])[0]
     else:
         total = r.choices([1, 2, 3], weights=[55, 35, 10])[0]
     extra = max(0, total - 1)          # 1 jogo o próprio PES já cumpre
