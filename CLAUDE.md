@@ -11,7 +11,7 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Assunto | Arquivo |
 |---|---|
 | Servidor, leitura do save, API `/api/...`, view para a tela | `app.py` (classe App: `tick`, `ler_elenco`, `aplicar_creditos`, `view`, `carreira_view`; rotas no fim) |
-| Interface (uma página: HTML+CSS+JS) | `web/index.html`. Aba Sistema: `rSistema()`; capitão/batedores: `rBola()`. Funções `rXxx()` desenham cada aba; `api()` chama o servidor. Visual vertical = bloco CSS "visual 4.0" no fim do `<style>`; o menu `#nav` fica no fim do body, fixo embaixo. |
+| Interface (uma página: HTML+CSS+JS) | `web/index.html`. Aba Sistema: `rSistema()`; capitão/batedores: `rBola()`. Funções `rXxx()` desenham cada aba; `api()` chama o servidor. Visual vertical = bloco CSS "visual 4.0" no fim do `<style>`; o menu `#nav` fica no fim do body, fixo na LATERAL ESQUERDA (104 px, bloco CSS "4.7" no fim do `<style>`); sub-abas `.tabs2` quebram linha. |
 | Ler/gravar o save (dinheiro, elenco, energia, contratos) | `core/savedata.py` (classe `Career`) e `core/pescrypt.py` (cripto) |
 | Escalação/formação do plano de jogo | `core/escalacao.py` |
 | Súmulas e partidas da temporada | `core/sumulas.py`, `core/campeonatos.py` |

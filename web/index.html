@@ -642,6 +642,25 @@ dialog{border-radius:20px}
 .pag em{font-style:normal;padding:4px 12px;border-radius:20px;font-family:var(--head);font-size:13px;letter-spacing:.08em;text-transform:uppercase;background:rgba(143,160,189,.14);color:#8FA0BD}
 .pag em.cup{background:rgba(245,184,61,.15);color:var(--gold)}
 @media(max-width:760px){.pan{grid-template-columns:1fr}.pesc{width:90px;height:90px}}
+/* ===== 4.7: menu lateral, sub-abas que quebram linha, uniformes sem corte ===== */
+body{padding-left:104px;padding-bottom:24px}
+nav#nav{top:0;bottom:0;left:0;right:auto;width:104px;flex-direction:column;justify-content:flex-start;overflow-y:auto;overflow-x:hidden;
+  border-top:0;border-right:1px solid var(--line);padding:10px 0;scrollbar-width:none}
+nav#nav::-webkit-scrollbar{display:none}
+nav#nav a{flex:0 0 auto;padding:11px 4px 10px;font-size:10.5px !important;letter-spacing:.04em !important;gap:4px;text-align:center;line-height:1.15}
+nav#nav a svg{width:26px;height:26px}
+nav#nav a.on{background:rgba(34,229,139,.08)}
+nav#nav a.on:before{top:50%;left:0;width:3px;height:38px;margin:-19px 0 0 0}
+nav#nav .badge{top:6px;left:calc(50% + 6px)}
+section>.crumb+.tabs2,section>.tabs2{top:0}
+.tabs2{flex-wrap:wrap;overflow:visible;row-gap:8px}
+.tabs2 a{padding:9px 15px;font-size:13px}
+main{max-width:1240px}
+.kitwrap>div{min-width:0}
+.presets button{white-space:normal}
+@media(max-width:1500px){.kitwrap{grid-template-columns:1fr !important}.kitwrap>div:first-child{position:static}
+  .kitprev{max-width:720px;margin:0 auto}.presets{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.presets{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>

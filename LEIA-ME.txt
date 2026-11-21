@@ -532,3 +532,9 @@ VERSÃO 4.6.0
 - IA opcional (aba Sistema): desligada por padrão. Com Ollama no PC ou uma API na nuvem, você pode responder a
   coletiva com as suas palavras e a IA avalia (impactos sempre entre -5 e +5). Sem IA, a resposta escrita é
   avaliada por regras prontas.
+
+VERSÃO 4.6.1
+- Menu principal agora fica na lateral esquerda (vertical), com espaço para todas as abas.
+- Sub-abas quebram linha em vez de serem cortadas.
+- Uniformes > Estúdio: em telas até 1500 px de largura, a prévia fica em cima e os controles (cores, modelos
+  comemorativos, estrelas de campeão) embaixo, sem corte.
