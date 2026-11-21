@@ -125,8 +125,11 @@ def do_clube(data: bytes, team_id: int, nomes=None, ultimas=15):
             s = tab.setdefault(j['id'], {'id': j['id'], 'nome': nome(j['id']),
                                          'pos': (nomes.get(j['id']) or {}).get('pos', ''),
                                          'jogos': 0, 'titular': 0, 'minutos': 0, 'gols': 0, 'assist': 0,
-                                         'amarelos': 0, 'vermelhos': 0, 'notas': []})
+                                         'amarelos': 0, 'vermelhos': 0, 'notas': [], 'amarelos_torneio': {}})
             s['jogos'] += 1
+            if j['amarelo'] and not j['vermelho']:
+                t = str(p['torneio'] & 1023)
+                s['amarelos_torneio'][t] = s['amarelos_torneio'].get(t, 0) + 1
             s['titular'] += j['titular']
             s['amarelos'] += j['amarelo']
             s['vermelhos'] += j['vermelho']
@@ -141,6 +144,8 @@ def do_clube(data: bytes, team_id: int, nomes=None, ultimas=15):
         s['nota_media'] = round(sum(notas) / len(notas), 2) if notas else None
         s['nota_max'] = max(notas) if notas else None
         s['ultimas_notas'] = notas[-5:]
+        # pendurado: 3 amarelos suspendem (Brasileirão, Copa do Brasil e CONMEBOL); com 2, 5, 8... está pendurado
+        s['pendurado'] = sorted(int(t) for t, n in s['amarelos_torneio'].items() if n % 3 == 2)
         lista.append(s)
     lista.sort(key=lambda s: (-s['jogos'], -s['minutos']))
     sumulas = []

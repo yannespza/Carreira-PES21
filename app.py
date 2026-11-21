@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades
 from core.logos import LogoBank
 
 PORT = 8765
@@ -380,7 +380,8 @@ class App:
             # o save guarda a energia do fim do último jogo; o jogo soma a recuperação dos dias seguintes
             self.ultimo_jogo = {}
             try:
-                for p_ in sumulas.partidas(bytes(car.sf.data)):
+                self._partidas = sumulas.partidas(bytes(car.sf.data))
+                for p_ in self._partidas:
                     if car.team_id in (p_['mandante'], p_['visitante']):
                         for x in p_['escalacao_mandante'] + p_['escalacao_visitante']:
                             if x['min'] and x['id'] in self.energia:
@@ -541,6 +542,11 @@ class App:
                 L.append('Comissão: ' + d)
         elif prox:
             L.append('PRÓXIMO JOGO: ' + str(prox.get('data', '')))
+        md = st.get('matchday') or {}
+        if md.get('clima'):
+            L.append('Clima: ' + md['clima']['texto'] + ''.join(' · ' + a for a in md['clima'].get('alertas', [])))
+        if md.get('torcida'):
+            L.append(md['torcida']['texto'])
         dm = medico.view(st, hoje, {j['id'] for j in (self.elenco or [])} or None).get('ativos') or []
         if dm:
             L.append('DM: ' + ', '.join(f"{x['jogador']} (até {'/'.join(reversed(x['volta'].split('-')))[:5]})" for x in dm[:6]))
@@ -556,10 +562,61 @@ class App:
                      f"Falta: {c.get('falta_longa') or '—'} · Escanteios: {c.get('esc_esq') or '—'}")
         return '\n'.join(L)
 
+    def matchday_atualizar(self):
+        """Clima do próximo jogo (StadiumServer), torcida única e rivalidades (crowd_behavior) e tabela real
+        para o público (crowd_standings.csv). Só escreve arquivos de configuração dos módulos do patch."""
+        st = self.state or {}
+        pj = CFG.get('pasta_jogo') or ''
+        prox = next((p for p in (st.get('proximos') or []) if not p.get('jogada')), None)
+        md = {'proximo': prox}
+        if prox:
+            nomes = getattr(self, 'names', None) or {}
+            mand = nomes.get(prox['m']) or prox.get('mn', '')
+            md['clima'] = matchday.clima_partida(mand, prox['data'], f"{prox['m']}x{prox['v']}")
+            loc_m = cidades.do_time(mand)
+            loc_c = cidades.do_time(self.clube())
+            md['fora'] = int(prox['m']) != int(self.tid() or 0)
+            md['distancia_km'] = cidades.distancia_km(loc_c, loc_m) if md['fora'] else 0
+            ant = (st.get('matchday') or {}).get('clima_arquivo')
+            arq = None
+            if pj and CFG.get('matchday_clima', True):
+                est = ingame.estadio_do_time(pj, prox['m'])
+                arq = matchday.gravar_clima(est and est['pasta'], md['clima'])
+            if ant and ant != arq:
+                matchday.apagar_clima(ant)
+            md['clima_arquivo'] = arq
+            md['clima_no_jogo'] = bool(arq)
+        if pj and CFG.get('matchday_torcida', True):
+            try:
+                bloco, regra = matchday.bloco_torcida(self.tid(), self.clube(), prox, self.rivais_ids(),
+                                                      getattr(self, 'names', {}) or {})
+                md['torcida'] = regra
+                md['torcida_no_jogo'] = matchday.gravar_ini_torcida(pj, bloco)
+                tab = st.get('tabela') or {}
+                linhas = tab.get('linhas') if isinstance(tab, dict) else None
+                if linhas:
+                    fm = matchday.formas(getattr(self, '_partidas', None) or [])
+                    md['tabela_no_jogo'] = matchday.gravar_csv(pj, matchday.csv_tabela(linhas, fm))
+            except Exception:
+                log(traceback.format_exc())
+        if self.state is not None:
+            self.state['matchday'] = md
+        return md
+
+    def matchday_view(self):
+        st = self.state or {}
+        md = dict(st.get('matchday') or {})
+        md.pop('clima_arquivo', None)
+        return md
+
     def briefing_gravar(self):
         pj = CFG.get('pasta_jogo')
         if not pj or not os.path.isdir(pj):
             return
+        try:
+            self.matchday_atualizar()
+        except Exception:
+            log(traceback.format_exc())
         txt = self.briefing_texto()
         pasta = os.path.join(pj, 'GOGOSZ', 'AppCarreira')
         os.makedirs(pasta, exist_ok=True)
@@ -1971,7 +2028,8 @@ class App:
         if not e:
             return None
         nm = lambda i: self.names.get(i, f'Time {i}')
-        return {**e, 'sumulas': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
+        jog = [{**j, 'pendurado': [TORNEIOS.get(t, 'copa') for t in j.get('pendurado', [])]} for j in e.get('jogadores', [])]
+        return {**e, 'jogadores': jog, 'sumulas': [{**p, 'mandante_nome': nm(p['mandante']), 'visitante_nome': nm(p['visitante']),
                                   'torneio_nome': TORNEIOS.get(p['torneio'] & 1023, f"Torneio {p['torneio']}")}
                                  for p in e['sumulas']]}
 
@@ -2023,7 +2081,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},

@@ -246,6 +246,17 @@ dialog select,dialog input{width:100%}
 /* escalação */
 .eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
 .eschip small{opacity:.7;margin-right:4px}
+.mdjogo{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:6px}.mdjogo>div{display:flex;flex-direction:column;align-items:center;gap:6px;width:40%;text-align:center}.mdjogo img{width:84px;height:84px;object-fit:contain}.mdjogo>span{font-size:28px;color:var(--mut)}
+.mdalerta{padding:8px 12px;border:1px solid #ff9b3d66;border-radius:8px;background:#ff9b3d14;margin:8px 0}
+
+.stft{width:26px;height:26px;border-radius:50%;object-fit:cover;object-position:50% 10%;vertical-align:middle;margin-right:6px;background:#0003}
+.cart{display:inline-block;min-width:18px;padding:1px 4px;border-radius:3px;font-weight:800;font-size:12px;color:#111}.cart.ca{background:#f5d142}.cart.cv{background:#e5484d;color:#fff}
+.pend{font-size:10px;font-weight:800;letter-spacing:.5px;padding:1px 5px;border-radius:4px;background:#f5d14222;color:#f5d142;border:1px solid #f5d14266;margin-left:4px}
+.eschip .escft{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:50% 10%;display:block;margin:-20px auto 2px;background:#0004;border:2px solid var(--lime)}
+.escl .eschip .escft{display:none}
+.eschip .escen{display:block;height:4px;border-radius:2px;background:#0008;margin-top:3px;overflow:hidden}.eschip .escen>i{display:block;height:100%}
+.eschip .escmo{margin-left:4px;font-size:11px}.escmo.m4{color:#2fd3ff}.escmo.m3{color:#3ddc84}.escmo.m2{color:#f5c542}.escmo.m1{color:#ff9b3d}.escmo.m0{color:#ff5b5b}
+
 .fintab td,.fintab th{padding:6px 4px}
 .cgj{position:absolute;top:84px;left:calc(50% + 18px);background:#0e1116;color:var(--lime);font-family:var(--head);font-size:15px;padding:1px 7px;border-radius:6px;z-index:2}
 .fichah{display:flex;gap:16px;align-items:center;margin-bottom:6px}.ftg img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:#222}
@@ -797,6 +808,11 @@ dialog{border-radius:20px}
   </section>
 
   <!-- SISTEMA -->
+  <section id="t-jogo" class="hidden">
+    <div class="crumb">Início / <b>Dia de jogo</b></div>
+    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Logística e viagem</a><a data-j="fad">Fadiga e risco</a><a data-j="dos">Dossiê do adversário</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria e sócios</a></div>
+    <div id="jogoBox"><div class="empty">Carregando…</div></div>
+  </section>
   <section id="t-sis" class="hidden">
     <div class="crumb">Início / <b>Sistema</b></div>
     <div id="sisBox"><div class="empty">Carregando…</div></div>
@@ -838,6 +854,7 @@ dialog{border-radius:20px}
     <a data-t="patro"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><em>Comercial</em><span class="badge hidden" id="bOf"></span></a>
     <a data-t="kits"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 3 2 5 3-1v11h8V10l3 1 2-5-5-3a4 4 0 01-8 0z"/></svg><em>Uniformes</em><span class="badge hidden" id="bMkt"></span></a>
     <a data-t="elenco"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6"/><circle cx="17" cy="9" r="2.5"/><path d="M18 14c3 .5 4 2.5 4 5"/></svg><em>Elenco</em></a>
+    <a data-t="jogo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7l3 2.2-1.1 3.6h-3.8L9 9.2z"/><path d="M12 3v4M21 10.5l-6 -1.3M17.5 19l-3.6-6.2M6.5 19l3.6-6.2M3 10.5l6-1.3"/></svg><em>Jogo</em></a>
     <a data-t="fin"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1.6 5-1.6 5 0s-5 3-5 4.6 5 1.6 5 0"/></svg><em>Finanças</em></a>
     <a data-t="news"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg><em>Mídia</em></a>
     <a data-t="msgs"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><em>Mensagens</em><span class="badge hidden" id="bMsg"></span></a>
@@ -1093,7 +1110,7 @@ function render(){
   if(!(fam in S.familias)){fam=Object.keys(S.familias)[0];kitStamp=Date.now()}
   aplicarCores();rTimeline();
   if(editando()&&!render.forcar){clearTimeout(render.t);render.t=setTimeout(()=>{render.forcar=1;render();render.forcar=0},4000);return}
-  ({clube:rClube,camp:rCamp,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco,sis:rSistema})[tab]();
+  ({clube:rClube,camp:rCamp,patro:()=>{rPatro();rEmps()},kits:rKits,msgs:rMsgs,news:rNews,fin:rFin,elenco:rElenco,sis:rSistema,jogo:rJogo})[tab]();
 }
 
 function rTabela(){
@@ -1800,6 +1817,30 @@ function sumTroca(p,j){const jogada=p.jogadores.some(x=>!x.titular);   // só pa
   if(!j.titular)return ` <small style="color:#4caf50" title="entrou">▲ ${Math.max(1,90-j.min)}′</small>`;
   if(j.min<90&&!j.vermelho)return ` <small style="color:#ff6b6b" title="saiu">▼ ${j.min}′</small>`;
   return ''}
+
+// ===== Dia de jogo: preparação (clima, torcida), logística, fadiga, dossiê, tribunal, bilheteria =====
+let JTAB='pre';
+document.addEventListener('click',e=>{const a=e.target.closest('#jtabs a[data-j]');if(!a)return;JTAB=a.dataset.j;
+  document.querySelectorAll('#jtabs a').forEach(x=>x.classList.toggle('on',x===a));rJogo()});
+const JOGO_R={};
+function rJogo(){const f=JOGO_R[JTAB];$('jogoBox').innerHTML=f?f():'<div class="box"><div class="empty">Em breve.</div></div>'}
+const simNao=(ok,sim,nao)=>ok?`<span style="color:#3ddc84">${sim}</span>`:`<span style="color:var(--mut)">${nao}</span>`;
+JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
+  if(!P)return '<div class="box"><div class="empty">Sem próximo jogo no calendário do save.</div></div>';
+  const fora=M.fora;
+  return `<div class="box"><h3>Próximo jogo <small>${esc(P.comp||'')}</small></h3>
+   <div class="mdjogo"><div><img src="/escudo/${P.m}.png" onerror="this.style.visibility='hidden'"><b>${esc(P.mn||'')}</b></div><span>x</span><div><img src="/escudo/${P.v}.png" onerror="this.style.visibility='hidden'"><b>${esc(P.vn||'')}</b></div></div>
+   <p style="text-align:center;color:var(--mut);margin:6px 0 0">${dt(P.data)} · ${fora?'fora de casa'+(M.distancia_km?` · ${M.distancia_km.toLocaleString('pt-BR')} km de viagem`:''):'em casa'}</p></div>
+  ${C?`<div class="box"><h3>Clima e horário</h3>
+   <div class="cards"><div class="card"><b>${C.temp}°C</b><span>${esc(C.cidade)}${C.uf?' · '+esc(C.uf):''}</span></div>
+   <div class="card"><b>${C.chuva?'🌧️ Chuva':'☀️ Firme'}</b><span>${C.estacao=='winter'?'inverno':'verão'}</span></div>
+   <div class="card"><b>${esc(C.hora)}</b><span>${C.noite?'à noite':'de dia'}</span></div>
+   <div class="card"><b>${C.altitude?C.altitude.toLocaleString('pt-BR')+' m':'—'}</b><span>altitude</span></div></div>
+   ${(C.alertas||[]).map(a=>`<p class="mdalerta">⚠️ ${esc(a)}</p>`).join('')}
+   <p style="font-size:12px;color:var(--mut)">No jogo: ${simNao(M.clima_no_jogo,'o estádio do mandante vai usar este clima (StadiumServer).','o estádio do mandante não está no StadiumServer; o jogo sorteia o clima como sempre.')}</p></div>`:''}
+  <div class="box"><h3>Torcida</h3>
+   ${M.torcida?`<p class="mdalerta" style="border-color:#f5d14266">🏟️ ${esc(M.torcida.texto)}</p>`:'<p>Torcida mista: o público e a divisão entre as torcidas seguem o módulo de torcida do patch.</p>'}
+   <p style="font-size:12px;color:var(--mut)">O app manda para o módulo de torcida do patch a tabela real do Brasileirão (posição, pontos e forma), as rivalidades do clube e a torcida única nos clássicos paulistas. ${simNao(M.torcida_no_jogo,'Configuração gravada.','Módulo de torcida não encontrado.')}</p></div>`};
 function rStats(){const E=S.estatisticas;
   if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
     $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
@@ -1811,7 +1852,7 @@ function rStats(){const E=S.estatisticas;
   const k=STORD.k,L=[...J].sort((a,b)=>{const x=a[k],y=b[k];if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*STORD.d});
   const th=(c,t,al)=>`<th style="cursor:pointer${al?';text-align:left':''}" onclick="ordStats('${c}')">${t}${k==c?(STORD.d<0?' ▾':' ▴'):''}</th>`;
   $('stTab').innerHTML='<tr>'+th('nome','Jogador',1)+th('jogos','J')+th('minutos','Min')+th('gols','Gols')+th('assist','Assist.')+th('amarelos','🟨')+th('vermelhos','🟥')+th('nota_media','Nota média')+th('nota_max','Melhor nota')+'<th>Últimas notas</th></tr>'+
-    L.map(p=>`<tr><td style="text-align:left">${p.pos?'<small style="color:var(--mut)">'+esc(p.pos)+'</small> ':''}${esc(p.nome)}</td><td>${p.jogos}</td><td>${p.minutos}</td><td>${p.gols||''}</td><td>${p.assist||''}</td><td>${p.amarelos||''}</td><td>${p.vermelhos||''}</td><td style="${notaCls(p.nota_media)}">${nota1(p.nota_media)}</td><td>${nota1(p.nota_max)}</td><td>${p.ultimas_notas.map(v=>`<span style="${notaCls(v)}">${nota1(v)}</span>`).join(' · ')}</td></tr>`).join('');
+    L.map(p=>`<tr><td style="text-align:left"><img class="stft" src="/foto/${p.id}.png" loading="lazy" onerror="this.style.visibility='hidden'">${p.pos?'<small style="color:var(--mut)">'+esc(p.pos)+'</small> ':''}${esc(p.nome)}${(p.pendurado||[]).length?` <span class="pend" title="Pendurado: mais um amarelo e fica fora (${p.pendurado.join(', ')})">PENDURADO</span>`:''}</td><td>${p.jogos}</td><td>${p.minutos}</td><td>${p.gols||''}</td><td>${p.assist||''}</td><td>${p.amarelos?`<span class="cart ca">${p.amarelos}</span>`:''}</td><td>${p.vermelhos?`<span class="cart cv">${p.vermelhos}</span>`:''}</td><td style="${notaCls(p.nota_media)}">${nota1(p.nota_media)}</td><td>${nota1(p.nota_max)}</td><td>${p.ultimas_notas.map(v=>`<span style="${notaCls(v)}">${nota1(v)}</span>`).join(' · ')}</td></tr>`).join('');
   $('stSum').innerHTML=E.sumulas.map((p,i)=>{const meu=p.em_casa?p.gols_mandante:p.gols_visitante,dele=p.em_casa?p.gols_visitante:p.gols_mandante,r=meu>dele?'V':meu<dele?'D':'E';
     return `<div style="border-bottom:1px solid var(--line);padding:8px 2px"><div style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="STABERTA=STABERTA===${i}?null:${i};rStats()">
       <b style="width:22px;text-align:center;color:${r=='V'?'var(--green)':r=='D'?'var(--red)':'var(--mut)'}">${r}</b><span style="color:var(--mut);width:80px">${dt(p.data)}</span>
@@ -1829,7 +1870,7 @@ function rEscalacao(){const E=S.escalacao;
   const M=escItens(),F=E.formacao;
   const chip=(i,campo)=>{const x=M[ESC[i]]||{};if(!x.id)return '';const lk=x.fora;
     const st=campo&&F?`left:${Math.max(7,Math.min(93,F[i].lado/1.04))}%;top:${Math.max(5,Math.min(94,97-F[i].prof*1.95))}%`:'';
-    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}"><small class="pos${posGrupo(campo&&F?F[i].sigla:posJogo(x.pos))}">${esc(campo&&F?(F[i].sigla||F[i].papel):posJogo(x.pos))}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}</div>`};
+    return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}">${campo?`<img class="escft" src="/foto/${x.id}.png" loading="lazy" onerror="this.remove()">`:''}<small class="pos${posGrupo(campo&&F?F[i].sigla:posJogo(x.pos))}">${esc(campo&&F?(F[i].sigla||F[i].papel):posJogo(x.pos))}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}${(()=>{const j=(S.elenco||[]).find(p=>p.id==x.id)||{};const en=j.energia;const mo=j.moral;return (en!=null?`<i class="escen" title="Energia estimada ${en}%"><i style="width:${en}%;background:${en>=80?'#3ddc84':en>=60?'#f5c542':'#ff5b5b'}"></i></i>`:'')+(campo&&mo!=null?`<b class="escmo m${mo}" title="Moral (Dados do time)">${'↓↘→↗↑'[mo]||''}</b>`:'')})()}</div>`};
   const c=$('escCampo');c.querySelectorAll('.eschip').forEach(f=>f.remove());
   c.insertAdjacentHTML('beforeend',[...Array(11).keys()].map(i=>chip(i,true)).join(''));
   $('escBanco').innerHTML=[...Array(12).keys()].map(i=>chip(11+i)).join('');

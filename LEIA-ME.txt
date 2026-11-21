@@ -478,3 +478,16 @@ VERSÃO 4.2.2
 VERSÃO 4.2.3
 - Corrigido: depois de atualizar o patch GOGOSZ, o instalador reescreve o sider.ini e tira o módulo do app
   (gramado, faixas e bandeirinhas sumiam). Agora o app recoloca o módulo sempre que abre.
+
+VERSÃO 4.3.0
+- Escalação: o campinho mostra a foto de cada titular, a barra de energia e a seta de moral (do arquivo
+  "Dados do time"). O banco mostra a barra de energia.
+- Estatísticas: foto do jogador, cartões em selo amarelo e vermelho e o aviso PENDURADO (2 amarelos no mesmo
+  campeonato; o 3º suspende).
+- Nova aba "Jogo" (dia de jogo). Preparação: próximo jogo, clima e horário pela cidade do mandante e o mês,
+  altitude e alertas (calor forte, temporal, altitude).
+- O clima vai para o jogo: o app escreve o force_weather.ini no estádio do mandante (StadiumServer do patch).
+  Só mexe no arquivo que ele mesmo criou e apaga quando o jogo passa.
+- Torcida: o app manda para o módulo de torcida do patch (crowd_behavior) as rivalidades do clube, a torcida
+  única nos clássicos paulistas (Palmeiras, Corinthians, São Paulo, Santos) e a tabela real do Brasileirão
+  (crowd_standings.csv), para o público acompanhar a campanha.
