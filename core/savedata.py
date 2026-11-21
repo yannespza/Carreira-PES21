@@ -595,8 +595,27 @@ def dados_usert(path, ids):
     from . import pescrypt
     d = bytes(pescrypt.decrypt(open(path, 'rb').read()).data)
     out = {}
+    # os blocos dos jogadores ficam numa tabela de 0x17C bytes; só alguns repetem o id duas vezes no começo
+    # (até a 4.7.0 o app só achava esses). Acha o início da tabela e pega cada jogador pelo alinhamento.
+    PASSO = 0x17C
+    occ = {}
     for pid in ids:
-        o = d.find(struct.pack('<II', pid, pid))
+        lst, i = [], d.find(struct.pack('<I', pid))
+        while i != -1:
+            lst.append(i)
+            i = d.find(struct.pack('<I', pid), i + 1)
+        occ[pid] = lst
+    todos = {o for l in occ.values() for o in l}
+    base = None
+    if todos:
+        cont = {}
+        for o in todos:
+            r = o % PASSO
+            cont[r] = cont.get(r, 0) + 1
+        base = max(cont, key=cont.get)
+    for pid in ids:
+        cand = [o for o in occ.get(pid, []) if base is not None and o % PASSO == base]
+        o = cand[0] if cand else d.find(struct.pack('<II', pid, pid))
         if o < 0 or o + 280 > len(d):
             continue
         j = {'moral': d[o + 279] & 7}

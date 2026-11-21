@@ -555,3 +555,7 @@ VERSÃO 4.7.0
   chegam como mensagem. Aceitar ou recusar continua sendo no jogo.
 - Fadiga: a chance de lesão por desgaste caiu para 12% a 30% (altitude até 45%), no máximo 2 lesões por jogo.
   Lesões por desgaste criadas pelo app podem ser canceladas no departamento médico ("cancelar lesão").
+
+VERSÃO 4.7.1
+- Moral e fim de contrato ("Dados do time"): o app só achava parte dos jogadores (6 de 30 no último arquivo).
+  Agora acha todos pela tabela do arquivo. A seta aparece para o elenco inteiro no campinho e nas cartas.
