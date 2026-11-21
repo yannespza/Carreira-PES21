@@ -1991,41 +1991,41 @@ JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
    <p style="font-size:12px;color:var(--mut)">O app manda para o módulo de torcida do patch a tabela real do Brasileirão (posição, pontos e forma), as rivalidades do clube e a torcida única nos clássicos paulistas. ${simNao(M.torcida_no_jogo,'Configuração gravada.','Módulo de torcida não encontrado.')}</p></div>`};
 
 
-// ---- Achar as estatísticas da partida na memória (uma vez só) ----
-let ESTB=null,ESTB_T=null;
-async function estAtual(){try{ESTB=await api('/api/estatisticas/busca')}catch(e){ESTB=null}
-  if(JTAB=='est'&&!document.querySelector('#estForm input:focus'))rJogo()}
-async function estBuscar(fim){const g=id=>$(id).value.trim();
-  try{await api('/api/estatisticas/busca',{ct:g('estCT'),cc:g('estCC'),ft:g('estFT'),fc:g('estFC'),fim:!!fim});
-    toast('Pedido enviado. Volte ao jogo: a busca leva alguns segundos e a tela pode travar um pouco.');estAtual()}
-  catch(e){toast(e.message||'Confira os números.',true)}}
-JOGO_R.est=()=>{if(!ESTB_T){ESTB_T=setInterval(()=>{if(JTAB=='est'&&document.querySelector('#jogoBox'))estAtual()},4000);estAtual()}
-  const E=ESTB||{};
-  const passo=(ok,t)=>`<li style="color:${ok?'#3ddc84':'var(--txt)'}">${ok?'✔ ':''}${t}</li>`;
-  const buscou=E.candidatos!=null, achou=(E.cresceram||0)>0;
-  return `<div class="box"><h3>Achar as estatísticas na memória <small>só uma vez</small></h3>
-   <p>Para o app ler posse, chutes, passes e cartões ao vivo, ele precisa descobrir onde o jogo guarda esses números. É como o Cheat Engine faz: procurar números que você está vendo na tela.</p>
-   <ol style="margin:6px 0 10px 18px;line-height:1.7">
-    ${passo(buscou,'Jogue o 1º tempo normalmente. Na tela do <b>intervalo</b>, olhe a linha <b>Passes (Certos)</b>.')}
-    ${passo(buscou,'Digite aqui os 4 números e clique em <b>Procurar</b>. Volte ao jogo; a tela pode travar uns segundos.')}
-    ${passo(achou,'Jogue o 2º tempo normalmente. O módulo elimina sozinho os lugares errados (passes só sobem).')}
-    ${passo(!!(E.confirmacao&&E.confirmacao.ficaram),'Na tela de <b>fim de jogo</b>, digite os passes finais nos mesmos campos e clique em <b>Confirmar no fim</b>.')}
-   </ol>
-   <div id="estForm" class="cards" style="align-items:end">
-    <div class="card"><span>Casa · passes</span><input id="estCT" type="number" min="0" inputmode="numeric" placeholder="44"></div>
-    <div class="card"><span>Casa · certos</span><input id="estCC" type="number" min="0" inputmode="numeric" placeholder="33"></div>
-    <div class="card"><span>Fora · passes</span><input id="estFT" type="number" min="0" inputmode="numeric" placeholder="47"></div>
-    <div class="card"><span>Fora · certos</span><input id="estFC" type="number" min="0" inputmode="numeric" placeholder="35"></div>
-   </div>
-   <p><button class="btn" onclick="estBuscar(false)">Procurar (intervalo)</button> <button class="btn" onclick="estBuscar(true)">Confirmar no fim</button></p>
-   <p style="font-size:12px;color:var(--mut)">Exemplo da tela: "44 (33)  Passes (Certos)  47 (35)" → casa 44 e 33, fora 47 e 35. Só leitura: nada é gravado no jogo.</p></div>
-  <div class="box"><h3>Situação</h3>
-   ${E.pedida&&!buscou?`<p>⏳ Pedido enviado (${E.pedida.join(' ')}). O módulo faz a busca assim que o jogo estiver aberto.</p>`:''}
-   ${buscou?`<p>🔎 Busca feita em ${E.segundos??'?'} s: <b>${E.candidatos.toLocaleString('pt-BR')}</b> lugares com esses 4 números.</p>`:''}
-   ${E.momentos?`<p>⏱️ ${E.momentos} conferências no 2º tempo. ${achou?`<b style="color:#3ddc84">${E.cresceram} lugar(es) acompanharam os passes subindo</b>: ${E.achados.map(esc).join(' · ')}`:'Ainda nenhum lugar acompanhou os passes subindo; continue jogando.'}</p>`:''}
-   ${E.confirmacao?`<p>${E.confirmacao.ficaram?'✅':'❌'} Confirmação no fim: <b>${E.confirmacao.ficaram}</b> de ${E.confirmacao.antes.toLocaleString('pt-BR')} lugares têm exatamente os passes finais.${E.confirmacao.ficaram?'':' Me avise para eu olhar.'}</p>`:''}
-   ${E.ponteiros?`<p>📌 Caminho fixo encontrado (${E.ponteiros}): nas próximas partidas o app poderá ler sozinho.</p>`:''}
-   ${!E.pedida&&!buscou?'<p style="color:var(--mut)">Nenhuma busca ainda.</p>':''}</div>`};
+// ---- Estatísticas da partida pelo print da tela (intervalo e fim), lidas pela IA com visão ----
+let ESTP=null,ESTP_T=null,ESTP_OCUP=false;
+async function estpAtual(){try{ESTP=await api('/api/estatisticas')}catch(e){}
+  if(JTAB=='est'&&!ESTP_OCUP)rJogo()}
+function estpFoto(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=async()=>{ESTP_OCUP=true;toast('Lendo a foto com a IA… pode levar até 1 minuto.');
+    try{const j=await api('/api/estatisticas/foto',{imagem:r.result});toast('Foto lida: '+(j.dados.tela=='fim'?'fim de jogo':j.dados.tela)+'.')}
+    catch(e){toast(e.message||'Não deu para ler.',true)}ESTP_OCUP=false;estpAtual()};r.readAsDataURL(f)}
+async function estpPrint(){ESTP_OCUP=true;toast('Tirando print e lendo… deixe a tela de estatísticas aberta no jogo.');
+  try{const j=await api('/api/estatisticas/print_agora',{});toast('Print lido.')}catch(e){toast(e.message||'Não deu para ler.',true)}
+  ESTP_OCUP=false;estpAtual()}
+async function estpLigar(v){await api('/api/estatisticas/ligar',{ligado:v});estpAtual()}
+function estpTabela(j){const E=ESTP,meu=E.meu,cols=['intervalo','fim'].filter(k=>j[k]);
+  if(!cols.length&&j.pausa)cols.push('pausa');
+  const nomeCol={intervalo:'Intervalo',fim:'Fim',pausa:'Pausa'};
+  const linha=c=>`<tr><td style="text-align:left">${esc(E.rotulos[c])}</td>${cols.map(k=>{const a=j[k].casa[c],b=j[k].fora[c];
+     const mel=c=='faltas'||c=='impedimentos'?(a<b?'casa':b<a?'fora':''):(a>b?'casa':b>a?'fora':'');
+     return `<td style="${mel=='casa'?'color:var(--lime,#8CFF2E);font-weight:700':''}">${a}</td><td style="${mel=='fora'?'color:var(--lime,#8CFF2E);font-weight:700':''}">${b}</td>`}).join('')}</tr>`;
+  const fl=j.fim||j.intervalo||j.pausa,pl=fl&&fl.placar?`${fl.placar[0]} x ${fl.placar[1]}`:'x';
+  return `<div class="box"><h3>${esc(j.casa_nome)} ${pl} ${esc(j.fora_nome)} <small>${j.data?dt(j.data):''}</small></h3>
+   <table class="tb"><tr><th></th>${cols.map(k=>`<th colspan="2">${nomeCol[k]} <small style="color:var(--mut)">(${j[k].fonte})</small></th>`).join('')}</tr>
+   <tr><th></th>${cols.map(()=>`<th>Casa</th><th>Fora</th>`).join('')}</tr>${E.campos.map(linha).join('')}</table></div>`}
+JOGO_R.est=()=>{if(!ESTP_T){ESTP_T=setInterval(()=>{if(JTAB=='est'&&document.querySelector('#jogoBox'))estpAtual()},5000);estpAtual()}
+  const E=ESTP;if(!E)return '<div class="box"><div class="empty">Carregando…</div></div>';
+  const semIA=E.ia_modo!='ollama'&&E.ia_modo!='nuvem';
+  return `<div class="box"><h3>Estatísticas da partida <small>pelo print da tela</small></h3>
+   <p>No <b>intervalo</b> e no <b>fim de jogo</b>, o app tira prints da tela sozinho e a IA (${esc(E.modelo||'modelo do Ollama')}) lê posse, chutes, passes, desarmes e o resto. Você só joga.</p>
+   ${semIA?'<p class="mdalerta">⚠️ A IA está desligada. Em <b>Sistema > Inteligência artificial</b>, escolha "Ollama no meu PC" com um modelo que entende imagem (gemma4:12b).</p>':''}
+   ${E.windows?'':'<p class="mdalerta">O print automático só funciona no PC com Windows; aqui dá para mandar foto.</p>'}
+   <p>Automático: <b>${E.ligado?'ligado':'desligado'}</b> · <a href="#" style="color:var(--lime,#8CFF2E)" onclick="estpLigar(${!E.ligado});return false">${E.ligado?'desligar':'ligar'}</a></p>
+   <p style="font-size:13px;color:var(--mut)">Situação${E.status.quando?' ('+E.status.quando+')':''}: ${esc(E.status.texto)}</p>
+   <p><button class="btn" onclick="estpPrint()">Ler a tela agora</button>
+      <button class="btn" onclick="$('estpArq').click()">Enviar foto da tela</button><input id="estpArq" type="file" accept="image/*" style="display:none" onchange="estpFoto(this)"></p>
+   <p style="font-size:12px;color:var(--mut)">"Ler a tela agora" serve para quando a tela de estatísticas estiver aberta (até no menu de pausa). A foto pode ser do celular, como as que você tira. Se o print sair preto, coloque o PES em "janela sem bordas".</p></div>
+  ${E.jogos.length?E.jogos.map(estpTabela).join(''):'<div class="box"><div class="empty">Nenhuma partida lida ainda.</div></div>'}`};
 const ftMini=(id)=>`<img class="stft" src="/foto/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`;
 JOGO_R.dos=()=>{const D=S.dossie;if(!D)return '<div class="box"><div class="empty">O dossiê aparece quando houver próximo jogo e o adversário tiver partidas no save.</div></div>';
   const ar=(k)=>`<tr><td style="text-align:left">${k=='altura'?'Altura média':k=='cabeceio'?'Cabeceio':'Impulsão'}</td><td>${D.aereo_deles[k]??'—'}</td><td>${D.aereo_nosso[k]??'—'}</td></tr>`;

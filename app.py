@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho, captura
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho, captura, estat_print
 from core.logos import LogoBank
 
 PORT = 8765
@@ -255,15 +255,18 @@ class App:
         # partida ao vivo: o módulo Lua grava live_match_data.json; esta thread lê sem travar nada
         self.aovivo = aovivo.Monitor(lambda: CFG.get('pasta_jogo'), self.ao_vivo_evento, log=log)
         self.aovivo.start()
+        # estatísticas da partida: print da tela no intervalo e no fim, lido pela IA com visão (estat_print.py)
+        self.estprint = estat_print.Sessao(CFG, os.path.join(DATA, 'prints'), self.estat_lida, log)
         savedata.TRAVA = self.trava_gravacao
         if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
             try:
                 aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
-        if CFG.get('pasta_jogo') and CFG.get('captura_partida', True) and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
-            try:
-                captura.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
+        if CFG.get('pasta_jogo') and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
+            try:   # desligado por padrão: as estatísticas vêm do print da tela (estat_print.py)
+                captura.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log,
+                                 ativo=bool(CFG.get('captura_memoria', False)))
             except Exception:
                 log(traceback.format_exc())
         # o instalador do patch reescreve o sider.ini; recoloca o módulo do visual do estádio (gramado, faixas)
@@ -684,6 +687,49 @@ class App:
                 md['forca']['no_jogo'] = forca.gravar(pj, prox['m'], prox['v'], casa_f, fora_f)
             else:
                 forca.desinstalar(pj)
+
+    def estat_lida(self, alvo, dados, ctx, fonte):
+        """Guarda as estatísticas lidas do print/foto em state['estat_jogos'] (uma entrada por partida)."""
+        with LOCK:
+            st = self.state
+            if st is None:
+                return
+            jogos = st.setdefault('estat_jogos', [])
+            ctx = ctx or {}
+            if not ctx.get('casa'):
+                d_ = self.aovivo.dados or {}
+                ctx = {'casa': d_.get('casa'), 'fora': d_.get('fora'), 'data': st.get('data')}
+            ent = next((j for j in reversed(jogos) if j.get('casa') == ctx.get('casa') and j.get('fora') == ctx.get('fora')
+                        and j.get('data') == ctx.get('data')), None)
+            if ent is None:
+                ent = {'casa': ctx.get('casa'), 'fora': ctx.get('fora'), 'data': ctx.get('data')}
+                jogos.append(ent)
+            ent[alvo] = dict(dados, fonte=fonte, lido=time.strftime('%Y-%m-%d %H:%M'))
+            del jogos[:-30]
+            if alvo == 'fim':
+                meu = self.tid()
+                lado = 'casa' if ent.get('casa') == meu else 'fora'
+                outro = 'fora' if lado == 'casa' else 'casa'
+                n, o = dados[lado], dados[outro]
+                self._msg_app('Análise de desempenho', 'Números da partida',
+                              f"Posse {n['posse']}% x {o['posse']}%. Chutes {n['chutes']} ({n['chutes_gol']} no gol) x "
+                              f"{o['chutes']} ({o['chutes_gol']}). Passes {n['passes']} ({n['passes_certos']} certos) x "
+                              f"{o['passes']} ({o['passes_certos']}). Desarmes {n['desarmes']} x {o['desarmes']}.",
+                              tipo='comissao')
+            self.persist()
+
+    def estat_view(self):
+        st = self.state or {}
+        nomes = self.names or {}
+        jogos = []
+        for j in reversed((st.get('estat_jogos') or [])[-10:]):
+            j = dict(j)
+            for k in ('casa', 'fora'):
+                j[k + '_nome'] = (j.get('fim') or j.get('intervalo') or j.get('pausa') or {}).get('time_' + k) or nomes.get(j.get(k)) or f'Time {j.get(k)}'
+            jogos.append(j)
+        return {'status': self.estprint.status, 'jogos': jogos, 'campos': estat_print.CAMPOS, 'rotulos': estat_print.ROTULOS,
+                'ia_modo': CFG.get('ia_modo', 'desligada'), 'modelo': CFG.get('ia_modelo') or '', 'windows': os.name == 'nt',
+                'ligado': CFG.get('print_estatisticas', True), 'meu': self.tid()}
 
     def _msg_app(self, de, assunto, texto, tipo='diretoria'):
         st = self.state
@@ -1258,6 +1304,13 @@ class App:
         if meu not in (dados.get('casa'), dados.get('fora')):
             return
         lado_meu = 'casa' if dados.get('casa') == meu else 'fora'
+        if CFG.get('print_estatisticas', True) and os.name == 'nt':
+            ctx_ = {'casa': dados.get('casa'), 'fora': dados.get('fora'), 'data': (self.state or {}).get('data')}
+            for e in novos:
+                if e.get('tipo') == 'periodo' and e.get('de') == 1 and e.get('para') == 2:
+                    self.estprint.iniciar('intervalo', ctx_, duracao=90)
+                elif (e.get('tipo') == 'periodo' and (e.get('para') or 0) >= 3) or e.get('tipo') == 'fim':
+                    self.estprint.iniciar('fim', ctx_, duracao=150)
         with LOCK:
             st = self.state
             if not st:
@@ -2591,6 +2644,8 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
+            if u.path == '/api/estatisticas':
+                return self.send(200, A.estat_view())
             if u.path == '/api/estatisticas/busca':
                 return self.send(200, captura.estado(CFG.get('pasta_jogo', '')))
             if u.path == '/api/formacoes':
@@ -3296,6 +3351,30 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/olheiros':
                     res_ = olheiros.buscar(A.pool_mercado(), body.get('missao'), A.tid(), body.get('pos') or None)
                     return self.send(200, {'lista': res_})
+                if u.path in ('/api/estatisticas/foto', '/api/estatisticas/print_agora'):
+                    if u.path.endswith('foto'):
+                        import base64 as _b64
+                        from PIL import Image as _Img
+                        try:
+                            raw_ = _b64.b64decode((body.get('imagem') or '').split(',')[-1])
+                            img_ = _Img.open(io.BytesIO(raw_))
+                            img_.load()
+                        except Exception:
+                            return self.send(400, {'erro': 'Não consegui abrir a imagem.'})
+                    else:
+                        img_ = estat_print.capturar()
+                        if img_ is None:
+                            return self.send(400, {'erro': 'Não consegui tirar print (só funciona no Windows).'})
+                    dados_, motivo_ = estat_print.ler(CFG, img_)
+                    if not dados_:
+                        return self.send(400, {'erro': 'Não deu para ler: ' + motivo_})
+                    A.estat_lida(dados_['tela'] if dados_['tela'] in ('intervalo', 'fim') else 'pausa', dados_, None,
+                                 'foto' if u.path.endswith('foto') else 'print')
+                    return self.send(200, {'ok': True, 'dados': dados_})
+                if u.path == '/api/estatisticas/ligar':
+                    CFG['print_estatisticas'] = bool(body.get('ligado'))
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    return self.send(200, {'ok': True})
                 if u.path == '/api/estatisticas/busca':
                     try:
                         v_ = captura.pedir_busca(CFG.get('pasta_jogo', ''), body.get('ct'), body.get('cc'),

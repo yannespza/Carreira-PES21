@@ -645,3 +645,12 @@ VERSÃO 4.9.9
   - guarda só 1 candidato por lugar da memória (antes um mesmo lugar virava milhares de combinações);
   - não repete a busca sozinha na partida seguinte (foi o que estragou a confirmação no fim).
   A busca pode travar a tela por alguns segundos a mais no intervalo.
+
+VERSÃO 4.10.0
+- Estatísticas da partida pelo print da tela: no intervalo e no fim de jogo, o app tira prints da tela sozinho
+  e a IA (gemma4 no Ollama, que entende imagem) lê posse, chutes, faltas, escanteios, passes, cruzamentos,
+  interceptações, desarmes e defesas. Fica tudo na aba Jogo > Estatísticas, e o resumo chega nas mensagens.
+- Também dá para clicar em "Ler a tela agora" (com a tela de estatísticas aberta, até no menu de pausa) ou
+  "Enviar foto da tela" (foto do celular).
+- Se o print sair preto, coloque o PES em "janela sem bordas" nas configurações do jogo.
+- A busca na memória foi desligada (o módulo continua instalado, mas sem fazer nada).

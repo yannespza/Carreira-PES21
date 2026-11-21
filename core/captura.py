@@ -329,11 +329,20 @@ return m
 '''
 
 
-def instalar(pasta_jogo, backup_dir, log=print):
+# 4.10.0: as estatísticas passaram a vir do print da tela (estat_print.py). O módulo fica instalado, mas vazio
+# (não faz nada no jogo), a menos que CFG['captura_partida'] seja ligado de propósito.
+LUA_DESLIGADO = r'''-- AppCarreiraCaptura.lua (App de Carreira PES 21): DESLIGADO. As estatísticas agora vêm do print da tela.
+local m = {}
+function m.init(ctx) log("AppCarreiraCaptura: desligado (estatísticas pelo print da tela)") end
+return m
+'''
+
+
+def instalar(pasta_jogo, backup_dir, log=print, ativo=False):
     import os
     from .ingame import instalar_modulo
     os.makedirs(os.path.join(pasta_jogo, 'GOGOSZ', 'AppCarreira', 'captura'), exist_ok=True)
-    return instalar_modulo(pasta_jogo, backup_dir, log, nome=MODULO, conteudo=LUA)
+    return instalar_modulo(pasta_jogo, backup_dir, log, nome=MODULO, conteudo=LUA if ativo else LUA_DESLIGADO)
 
 
 # ---------- lado do app: pedir a busca e ler o resultado ----------

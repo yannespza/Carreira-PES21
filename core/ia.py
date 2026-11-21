@@ -136,6 +136,59 @@ def gerar_json(cfg, sistema, pedido, timeout=None):
     return None
 
 
+def ler_imagem_json(cfg, sistema, pedido, imagens_b64, timeout=TIMEOUT_CARGA):
+    """Manda imagens (JPEG em base64) para um modelo que entende imagem e devolve o JSON da resposta, ou None.
+    Ollama: o modelo precisa ter visão (gemma4, por exemplo). O motivo da falha fica em ULTIMO_ERRO."""
+    modo = (cfg or {}).get('ia_modo', 'desligada')
+    ULTIMO_ERRO['texto'] = ''
+    try:
+        if modo == 'ollama':
+            corpo = {'model': _nome(cfg), 'stream': False, 'format': 'json', 'think': False, 'keep_alive': MANTER,
+                     'options': {'temperature': 0},
+                     'messages': [{'role': 'system', 'content': sistema},
+                                  {'role': 'user', 'content': pedido, 'images': list(imagens_b64)}]}
+            url = _base(cfg.get('ia_ollama_url')) + '/api/chat'
+            try:
+                r = _post(url, corpo, timeout=timeout)
+            except urllib.error.HTTPError as e:
+                msg = _erro_http(e)
+                if 'think' in msg.lower():
+                    corpo.pop('think')
+                    r = _post(url, corpo, timeout=timeout)
+                elif 'not found' in msg.lower():
+                    raise RuntimeError(f'O modelo "{_nome(cfg)}" não está baixado. No PowerShell rode: ollama pull {_nome(cfg)}')
+                else:
+                    raise RuntimeError(msg)
+            j = _json_do_texto((r.get('message') or {}).get('content'))
+            if j is None:
+                ULTIMO_ERRO['texto'] = 'O modelo respondeu, mas não no formato que o app entende.'
+            return j
+        if modo == 'nuvem':
+            url = cfg.get('ia_nuvem_url') or 'https://api.openai.com/v1/chat/completions'
+            chave = cfg.get('ia_chave') or ''
+            if 'generativelanguage.googleapis.com' in url:
+                partes = [{'text': pedido}] + [{'inline_data': {'mime_type': 'image/jpeg', 'data': b}} for b in imagens_b64]
+                r = _post(url + ('&' if '?' in url else '?') + 'key=' + chave,
+                          {'systemInstruction': {'parts': [{'text': sistema}]}, 'contents': [{'role': 'user', 'parts': partes}],
+                           'generationConfig': {'responseMimeType': 'application/json'}}, timeout=timeout)
+                return _json_do_texto(r['candidates'][0]['content']['parts'][0]['text'])
+            cont = [{'type': 'text', 'text': pedido}] + [{'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + b}}
+                                                        for b in imagens_b64]
+            r = _post(url, {'model': cfg.get('ia_modelo') or 'gpt-4o-mini', 'response_format': {'type': 'json_object'},
+                            'messages': [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': cont}]},
+                      {'Authorization': 'Bearer ' + chave}, timeout=timeout)
+            return _json_do_texto(r['choices'][0]['message']['content'])
+        ULTIMO_ERRO['texto'] = 'A IA está desligada. Em Sistema > Inteligência artificial escolha "Ollama no meu PC".'
+    except urllib.error.URLError as e:
+        ULTIMO_ERRO['texto'] = ('Demorou demais para responder.' if 'timed out' in str(e) else
+                                'Não achei o Ollama aberto no PC.' if modo == 'ollama' else 'Sem conexão: ' + str(e))
+    except (TimeoutError, socket.timeout):
+        ULTIMO_ERRO['texto'] = 'Demorou demais para responder.'
+    except Exception as e:
+        ULTIMO_ERRO['texto'] = str(e)[:200]
+    return None
+
+
 def testar(cfg):
     """Teste da aba Sistema: espera o modelo carregar e explica o problema em português."""
     modo = (cfg or {}).get('ia_modo', 'desligada')

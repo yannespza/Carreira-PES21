@@ -78,7 +78,7 @@ Não reescreva a parte binária (`pescrypt.py`, `savedata.Career.write`, `escala
 ## Lua do Sider do patch (conferido no debug_log.txt do jogo)
 - NÃO existe `pcall`/`xpcall`/`require`; existem `ffi`, `memory`, `match`, `io`, `log`, `os`, `bit`, `zlib`, `fs`.
 - `ctx.mis` chega como userdata: use `ffi.cast("char*", ctx.mis)` (como o Dynamic_Difficulty). `memory.read(numero, n)` funciona.
-- Estatísticas da partida: `core/captura.py` (AppCarreiraCaptura.lua v4). O MATCH_INFO (ctx.mis) é um bloco de 4 KB sem estatísticas (testado 21/11). v4 = busca estilo Cheat Engine: aba Jogo > Estatísticas grava `captura\busca.txt` (passes casa/certos, fora/certos, hora); o módulo varre a memória privada (VirtualQuery), guarda até 1 milhão de candidatos (ffi), elimina no 2º tempo os que não sobem e grava `resultado.txt`, `hits_NNN.txt/.bin` e ponteiros `exe+offset`. Rotas GET/POST `/api/estatisticas/busca`.
+- Estatísticas da partida: busca na memória (`core/captura.py`, v1–v5) NÃO achou (21/11); o módulo agora é instalado vazio (`LUA_DESLIGADO`, `CFG['captura_memoria']` liga). Valem os prints: `core/estat_print.py` (ImageGrab no intervalo e no fim, disparado em `App.ao_vivo_evento` pelos eventos `periodo`/`fim`; leitura com `ia.ler_imagem_json` = Ollama com visão, gemma4) → `App.estat_lida` → `state['estat_jogos']`; rotas GET `/api/estatisticas`, POST `/foto`, `/print_agora`, `/ligar`; UI `JOGO_R.est`.
 
 ## Gravações no save
 
