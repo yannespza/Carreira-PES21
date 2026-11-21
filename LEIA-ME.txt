@@ -633,3 +633,7 @@ VERSÃO 4.9.7
     diminuem;
   - novo botão "Confirmar no fim": na tela de fim de jogo, digite os passes finais e fica só quem bate
     exatamente (igual ao "próxima busca" do Cheat Engine).
+
+VERSÃO 4.9.8
+- Nomes: 277 jogadores cujo nome começa com letra acentuada (Ángel Correa, Óscar, Édson...) apareciam no app
+  como "Jogador 60168". Corrigido; o Ángel Correa, recém-chegado, já aparece com o nome certo.

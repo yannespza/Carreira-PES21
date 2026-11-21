@@ -220,7 +220,8 @@ def nomes_jogadores(edit_path):
     while o + R <= len(d):
         pid = struct.unpack_from('<I', d, o)[0]
         nm = d[o + 0x36:o + 0x36 + 0x3e].split(b'\0')[0]
-        if pid and nm and pid not in nomes and nm[:1].isalpha():
+        # nome pode começar com letra acentuada (Ángel, Óscar, Édson): confere o 1º caractere já decodificado
+        if pid and nm and pid not in nomes and nm.decode('utf-8', 'ignore')[:1].isalpha():
             try:
                 pos = (int.from_bytes(d[o + 0x21:o + 0x23], 'little') >> 5) & 15
                 nomes[pid] = {'nome': nm.decode('utf-8').strip(), 'altura': d[o + 0x0a],
