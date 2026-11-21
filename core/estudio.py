@@ -103,24 +103,69 @@ def _estrela(cx, cy, r):
     return pts
 
 
+def _faixas_logo(img, escudo):
+    """Dentro da caixa do escudo: blocos de linhas com desenho (o corpo do escudo e enfeites acima, como a
+    estrela vermelha do Palmeiras). Devolve [(y0, y1, x0, x1)] de cima para baixo, em coordenadas da textura."""
+    x0, y0, x1, y1 = [int(round(v)) for v in escudo]
+    x0, y0 = max(0, x0), max(0, y0)
+    crop = img.crop((x0, y0, x1, y1))
+    m = _mascara_logo(crop)
+    if m is None:
+        return []
+    a = np.array(m) > 128
+    linhas = a.sum(1) > max(2, 0.04 * a.shape[1])
+    blocos, ini = [], None
+    for k, v in enumerate(list(linhas) + [False]):
+        if v and ini is None:
+            ini = k
+        elif not v and ini is not None:
+            if k - ini >= 3:
+                cols = np.where(a[ini:k].sum(0) > 0)[0]
+                blocos.append((y0 + ini, y0 + k, x0 + int(cols.min()), x0 + int(cols.max()) + 1))
+            ini = None
+    return blocos
+
+
 def estrelas(img: Image.Image, escudo, n, cor='#c9a227'):
-    """Desenha n estrelas em arco acima do escudo (caixa no tamanho 2048 da textura)."""
+    """Desenha n estrelas em arco acima do escudo, centradas no desenho do escudo (não na caixa detectada).
+    Se o escudo já tem enfeite em cima (estrela do clube), as estrelas ficam acima dele; sem espaço até a borda
+    da textura, ficam ao lado do enfeite, à mesma altura."""
     if not n or not escudo:
         return img
     img = img.convert('RGBA')
     x0, y0, x1, y1 = escudo
-    w = x1 - x0
+    blocos = _faixas_logo(img, escudo)
+    corpo = max(blocos, key=lambda b: b[1] - b[0]) if blocos else (y0, y1, x0, x1)
+    enfeites = [b for b in blocos if b[1] <= corpo[0]]
+    bx0, bx1 = corpo[2], corpo[3]
+    w = bx1 - bx0
+    cx = (bx0 + bx1) / 2
+    topo = min([b[0] for b in enfeites] + [corpo[0]])
     r = max(7, min(16, w / (2.6 * max(n, 3))))
-    cx = (x0 + x1) / 2
-    cy = y0 - r * 2.3
     passo = r * 2.5
+    margem = 3
+    cy = topo - r * 1.6
+    pulo = 0
+    if cy - r - 2 < margem and enfeites:
+        # sem espaço acima do enfeite: estrelas ao lado dele, à mesma altura
+        e = enfeites[-1]
+        cy = (e[0] + e[1]) / 2
+        pulo = (e[3] - e[2]) / 2 + r * 1.3
+    cy = max(cy, margem + r + 2)
     cam = Image.new('RGBA', img.size, (0, 0, 0, 0))
     dr = ImageDraw.Draw(cam)
     c = tuple(int(v) for v in _hex(cor)) + (255,)
-    for i in range(n):
-        dx = (i - (n - 1) / 2) * passo
-        dy = abs(i - (n - 1) / 2) * r * 0.35
-        borda = tuple(int(v * 0.45) for v in c[:3]) + (255,)
+    borda = tuple(int(v * 0.45) for v in c[:3]) + (255,)
+    if pulo:
+        esq = n // 2
+        pos = [-(pulo + k * passo) for k in range(esq)][::-1] + [pulo + k * passo for k in range(n - esq)]
+        if n % 2:      # ímpar: a sobra vai para o lado com menos estrelas, para ficar simétrico o possível
+            pos = [-(pulo + k * passo) for k in range(n - esq)][::-1] + [pulo + k * passo for k in range(esq)]
+        arco = [0] * n
+    else:
+        pos = [(i - (n - 1) / 2) * passo for i in range(n)]
+        arco = [abs(i - (n - 1) / 2) * r * 0.35 for i in range(n)]
+    for dx, dy in zip(pos, arco):
         dr.polygon(_estrela(cx + dx, cy + dy, r + 1.6), fill=borda)
         dr.polygon(_estrela(cx + dx, cy + dy, r), fill=c)
     img.alpha_composite(cam)

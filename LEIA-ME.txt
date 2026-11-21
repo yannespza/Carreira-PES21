@@ -538,3 +538,10 @@ VERSÃO 4.6.1
 - Sub-abas quebram linha em vez de serem cortadas.
 - Uniformes > Estúdio: em telas até 1500 px de largura, a prévia fica em cima e os controles (cores, modelos
   comemorativos, estrelas de campeão) embaixo, sem corte.
+
+VERSÃO 4.6.2
+- Uniformes: a prévia mostra o uniforme inteiro (cabe na altura da tela) e os ajustes ficam ao lado. Clique na
+  prévia para ampliar; clique de novo para voltar.
+- Estrelas de campeão: centradas no desenho do escudo (não mais na caixa detectada) e nunca saem pelo topo da
+  textura. Se o escudo já tem enfeite em cima (a estrela vermelha do Palmeiras) e não há espaço acima, as
+  estrelas ficam dos dois lados dele, na mesma altura.

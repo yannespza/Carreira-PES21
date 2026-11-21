@@ -658,9 +658,13 @@ section>.crumb+.tabs2,section>.tabs2{top:0}
 main{max-width:1240px}
 .kitwrap>div{min-width:0}
 .presets button{white-space:normal}
-@media(max-width:1500px){.kitwrap{grid-template-columns:1fr !important}.kitwrap>div:first-child{position:static}
-  .kitprev{max-width:720px;margin:0 auto}.presets{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:900px){.presets{grid-template-columns:repeat(2,1fr)}}
+/* uniforme inteiro à esquerda (cabe na altura da tela; clique para ampliar), ajustes ao lado */
+.kitwrap{grid-template-columns:minmax(0,1fr) minmax(340px,1fr) !important;gap:18px}
+.kitwrap>div:first-child{position:sticky;top:10px;align-self:start}
+.kitprev{min-height:0;padding:8px;text-align:center}
+.kitprev img{width:auto;max-width:100%;max-height:calc(100vh - 230px);margin:0 auto;cursor:zoom-in}
+.kitprev.zoom img{max-height:none;width:100%;cursor:zoom-out}
+@media(max-width:760px){.kitwrap{grid-template-columns:1fr !important}.kitwrap>div:first-child{position:static}}
 </style>
 </head>
 <body>
@@ -1975,6 +1979,7 @@ HIST_R.ana=()=>{const A=(S.museu||{}).analise;if(!A)return '<div class="box"><di
    <div class="cards"><div class="card"><b>${A.sem_sofrer}</b><span>jogos seguidos sem sofrer gol</span></div><div class="card"><b>${A.seca.length}</b><span>atacantes na seca</span></div><div class="card"><b>${A.sem_jogar.length}</b><span>bons jogadores sem jogar</span></div></div>
    ${A.seca.length?'<h4>Seca de gols</h4>'+A.seca.map(r=>linJ(r,`sem gol nos últimos ${r.jogos} jogos`)).join(''):''}
    ${A.sem_jogar.length?'<h4>Sem entrar em campo</h4>'+A.sem_jogar.map(r=>linJ(r,`${r.jogos} jogos seguidos fora`)).join('')+'<p style="font-size:12px;color:var(--mut)">Jogador bom muito tempo no banco tende a reclamar (veja Elenco > Gestão).</p>':''}</div>`};
+document.addEventListener('click',e=>{const im=e.target.closest('.kitprev img');if(im)im.parentElement.classList.toggle('zoom')});
 function rStats(){const E=S.estatisticas;
   if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
     $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
