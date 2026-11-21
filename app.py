@@ -1,5 +1,5 @@
 """App de Carreira – Patrocínios (PES 2021 · GOGOSZ). Servidor local + motor de simulação."""
-import os, sys, json, time, threading, glob, re, io, shutil, subprocess, traceback, webbrowser, datetime as dt
+import os, sys, json, time, threading, glob, re, io, shutil, subprocess, traceback, webbrowser, random, datetime as dt
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes
 from core.logos import LogoBank
 
 PORT = 8765
@@ -897,7 +897,18 @@ class App:
 
     def persist(self):
         if self.state is not None:
+            self._limpar_mensagens()
             jsave(self.state_path, self.state)
+
+    def _limpar_mensagens(self, manter=10):
+        """Caixa de mensagens: só as 10 mais recentes (e as que ainda têm proposta aberta para responder)."""
+        ms = self.state.get('mensagens')
+        if not ms or len(ms) <= manter:
+            return
+        abertas = {o['id'] for o in self.state.get('ofertas', []) if o.get('status') in ('aberta', 'aguardando')}
+        ult = ms[-manter:]
+        guardar = [m for m in ms[:-manter] if m.get('oferta_id') in abertas]
+        self.state['mensagens'] = guardar + ult
 
     # ----- leitura do save -----
     def tick(self):
@@ -1090,6 +1101,74 @@ class App:
         except Exception:
             log(traceback.format_exc())
 
+    def imprensa_moral(self, p, mu):
+        """A imprensa elogia quem foi muito bem (nota 7,5+) e detona quem foi muito mal (5 ou menos):
+        sai a matéria e a moral do jogador muda no app por duas semanas."""
+        st = self.state
+        tid = self.tid()
+        car = self.career
+        raw = next((x for x in getattr(self, '_partidas', None) or [] if x['data'] == p['data']
+                    and {x['mandante'], x['visitante']} == {p['mandante'], p['visitante']}), None)
+        if not raw or not car:
+            return
+        nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000'))
+        nos = raw['escalacao_mandante'] if raw['mandante'] == tid else raw['escalacao_visitante']
+        r = random.Random(f"imp|{p['chave']}")
+        fontes = ['Globo Esporte', 'Lance!', 'ESPN', 'UOL Esporte', 'Nosso Palestra', 'ge.globo']
+        jog = [x for x in nos if x['min'] >= 30 and x.get('nota')]
+        for x in sorted(jog, key=lambda x: -x['nota'])[:2]:
+            if x['nota'] >= 7.5:
+                n = (nj.get(x['id']) or {}).get('nome') or ''
+                gestao.moral_ajuste(st, n, 1, p['data'], 'elogiado pela imprensa', 14)
+                mu.m.setdefault('noticias', []).append({'data': p['data'], 'tipo': 'elogio', 'destaque': False, 'fonte': r.choice(fontes),
+                    'titulo': r.choice([f'{n} é o nome do jogo: nota {x["nota"]:.1f}', f'Show de {n} empolga a torcida',
+                                        f'{n} vive grande fase e vira peça-chave'])})
+        for x in sorted(jog, key=lambda x: x['nota'])[:2]:
+            if x['nota'] <= 5.0:
+                n = (nj.get(x['id']) or {}).get('nome') or ''
+                gestao.moral_ajuste(st, n, -1, p['data'], 'criticado pela imprensa', 14)
+                mu.m.setdefault('noticias', []).append({'data': p['data'], 'tipo': 'critica', 'destaque': False, 'fonte': r.choice(fontes),
+                    'titulo': r.choice([f'{n} decepciona e vira alvo de críticas', f'Atuação de {n} preocupa: nota {x["nota"]:.1f}',
+                                        f'Torcida pede a saída de {n} do time titular'])})
+
+    def coletiva_fatos(self, p):
+        """Fatos do jogo e do momento para a coletiva (gols, notas, lesões, tribunal, propostas, moral...)."""
+        st = self.state
+        tid = self.tid()
+        car = self.career
+        nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000')) if car else {}
+        nm = lambda i: (nj.get(i) or {}).get('nome') or f'Jogador {i}'
+        raw = next((x for x in getattr(self, '_partidas', None) or [] if x['data'] == p['data']
+                    and {x['mandante'], x['visitante']} == {p['mandante'], p['visitante']}), None)
+        f = {}
+        if raw:
+            casa = raw['mandante'] == tid
+            nos = raw['escalacao_mandante'] if casa else raw['escalacao_visitante']
+            eles = raw['escalacao_visitante'] if casa else raw['escalacao_mandante']
+            f['nossos_gols'] = [{'nome': nm(x['id']), 'gols': x['gols']} for x in sorted(nos, key=lambda x: -x['gols']) if x['gols']]
+            jog = [x for x in nos if x['min'] >= 45 and x.get('nota')]
+            if jog:
+                pr = min(jog, key=lambda x: x['nota'])
+                if pr['nota'] <= 5.5:
+                    f['pior'] = {'nome': nm(pr['id']), 'nota': pr['nota']}
+            carr = {c['id']: c for c in ((self.museu_view() or {}).get('carrascos') or [])}
+            f['carrasco_marcou'] = [{'nome': nm(x['id']), 'gols': carr[x['id']]['gols']} for x in eles
+                                    if x['gols'] and x['id'] in carr]
+        evs = (st.get('gestao') or {}).get('eventos') or []
+        f['lesoes_desgaste'] = [e['jogador'] for e in evs if str(e.get('id', '')).startswith('fad') and e.get('data') == p['data']]
+        f['tribunal'] = [x for x in ((st.get('tribunal') or {}).get('processos') or []) if x['status'] == 'aguardando']
+        f['ofertas'] = [(self.names or {}).get(o['time_id']) or '' for o in getattr(self, 'ofertas_jogo', None) or []]
+        f['ofertas'] = [x for x in f['ofertas'] if x]
+        f['moral_baixa'] = [j['nome'] for j in (self.elenco or []) if j.get('moral') == 0][:2]
+        md = st.get('matchday') or {}
+        cp = md.get('carga_prox') or {}
+        if (cp.get('altitude') or 0) >= 2500 and (md.get('logistica') or {}).get('fora'):
+            f['altitude'] = cp['altitude']
+        prox = md.get('proximo')
+        if prox:
+            f['prox_adv'] = prox['vn'] if int(prox['m']) == int(tid) else prox['mn']
+        return f
+
     def gestao_processar(self, car, novas, antes):
         try:
             st = self.state
@@ -1097,7 +1176,17 @@ class App:
             g = gestao.Gestao(st, self.clube(), self.tid())
             nomes = lambda i: self.names.get(i, f'Time {i}')
             if novas and antes:
-                g.coletiva_nova(sorted(novas, key=lambda p: p['chave'])[-1], nomes, self.rivais_ids())
+                ult = sorted(novas, key=lambda p: p['chave'])[-1]
+                try:
+                    fatos = self.coletiva_fatos(ult)
+                except Exception:
+                    log(traceback.format_exc())
+                    fatos = None
+                g.coletiva_nova(ult, nomes, self.rivais_ids(), fatos)
+                try:
+                    self.imprensa_moral(ult, mu)
+                except Exception:
+                    log(traceback.format_exc())
                 for p in sorted(novas, key=lambda p: p['chave']):
                     medico.lesao_em_jogo(g, p, self.elenco, mu, self.engine)
             if car.date:      # campeonato terminou? título, acesso, rebaixamento (antes da revisão de janeiro)
@@ -2354,7 +2443,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(), 'ofertas_jogo': self.ofertas_jogo_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(), 'ofertas_jogo': self.ofertas_jogo_view(), 'clube_real': financas_clubes.clube(self.tid()) if self.tid() else None, 'planos_salvos': (self.state or {}).get('planos_salvos', []),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -3134,6 +3223,19 @@ class H(BaseHTTPRequestHandler):
                     if not alvo:
                         return self.send(400, {'erro': 'Só dá para cancelar lesão por desgaste criada pelo app.'})
                     ev_.remove(alvo)
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/planos':
+                    P = A.state.setdefault('planos_salvos', [])
+                    if body.get('acao') == 'apagar':
+                        P[:] = [x for x in P if x['nome'] != body.get('nome')]
+                    else:
+                        nome = str(body.get('nome') or '').strip()[:40]
+                        if not nome or len(body.get('ids') or []) < 11 or len(body.get('formacao') or []) != 11:
+                            return self.send(400, {'erro': 'Dê um nome e monte o time antes de salvar.'})
+                        P[:] = [x for x in P if x['nome'] != nome] + [{'nome': nome, 'ids': [int(i) for i in body['ids'][:23]],
+                                'formacao': body['formacao'], 'rotulo': str(body.get('rotulo') or '')[:20],
+                                'criado': A.state.get('data')}]
+                        del P[:-12]
                     A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/museu/aposentar':
                     museu.aposentar(A.state, int(body.get('numero')), str(body.get('nome') or '')[:60])

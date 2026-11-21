@@ -95,7 +95,7 @@ class Gestao:
         self.g = g
 
     # ---------- coletiva depois de cada jogo novo ----------
-    def coletiva_nova(self, partida, nomes, rivais=()):
+    def coletiva_nova(self, partida, nomes, rivais=(), fatos=None):
         if any(c['partida'] == partida['chave'] for c in self.g['coletivas']):
             return
         # a coletiva anterior que ficou sem resposta expira
@@ -126,7 +126,20 @@ class Gestao:
             if tipo == 'empate' and gp == 0:
                 pool = PERGUNTAS['empate_0'] + pool[:3]
             extra = []
+        # não repetir perguntas das últimas coletivas
+        recentes = {pq['texto'] for c0 in self.g['coletivas'][-8:] for pq in c0.get('perguntas', [])}
+        recentes_chaves = {k for c0 in self.g['coletivas'][-8:] for k in c0.get('fatos_usados', [])}
+        _nov = lambda lst: [x for x in lst if _preencher(x[0], v) not in recentes] or lst
+        pool = _nov(pool)
+        extra = _nov(extra) if extra else extra
         qs = [(q, ans, None) for q, ans in r.sample(pool, min(2, len(pool)))]
+        fatos_usados = []
+        if fatos:
+            from . import coletiva_fatos
+            fatos = dict(fatos, adv=adv, res=partida['res'])
+            fq = coletiva_fatos.gerar(fatos, r, recentes_chaves)
+            qs = qs[:1] + [(q, ans, j) for q, ans, j, _ in fq[:2]] + qs[1:]
+            fatos_usados = [k for _, _, _, k in fq[:2]]
         if extra:
             qs.append((*r.choice(extra), None))
         # 2) perguntas sobre o momento: sequência, tabela, copa, torcida, diretoria, lesão, vestiário, mercado
@@ -136,22 +149,25 @@ class Gestao:
         sit.sort(key=lambda x: -x[0])         # as mais urgentes primeiro
         usados = {q for q, _, _ in qs}
         for _, chave, jog in sit:
-            if len(qs) >= 4:
+            if len(qs) >= 5:
                 break
-            op = [x for x in PERGUNTAS[chave] if x[0] not in usados]
+            op = [x for x in PERGUNTAS[chave] if x[0] not in usados and _preencher(x[0], v) not in recentes]
             if op:
                 q, ans = r.choice(op)
                 usados.add(q)
                 qs.append((q, ans, jog))
-        if len(qs) < 4 and r.random() < 0.5:
-            q, ans = r.choice(PERGUNTAS['geral'])
+        if len(qs) < 4:
+            op = [x for x in PERGUNTAS['geral'] if _preencher(x[0], v) not in recentes] or PERGUNTAS['geral']
+            q, ans = r.choice(op)
             qs.append((q, ans, None))
-        qs = [(_preencher(q, v), [(_preencher(a[0], v), *a[1:]) for a in ans], j) for q, ans, j in qs[:4]]
+        qs = [(_preencher(q, v), [(_preencher(a[0], v), *a[1:]) for a in ans], j) for q, ans, j in qs[:5]]
         self.g['coletivas'].append({
             'id': f"col{len(self.g['coletivas']) + 1}", 'partida': partida['chave'], 'data': partida['data'],
             'titulo': f"{self.clube} {gp} x {gc} {adv}", 'tipo': tipo, 'status': 'aberta', 'classico': classico,
+            'fatos_usados': fatos_usados,
             'perguntas': [{'texto': q, 'respostas': [a[0] for a in ans], 'efeitos': [list(a[1:]) for a in ans],
-                           'escolha': None, **_reporter(tipo, i, partida['chave'])} for i, (q, ans, _) in enumerate(qs)]})
+                           'escolha': None, 'jogador': jg or None, **_reporter(tipo, i, partida['chave'])}
+                          for i, (q, ans, jg) in enumerate(qs)]})
         self.g['coletivas'] = self.g['coletivas'][-30:]
 
     def _situacoes(self, partida, dia, cod, v):
@@ -219,6 +235,7 @@ class Gestao:
         ef = perg['efeitos'][a]
         tom, dt_torc, dt_dir = ef[:3]
         estilo = ef[3] if len(ef) > 3 else None
+        self._moral_citado(perg, estilo, c['data'])
         mundo._torcida(dt_torc)
         mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + dt_dir)))
         if estilo:
@@ -241,6 +258,15 @@ class Gestao:
                                         'titulo': f'Técnico do {self.clube}: "{frase}"'})
         return tom
 
+    def _moral_citado(self, perg, estilo, data):
+        """Jogador citado na pergunta: defender ou elogiar sobe a moral dele; expor derruba."""
+        j = perg.get('jogador')
+        if not j or not isinstance(j, str):
+            return
+        d = {'proteger': 1, 'empolgar': 1, 'culpa': 1, 'expor': -2, 'provocar': 0}.get(estilo, 0)
+        if d:
+            moral_ajuste(self.s, j, d, data, 'o técnico o ' + ('defendeu' if d > 0 else 'criticou') + ' na coletiva', 14)
+
     def responder_livre(self, cid, q, texto, mundo, aval):
         """Resposta com as palavras do técnico, já avaliada (IA ou regras): impactos entre -5 e +5."""
         c = next((x for x in self.g['coletivas'] if x['id'] == cid), None)
@@ -252,6 +278,7 @@ class Gestao:
         perg['escolha'] = -1
         perg['livre'] = texto[:600]
         perg['avaliacao'] = aval
+        self._moral_citado(perg, aval['estilo'], c['data'])
         mundo._torcida(aval['torcida'])
         mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + aval['diretoria'])))
         from . import vestiario

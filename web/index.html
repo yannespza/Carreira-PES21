@@ -665,6 +665,14 @@ main{max-width:1240px}
 .kitprev img{width:auto;max-width:100%;max-height:calc(100vh - 230px);margin:0 auto;cursor:zoom-in}
 .kitprev.zoom img{max-height:none;width:100%;cursor:zoom-out}
 @media(max-width:760px){.kitwrap{grid-template-columns:1fr !important}.kitwrap>div:first-child{position:static}}
+.sala .conteudo{grid-template-columns:minmax(320px,42%) minmax(0,1fr) !important;align-items:start}
+.sala .palco{width:100% !important}
+@media(max-width:760px){.sala .conteudo{grid-template-columns:1fr !important}}
+.planos{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.plano{display:inline-flex;align-items:center}.plano a{cursor:pointer;color:var(--mut);padding:0 6px;font-size:16px}
+.perg .livre{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:6px}
+.perg .livre textarea{width:100%;min-height:54px;resize:vertical;box-sizing:border-box}
+.perg .livre button{width:auto !important;padding:0 18px}
 </style>
 </head>
 <body>
@@ -791,6 +799,7 @@ main{max-width:1240px}
       <div class="box" style="margin-top:14px"><h3>Súmulas <small>últimas partidas do clube · clique para abrir</small></h3><div id="stSum"></div></div></div>
     <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
       <div class="box"><h3>Plano de jogo <small id="escInfo">titulares no campo · lido do save</small></h3>
+        <div id="planosBox" class="planos"></div>
         <div class="row" style="gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap"><select id="escForm" onchange="escTrocarForm(this.value)" style="max-width:640px"><option value="">Trocar a formação…</option></select><small id="escFormInfo" style="color:var(--lime)"></small></div>
         <p style="font-size:12px;color:var(--mut);margin:0 0 8px">Arraste um jogador sobre outro para trocar os dois; arraste para um espaço vazio do gramado para mudar a posição dele (a função muda conforme a zona).</p>
         <div class="campo" id="escCampo"><div class="area t"></div><div class="area b"></div></div>
@@ -828,6 +837,7 @@ main{max-width:1240px}
   <section id="t-fin" class="hidden">
     <div class="crumb">Início / <b>Finanças</b></div>
     <div class="cards" id="finCards" style="margin-bottom:18px"></div>
+    <div class="box" id="finReal" style="margin-bottom:20px"></div>
     <div class="box" style="margin-bottom:20px"><h3>Diretor de futebol <small>peça verba ou remanejamento entre transferências e salários</small></h3><div id="finDist"></div></div>
     <div class="grid2">
       <div class="box"><h3>Saldo da conta do clube <small>igual à tela do jogo, na cotação do jogo</small></h3><div id="finRec"></div></div>
@@ -1442,7 +1452,10 @@ async function apagarFotoTec(n){await api('/api/tecnico/apagar',{nome:n});load()
 function palcoFoto(tom,chave){const cs=(S.gestao||{}).cena||[];if(!cs.length)return null;const h=cs.includes(tom)?tom:(cs.includes('neutro')?'neutro':cs[0]);
   const k=encodeURIComponent((S.cores||[]).join()+'|'+S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa+x.slot).join());
   return `<div class="palco foto"><img src="/tecnico/cena/${h}.jpg?k=${k}" onerror="this.parentNode.style.display='none'"></div>`}
-function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
+function rSala(){
+  // não redesenhar enquanto o técnico escreve (a tela se atualiza a cada 3 s e apagava o texto)
+  const _ae=document.activeElement;if([...document.querySelectorAll('#sala textarea')].some(t=>t.value.trim()||t===_ae))return;
+  const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
   const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
   const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
   if(!c){$('colInfo').textContent='';$('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto('neutro','x')||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto('neutro','x')}</div></div>`}
@@ -1453,7 +1466,7 @@ function rSala(){const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
     ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}${q.escolha===-1?`<button class="esc" disabled>“${esc(q.livre||'')}”</button>`:''}${q.escolha===null&&aberta?`<div class="livre"><textarea id="livre_${qi}" rows="2" placeholder="Ou responda com as suas palavras…"></textarea><button class="ghost" onclick="responderLivre('${c.id}',${qi})">Responder</button></div>`:''}${q.reacao?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome||'?'};return `<div class="reac ${q.reacao.bom?'ok':'off'}">${jnAv(j)}<span><b>${esc(j.nome)}:</b> “${esc(q.reacao.texto)}”</span></div>`})():''}</div>`).join('')}
     ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida, a diretoria, o vestiário e a sua relação com a imprensa.</p>':''}</div></div></div>`+rFotosTec()}
-async function responderLivre(id,q){const t=$('livre_'+q).value.trim();if(!t)return;toast('O jornalista está ouvindo…');try{const j=await api('/api/coletiva/livre',{id,pergunta:q,texto:t});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}catch(e){}}
+async function responderLivre(id,q){const el=$('livre_'+q),t=el.value.trim();if(!t)return;el.value='';el.blur();toast('O jornalista está ouvindo…');try{const j=await api('/api/coletiva/livre',{id,pergunta:q,texto:t});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}catch(e){}}
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
 const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
  lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
@@ -1568,7 +1581,16 @@ async function propor(tipo,valor){try{const R=await api('/api/diretor/pedido',{t
   toast(p.status=='aceito'?'O diretor aceitou. Veja a mensagem dele e recarregue a carreira no jogo.':p.status=='contra'?'O diretor fez uma contraproposta.':'O diretor negou o pedido.',p.status=='recusado');
   DIST=0;APORTE=0;load()}catch(e){}}
 async function responderDir(a){try{await api('/api/diretor/responder',{aceitar:a});toast(a?'Acordo fechado. Recarregue a carreira no jogo.':'Contraproposta recusada.');load()}catch(e){}}
-function rFin(){const d=S.dinheiro||{};rDist();const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
+function rFinReal(){const R=S.clube_real,el=$('finReal');if(!el)return;if(!R){el.style.display='none';return}el.style.display='';
+  const bi=v=>v==null?'—':(v>=1000?'R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:2})+' bi':'R$ '+v.toLocaleString('pt-BR')+' mi');
+  el.innerHTML=`<h3>${esc(R.clube||'Clube')} na vida real (balanço 2025) <small>referência para o tamanho do clube; o dinheiro que o jogo usa é o orçamento acima</small></h3>
+   <div class="cards"><div class="card"><b>${bi(R.receita_2025_mi)}</b><span>receita total em 2025${R.receita_estimada?' (estimada)':''}</span></div>
+   <div class="card"><b>${bi(R.divida_mi)}</b><span>dívida (${R.divida_sobre_receita!=null?Math.round(R.divida_sobre_receita*100)+'% da receita':''})</span></div>
+   <div class="card"><b>${bi(R.superavit_2025_mi)}</b><span>superávit em 2025</span></div>
+   <div class="card"><b>${bi(R.vendas_atletas_2025_mi)}</b><span>vendas de jogadores em 2025</span></div>
+   <div class="card"><b>${R.indice_poder??'—'}</b><span>índice de poder financeiro (0–100) · ${esc(R.faixa||'')}</span></div></div>
+   <p style="font-size:12px;color:var(--mut)">O índice decide quanto cada clube pode gastar nas janelas e o peso das propostas no mercado do app. O orçamento do PES (transferências e salários) é separado e é o que aparece no topo.</p>`}
+function rFin(){const d=S.dinheiro||{};rDist();rFinReal();const at=S.contratos.filter(c=>c.status=='ativo'||c.status=='assinado');
   const tot=at.reduce((s,c)=>s+c.valor,0);
   const rec=S.contratos.flatMap(c=>c.pagamentos.filter(p=>p.status=='creditado'||p.status=='confirmado').map(p=>p.valor)).reduce((a,b)=>a+b,0);
   const mul=(S.multas||[]).filter(m=>m.status=='aplicada').reduce((a,m)=>a+m.valor,0);
@@ -1981,6 +2003,26 @@ HIST_R.ana=()=>{const A=(S.museu||{}).analise;if(!A)return '<div class="box"><di
    ${A.seca.length?'<h4>Seca de gols</h4>'+A.seca.map(r=>linJ(r,`sem gol nos últimos ${r.jogos} jogos`)).join(''):''}
    ${A.sem_jogar.length?'<h4>Sem entrar em campo</h4>'+A.sem_jogar.map(r=>linJ(r,`${r.jogos} jogos seguidos fora`)).join('')+'<p style="font-size:12px;color:var(--mut)">Jogador bom muito tempo no banco tende a reclamar (veja Elenco > Gestão).</p>':''}</div>`};
 document.addEventListener('click',e=>{const im=e.target.closest('.kitprev img');if(im)im.parentElement.classList.toggle('zoom')});
+
+// ===== planos salvos (formação + titulares + banco) para escolha rápida =====
+function rPlanos(){const el=$('planosBox');if(!el||!S.escalacao)return;const P=S.planos_salvos||[];
+  el.innerHTML=`<b style="font-size:13px;color:var(--mut)">PLANOS SALVOS</b>${P.map(p=>`<span class="plano"><button class="ghost" data-plano="${esc(p.nome)}" title="${esc(p.rotulo||'')} · salvo em ${dt(p.criado||'')}">${esc(p.nome)}</button><a data-planodel="${esc(p.nome)}" title="apagar">×</a></span>`).join('')||'<small style="color:var(--mut)">nenhum ainda</small>'}
+   <input id="planoNome" placeholder="nome (ex.: Libertadores, Poupar titulares)" style="width:260px"><button class="lime" onclick="planoSalvar()">Salvar o time da tela</button>`}
+async function planoSalvar(){const nome=$('planoNome').value.trim();if(!nome){toast('Dê um nome ao plano.',true);return}
+  const M=escItens(),ids=ESC.slice(0,23).map(v=>(M[v]||{}).id).filter(Boolean);
+  try{await api('/api/planos',{nome,ids,formacao:FORM.map(v=>({cod:v.cod,sigla:v.sigla,papel:v.papel,prof:v.prof,lado:v.lado})),rotulo:(escFormNome()||'')});toast('Plano salvo.');await load()}catch(e){}}
+function escFormNome(){try{return S.escalacao.nome_formacao||''}catch(e){return ''}}
+function planoUsar(nome){const p=(S.planos_salvos||[]).find(x=>x.nome==nome);if(!p||!ESC)return;
+  const M=escItens(),porId={};Object.values(M).forEach(x=>porId[x.id]=x.vaga);
+  const quer=p.ids.map(i=>porId[i]).filter(v=>v!=null),fora=[];
+  // quem saiu do elenco ou está indisponível dá lugar ao próximo da ordem atual
+  const ind=v=>{const x=M[v]||{};return x.fora||x.indisponivel};
+  const novo=[],usado=new Set();quer.forEach(v=>{if(!ind(v)){novo.push(v);usado.add(v)}else fora.push(v)});
+  ESC.forEach(v=>{if(!usado.has(v)){novo.push(v);usado.add(v)}});
+  ESC=novo;FORM=p.formacao.map(v=>({...v}));rEscalacao();
+  toast(fora.length?`Plano "${nome}" na tela. ${fora.length} jogador(es) indisponível(is) foram trocados. Confira e clique em Aplicar no jogo.`:`Plano "${nome}" na tela. Clique em Aplicar no jogo.`)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-plano]');if(b){planoUsar(b.dataset.plano);return}
+  const d=e.target.closest('[data-planodel]');if(d&&confirm('Apagar o plano "'+d.dataset.planodel+'"?'))api('/api/planos',{acao:'apagar',nome:d.dataset.planodel}).then(load)});
 function rStats(){const E=S.estatisticas;
   if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
     $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
@@ -2018,7 +2060,7 @@ function rEscalacao(){const E=S.escalacao;
   $('escInfo').textContent=(E.formacao_nome?'formação '+E.formacao_nome+' · ':'')+'posições do plano de jogo do save';
   $('escAuto').checked=!!E.auto;
   $('escAplicar').disabled=ESC.join(',')===E.ordem.join(',')&&!formMudou();
-  escFormSel();
+  escFormSel();rPlanos();
   try{rBola()}catch(x){console.error(x)}
   $('escHist').innerHTML=(E.hist||[]).length?'<b style="font-size:13px">Últimos ajustes automáticos</b>'+E.hist.map(h=>`<div style="font-size:12px;color:var(--mut);margin-top:4px">${dt(h.data)}: ${h.mudancas.map(esc).join('; ')||'—'}</div>`).join(''):'';}
 document.addEventListener('mousedown',e=>{const t=e.target.closest('.eschip[data-i]');if(!t)return;e.preventDefault();

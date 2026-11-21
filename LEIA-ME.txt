@@ -559,3 +559,18 @@ VERSÃO 4.7.0
 VERSÃO 4.7.1
 - Moral e fim de contrato ("Dados do time"): o app só achava parte dos jogadores (6 de 30 no último arquivo).
   Agora acha todos pela tabela do arquivo. A seta aparece para o elenco inteiro no campinho e nas cartas.
+
+VERSÃO 4.8.0
+- Coletiva: escrever com as suas palavras funciona (a tela se atualizava a cada 3 segundos e apagava o texto).
+  Perguntas e respostas agora ficam ao lado da foto.
+- Coletiva menos repetitiva: perguntas feitas a partir dos fatos do jogo e do momento (quem fez gol, quem foi
+  mal, lesões por desgaste, tribunal, proposta de outro clube, jogador desmotivado, carrasco, altitude, próximo
+  adversário), com várias redações sorteadas; o app não repete perguntas das últimas 8 coletivas.
+- Imprensa mexe na moral: defender um jogador na coletiva sobe a moral dele, expor derruba. Depois de cada jogo
+  a imprensa elogia quem teve nota 7,5+ e critica quem teve 5 ou menos (sai a matéria e a moral muda por
+  duas semanas). É a moral do app; a seta do jogo só o PES muda.
+- Planos salvos (Elenco > Escalação): salve o time da tela (formação, titulares e banco) com um nome e use de
+  novo com um clique. Quem estiver lesionado ou suspenso é trocado automaticamente.
+- Mensagens: a caixa guarda só as 10 mais recentes (mais as que têm proposta aberta para responder).
+- Finanças: novo quadro com o clube na vida real (balanço 2025): receita, dívida, superávit, vendas e índice
+  de poder financeiro.
