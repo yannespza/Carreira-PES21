@@ -366,7 +366,12 @@ class Monitor(threading.Thread):
         with self._lock:
             ant = self.dados
             self.dados = d
-            self.lido_em = time.time()
+            # idade pelo arquivo (e não pela hora em que o app o leu): um arquivo velho de partida que travou
+            # não pode parecer 'ao vivo' só porque o app acabou de abrir
+            try:
+                self.lido_em = os.stat(self.caminho()).st_mtime
+            except Exception:
+                self.lido_em = time.time()
         evs = d.get('eventos') or []
         # partida nova: a sequência recomeça
         if ant is None or (d.get('casa'), d.get('fora')) != (ant.get('casa'), ant.get('fora')) or \

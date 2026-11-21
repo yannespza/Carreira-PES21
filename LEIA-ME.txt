@@ -469,3 +469,8 @@ VERSÃO 4.2.0 - Segurança das gravações, espaço de teste, capitão e batedor
 VERSÃO 4.2.1
 - Quando o app está no espaço de teste, aparece um aviso no topo com o botão "Voltar para a carreira principal".
   Só abrir o save no PES não faz o app trocar (o jogo não grava ao carregar); o app troca sozinho quando o jogo salva.
+
+VERSÃO 4.2.2
+- Corrigido: um arquivo de partida antigo (de um jogo que travou) fazia o app achar que havia partida em andamento
+  por 90 segundos depois de abrir, e recusava gravar. Agora a idade vem da hora do próprio arquivo.
+- Diagnóstico de memória: o app não tinha religado na 4.1.6 (o número de versão do módulo não mudou). Agora religa.

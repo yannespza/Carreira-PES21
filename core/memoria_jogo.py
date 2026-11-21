@@ -16,7 +16,7 @@ NADA é gravado na memória do jogo nesta fase. Precisa de luajit.ext.enabled = 
 import os, re, shutil, time
 import numpy as np
 
-VERSAO_MOD = 3
+VERSAO_MOD = 4
 MODULO = 'AppCarreiraMemoria.lua'
 PASTA = os.path.join('GOGOSZ', 'AppCarreira')
 PASSO = 0x170
