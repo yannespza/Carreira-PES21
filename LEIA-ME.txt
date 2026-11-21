@@ -506,3 +506,16 @@ VERSÃO 4.4.0
 - Aba Jogo > Tribunal: vermelho direto (sem amarelo antes) abre processo. Defesa do clube (grátis, 2 a 4
   jogos) ou banca de advogados (do orçamento; absolvição ou 1 a 2 jogos). A pena bloqueia o jogador na
   escalação do app. Sem escolha até o próximo jogo, vai a defesa do clube.
+
+VERSÃO 4.5.0
+- Aba Jogo > Fadiga: risco de cada jogador (verde, amarelo, vermelho) pela sequência de jogos com até 4 dias
+  de intervalo, minutos nos últimos 14 dias e carga de clima, viagem e altitude. Quem joga no vermelho pode
+  sofrer lesão muscular depois do jogo (vai para o departamento médico do app).
+- Efeito dentro do jogo: com muitos titulares no limite, ou na altitude, o adversário entra com +1 ou +2 de
+  força. É o mesmo mecanismo do Dynamic_Difficulty do patch (módulo novo AppCarreiraForca.lua, que soma ao
+  valor do Dynamic_Difficulty). Dá para desligar na própria aba ("aplicar dentro do jogo").
+- Aba Jogo > Viagem (jogos fora): voo comercial, voo fretado (metade do desgaste) ou viagem antecipada na
+  altitude (anula a altitude; custa caro e tira um pouco de moral). O custo sai do orçamento.
+- Aba Jogo > Bilheteria: faixa de preço do ingresso em casa (Popular, Padrão, Jogo grande, Premium). O app soma
+  ou desconta a diferença para a Padrão e mexe no humor da torcida; na vitória o humor sempre sobe. Sócios
+  sobem com vitórias e clássicos e caem com derrotas seguidas.

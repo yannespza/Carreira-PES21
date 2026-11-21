@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria
 from core.logos import LogoBank
 
 PORT = 8765
@@ -599,9 +599,65 @@ class App:
                     md['tabela_no_jogo'] = matchday.gravar_csv(pj, matchday.csv_tabela(linhas, fm))
             except Exception:
                 log(traceback.format_exc())
+        try:
+            self.fadiga_atualizar(md, prox)
+        except Exception:
+            log(traceback.format_exc())
         if self.state is not None:
             self.state['matchday'] = md
         return md
+
+    def _cargas(self):
+        """Carga ambiental de cada jogo já disputado pelo clube (recalculada: o clima é sorteio fixo)."""
+        st = self.state or {}
+        tid = self.tid()
+        nomes = getattr(self, 'names', None) or {}
+        lg = st.get('logistica') or {}
+        out = {}
+        for p in getattr(self, '_partidas', None) or []:
+            if tid in (p['mandante'], p['visitante']):
+                out[p['data']] = fadiga.carga_jogo(self.clube(), nomes.get(p['mandante'], ''), p['data'],
+                                                   f"{p['mandante']}x{p['visitante']}", p['mandante'] != tid,
+                                                   lg.get(p['data'], 'comercial'))
+        return out
+
+    def fadiga_atualizar(self, md, prox):
+        st = self.state
+        if st is None or not st.get('data'):
+            return
+        hoje = sim.s2d(st['data'])
+        tid = self.tid()
+        riscos = fadiga.estado_jogadores(getattr(self, '_partidas', None) or [], tid, self.elenco or [], hoje, self._cargas())
+        F = st.setdefault('fadiga', {})
+        md['riscos'] = sorted(riscos.values(), key=lambda r: ({'vermelho': 0, 'amarelo': 1, 'verde': 2}[r['nivel']], -r['seq'], -r['min14']))
+        if not prox:
+            return
+        nomes = getattr(self, 'names', None) or {}
+        lg = (st.get('logistica') or {}).get(prox['data'], 'comercial')
+        fora = int(prox['m']) != int(tid)
+        cp = fadiga.carga_jogo(self.clube(), nomes.get(prox['m']) or prox.get('mn', ''), prox['data'],
+                               f"{prox['m']}x{prox['v']}", fora, lg)
+        md['carga_prox'] = {k: v for k, v in cp.items() if k != 'clima'}
+        md['logistica'] = {'escolha': lg if fora else None, 'fora': fora, 'km': cp['km'], 'altitude': cp['altitude'],
+                           'opcoes': {k: {**v, 'custo': fadiga.custo_logistica(cp['km'], k)} for k, v in fadiga.LOGISTICA.items()
+                                      if k != 'aclimatacao' or cp['altitude'] >= 2500}}
+        for r in md['riscos']:
+            r['prob'] = fadiga.prob_lesao(r, cp['fator_alt']) if r['nivel'] == 'vermelho' else None
+        snap = {str(k): v for k, v in riscos.items()}
+        snap['_fator_alt'] = cp['fator_alt']
+        F.setdefault('antes', {})[prox['data']] = snap
+        tit = [x['id'] for x in ((self.escalacao_view() or {}).get('titulares') or []) if x.get('id')]
+        f, mot = fadiga.forca_adversario(riscos, tit, cp)
+        pj = CFG.get('pasta_jogo') or ''
+        ligado = CFG.get('forca_no_jogo', True)
+        md['forca'] = {'valor': f, 'motivos': mot, 'ligado': ligado}
+        if pj and os.path.isdir(os.path.join(pj, 'modules')):
+            if ligado:
+                forca.instalar(pj, os.path.join(DATA, 'backups_save'), log)
+                casa_f, fora_f = (0, f) if not fora else (f, 0)
+                md['forca']['no_jogo'] = forca.gravar(pj, prox['m'], prox['v'], casa_f, fora_f)
+            else:
+                forca.desinstalar(pj)
 
     def _msg_app(self, de, assunto, texto, tipo='diretoria'):
         st = self.state
@@ -630,12 +686,32 @@ class App:
             self.dossie = dossie.montar(todas, adv, (self.names or {}).get(adv) or f'Time {adv}', meus, nj, fich)
             if self.dossie:
                 self.dossie['data'] = prox['data']
+        for ev in fadiga.rolar_lesoes(st, todas, tid, hoje if not isinstance(hoje, str) else sim.s2d(hoje)):
+            self._msg_app('Departamento médico', f"Lesão muscular: {ev['jogador']}", ev['texto'], 'medico')
+        try:
+            bilheteria.definir_capacidade(st, self.clube())
+            bilheteria.iniciar_socios(st, (st.get('dinheiro') or {}).get('rec_socios'))
+            st.setdefault('bilheteria', {}).setdefault('desde', hoje_s)
+            lanc = bilheteria.processar(st, todas, tid, hoje_s, self.rivais_ids())
+            for b_ in lanc:
+                self._msg_app('Marketing', f"Bilheteria: {b_['publico']:,} torcedores".replace(',', '.'),
+                              f"Jogo de {b_['data']} ({b_['placar']}), faixa {bilheteria.FAIXAS[b_['faixa']]['nome']}: "
+                              f"humor da torcida {'+' if b_['humor'] > 0 else ''}{b_['humor']}.")
+            if any(b_.get('diferenca') for b_ in lanc):
+                self.aplicar_creditos()
+        except Exception:
+            log(traceback.format_exc())
         for c in dossie.conferir_cartas(st, todas, tid):
             if c['resultado'] == 'funcionou':
                 gestao.moral_ajuste(st, '*', 1, hoje_s, f"plano tático cumprido ({dossie.CARTAS[c['carta']][0]})", 10)
             self._msg_app('Comissão técnica', 'Plano tático: ' + c['resultado'],
                           f"{dossie.CARTAS[c['carta']][0]} contra {c.get('adv', 'o adversário')}: {c['placar']}. "
                           + ('O grupo ganhou confiança.' if c['resultado'] == 'funcionou' else 'Fica a lição para o próximo.'))
+
+    def bilheteria_view(self):
+        st = self.state or {}
+        prox = next((p for p in (st.get('proximos') or []) if not p.get('jogada')), None)
+        return bilheteria.view(st, prox, self.tid() or 0) if st else None
 
     def tribunal_view(self):
         return tribunal.view(self.state or {})
@@ -2179,7 +2255,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -2927,6 +3003,35 @@ class H(BaseHTTPRequestHandler):
                     if pr.get('custo'):
                         A.aplicar_creditos()
                     A.persist(); return self.send(200, {'ok': True, 'processo': pr})
+                if u.path == '/api/logistica':
+                    md = A.state.get('matchday') or {}
+                    prox, L = md.get('proximo'), md.get('logistica') or {}
+                    tipo = body.get('tipo')
+                    if not prox or not L.get('fora') or tipo not in (L.get('opcoes') or {}):
+                        return self.send(400, {'erro': 'Só para o próximo jogo fora de casa.'})
+                    lg = A.state.setdefault('logistica', {})
+                    ant = lg.get(prox['data'])
+                    if ant != tipo:
+                        km = L.get('km') or 0
+                        valor = fadiga.custo_logistica(km, tipo) - (fadiga.custo_logistica(km, ant) if ant else 0)
+                        lg[prox['data']] = tipo
+                        A.state.setdefault('debitos', []).append({'data': A.state.get('data'), 'valor': valor, 'status': 'pendente',
+                                                                  'motivo': f"viagem: {fadiga.LOGISTICA[tipo]['nome'].lower()}", 'origem': 'logistica'})
+                        if tipo == 'aclimatacao':
+                            gestao.moral_ajuste(A.state, '*', -1, A.state.get('data'), 'semana fora para aclimatação', 7)
+                        A.aplicar_creditos(); A.matchday_atualizar()
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/bilheteria':
+                    md = A.state.get('matchday') or {}
+                    prox = md.get('proximo')
+                    if not prox or int(prox['m']) != int(A.tid()):
+                        return self.send(400, {'erro': 'Só para o próximo jogo em casa.'})
+                    bilheteria.escolher(A.state, prox['data'], body.get('faixa'))
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/fadiga/forca':
+                    CFG['forca_no_jogo'] = bool(body.get('ligado'))
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    A.matchday_atualizar(); A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/dossie/carta':
                     d = getattr(A, 'dossie', None)
                     if not d or body.get('carta') not in dossie.CARTAS:

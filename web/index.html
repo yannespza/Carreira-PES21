@@ -247,6 +247,7 @@ dialog select,dialog input{width:100%}
 .eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
 .eschip small{opacity:.7;margin-right:4px}
 .mdjogo{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:6px}.mdjogo>div{display:flex;flex-direction:column;align-items:center;gap:6px;width:40%;text-align:center}.mdjogo img{width:84px;height:84px;object-fit:contain}.mdjogo>span{font-size:28px;color:var(--mut)}
+.nivel{display:inline-block;padding:2px 8px;border-radius:10px;color:#111;font-weight:700;font-size:12px}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.tb{width:100%;border-collapse:collapse}.tb td,.tb th{padding:5px 8px;border-bottom:1px solid #ffffff12;text-align:center}
 .lin{display:flex;align-items:center;gap:4px;margin:4px 0}.cartas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cartat{text-transform:none;letter-spacing:0;font-family:inherit;text-align:left;padding:12px;border-radius:10px;border:1px solid #ffffff22;background:var(--panel2);color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:4px}
@@ -816,7 +817,7 @@ dialog{border-radius:20px}
   <!-- SISTEMA -->
   <section id="t-jogo" class="hidden">
     <div class="crumb">Início / <b>Dia de jogo</b></div>
-    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Logística e viagem</a><a data-j="fad">Fadiga e risco</a><a data-j="dos">Dossiê do adversário</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria e sócios</a></div>
+    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Viagem</a><a data-j="fad">Fadiga</a><a data-j="dos">Dossiê</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria</a></div>
     <div id="jogoBox"><div class="empty">Carregando…</div></div>
   </section>
   <section id="t-sis" class="hidden">
@@ -1873,6 +1874,31 @@ JOGO_R.trib=()=>{const T=S.tribunal||{processos:[]},E=T.estrategias||{};
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-def]');if(!b)return;
   if(b.dataset.def=='advogados'&&!confirm('Contratar a banca de advogados? O valor sai do orçamento de transferências.'))return;
   try{const r=await api('/api/tribunal/defesa',{id:b.dataset.proc,estrategia:b.dataset.def});toast(r.processo.resultado);await load()}catch(x){toast(x.message,1)}});
+
+const NIV={vermelho:['#ff5b5b','Vermelho'],amarelo:['#f5c542','Amarelo'],verde:['#3ddc84','Verde']};
+JOGO_R.fad=()=>{const M=S.matchday||{},R=M.riscos||[],F=M.forca||{};
+  const cont=k=>R.filter(r=>r.nivel==k).length;
+  return `<div class="box"><h3>Fadiga e risco muscular <small>sequência de jogos, minutos, clima, viagem e altitude</small></h3>
+   <div class="cards"><div class="card"><b style="color:#ff5b5b">${cont('vermelho')}</b><span>no limite (vermelho)</span></div><div class="card"><b style="color:#f5c542">${cont('amarelo')}</b><span>atenção (amarelo)</span></div><div class="card"><b style="color:#3ddc84">${cont('verde')}</b><span>normais</span></div>
+   <div class="card"><b>${M.carga_prox?M.carga_prox.pontos:0}</b><span>carga do próximo jogo${M.carga_prox&&M.carga_prox.motivos.length?'<br><small>'+esc(M.carga_prox.motivos.join(', '))+'</small>':''}</span></div></div>
+   <p style="font-size:13px">No jogo: ${F.valor?`o adversário entra com <b>+${F.valor}</b> de força (${esc(F.motivos.join(', '))}).`:'sem força extra para o adversário.'}
+   <label style="margin-left:10px"><input type="checkbox" id="forcaOn" ${F.ligado?'checked':''} onchange="api('/api/fadiga/forca',{ligado:this.checked}).then(load)"> aplicar dentro do jogo</label></p>
+   <table class="tb"><tr><th style="text-align:left">Jogador</th><th>Risco</th><th>Jogos seguidos</th><th>Min. em 14 dias</th><th>Carga</th><th>Se jogar</th></tr>
+   ${R.map(r=>`<tr><td style="text-align:left">${ftMini(r.id)}<small style="color:var(--mut)">${esc(r.pos)}</small> ${esc(r.nome)}</td><td><span class="nivel" style="background:${NIV[r.nivel][0]}">${NIV[r.nivel][1]}</span></td><td>${r.seq}</td><td>${r.min14}</td><td>${r.carga||''}</td><td>${r.prob?`<b style="color:#ff5b5b">${Math.round(r.prob*100)}% de lesão</b>`:r.nivel=='amarelo'?'limitar a 45 min':''}</td></tr>`).join('')}</table>
+   <p style="font-size:12px;color:var(--mut)">Jogo seguido = intervalo de até 4 dias. Ficar fora de um jogo zera a sequência. Quem joga no vermelho pode sofrer lesão muscular (vai para o departamento médico do app). A força extra do adversário usa o mesmo mecanismo do Dynamic_Difficulty do patch.</p></div>`};
+JOGO_R.log=()=>{const M=S.matchday||{},L=M.logistica||{};
+  if(!L.fora)return '<div class="box"><div class="empty">O próximo jogo é em casa: sem viagem.</div></div>';
+  return `<div class="box"><h3>Viagem para ${esc((M.proximo||{}).mn||'')} <small>${(L.km||0).toLocaleString('pt-BR')} km${L.altitude?' · '+L.altitude.toLocaleString('pt-BR')+' m de altitude':''}</small></h3>
+   <div class="cartas">${Object.entries(L.opcoes||{}).map(([k,o])=>`<button class="cartat ${L.escolha==k?'on':''}" data-logi="${k}"><b>${esc(o.nome)}</b><em>${eurM(o.custo)}</em><span>${k=='comercial'?'Desgaste normal da viagem e da altitude.':k=='fretado'?'Metade do desgaste da viagem; volta mais rápido.':'Chega dias antes: a altitude não pesa. A semana fora tira um pouco de moral.'}</span></button>`).join('')}</div>
+   <p style="font-size:12px;color:var(--mut)">O custo sai do orçamento de transferências. Trocar a escolha devolve a diferença. Sem escolha, o clube vai de voo comercial.</p></div>`};
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-logi]');if(!b)return;try{await api('/api/logistica',{tipo:b.dataset.logi});toast('Viagem definida.');await load()}catch(x){}});
+JOGO_R.bil=()=>{const B=S.bilheteria||{};const F=B.faixas||{};
+  return `<div class="box"><h3>Bilheteria e sócio-torcedor</h3>
+   <div class="cards"><div class="card"><b>${(B.socios||0).toLocaleString('pt-BR')}</b><span>sócios (estimativa)</span></div><div class="card"><b>${(B.capacidade||0).toLocaleString('pt-BR')}</b><span>capacidade</span></div></div>
+   ${B.em_casa?`<h4>Preço do ingresso no próximo jogo em casa</h4><div class="cartas">${Object.entries(F).map(([k,f])=>{const sm=(B.simulacao||{})[k]||{};return `<button class="cartat ${B.escolha==k?'on':''}" data-faixa="${k}"><b>${esc(f.nome)} · R$ ${f.preco}</b><em>~${(sm.publico||0).toLocaleString('pt-BR')} pessoas · R$ ${((sm.renda_rs||0)/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})} mi</em><span>Humor: vitória +${f.humor[0]}, empate ${f.humor[1]>0?'+':''}${f.humor[1]}, derrota ${f.humor[2]}</span></button>`}).join('')}</div>
+     <p style="font-size:12px;color:var(--mut)">O jogo paga a bilheteria dele normalmente; o app soma ou desconta a diferença da faixa escolhida em relação à Padrão. Na vitória o humor da torcida sempre sobe.</p>`:'<p style="color:var(--mut)">O próximo jogo é fora de casa.</p>'}
+   ${(B.jogos||[]).length?`<h4>Últimos jogos em casa</h4><table class="tb"><tr><th>Data</th><th>Placar</th><th>Faixa</th><th>Público</th><th>Humor</th><th>Diferença</th></tr>${B.jogos.map(j=>`<tr><td>${dt(j.data)}</td><td>${esc(j.placar)}</td><td>${esc((F[j.faixa]||{}).nome||'')}</td><td>${(j.publico||0).toLocaleString('pt-BR')}</td><td>${j.humor>0?'+':''}${j.humor}</td><td>${j.diferenca?eurM(j.diferenca):'—'}</td></tr>`).join('')}</table>`:''}</div>`};
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-faixa]');if(!b)return;try{await api('/api/bilheteria',{faixa:b.dataset.faixa});toast('Preço definido.');await load()}catch(x){}});
 function rStats(){const E=S.estatisticas;
   if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
     $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
