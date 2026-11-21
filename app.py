@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros
 from core.logos import LogoBank
 
 PORT = 8765
@@ -542,6 +542,12 @@ class App:
                 L.append('Comissão: ' + d)
         elif prox:
             L.append('PRÓXIMO JOGO: ' + str(prox.get('data', '')))
+        try:
+            mv = self.museu_view() or {}
+            if mv.get('carrascos_prox'):
+                L.append('Carrasco histórico: ' + ', '.join(f"{c['nome']} ({c['gols']} gols contra nós)" for c in mv['carrascos_prox'][:3]))
+        except Exception:
+            pass
         md = st.get('matchday') or {}
         if md.get('clima'):
             L.append('Clima: ' + md['clima']['texto'] + ''.join(' · ' + a for a in md['clima'].get('alertas', [])))
@@ -701,12 +707,36 @@ class App:
                 self.aplicar_creditos()
         except Exception:
             log(traceback.format_exc())
+        try:
+            museu.registrar(st, todas, tid, nj, nomes_cl)
+        except Exception:
+            log(traceback.format_exc())
         for c in dossie.conferir_cartas(st, todas, tid):
             if c['resultado'] == 'funcionou':
                 gestao.moral_ajuste(st, '*', 1, hoje_s, f"plano tático cumprido ({dossie.CARTAS[c['carta']][0]})", 10)
             self._msg_app('Comissão técnica', 'Plano tático: ' + c['resultado'],
                           f"{dossie.CARTAS[c['carta']][0]} contra {c.get('adv', 'o adversário')}: {c['placar']}. "
                           + ('O grupo ganhou confiança.' if c['resultado'] == 'funcionou' else 'Fica a lição para o próximo.'))
+
+    def museu_view(self):
+        st = self.state or {}
+        if not st:
+            return None
+        prox = next((p for p in (st.get('proximos') or []) if not p.get('jogada')), None)
+        adv_ids = None
+        if prox and self.career is not None:
+            try:
+                d = bytes(self.career.sf.data)
+                adv = prox['v'] if int(prox['m']) == int(self.tid()) else prox['m']
+                adv_ids = savedata.elenco(d, savedata.team_index(d, adv))
+            except Exception:
+                adv_ids = None
+        v = museu.view(st, prox, adv_ids)
+        try:
+            v['analise'] = museu.analise(getattr(self, '_partidas', None) or [], self.tid(), self.elenco or [])
+        except Exception:
+            log(traceback.format_exc())
+        return v
 
     def bilheteria_view(self):
         st = self.state or {}
@@ -761,7 +791,10 @@ class App:
                     mods.append({'nome': m_.group(1), 'nosso': m_.group(1).startswith('AppCarreira')})
         except OSError:
             pass
-        return {'gravacao': self.estado_gravacao(), 'backups': self.backups_view(), 'slots': self.slots_view(),
+        return {'ia': {'modo': CFG.get('ia_modo', 'desligada'), 'modelo': CFG.get('ia_modelo', ''),
+                       'ollama_url': CFG.get('ia_ollama_url', 'http://localhost:11434'),
+                       'nuvem_url': CFG.get('ia_nuvem_url', ''), 'tem_chave': bool(CFG.get('ia_chave'))},
+                'gravacao': self.estado_gravacao(), 'backups': self.backups_view(), 'slots': self.slots_view(),
                 'modulos': mods, 'memoria': {'ligado': CFG.get('memoria_diag', True), 'motivo': CFG.get('memoria_diag_motivo')},
                 'briefing': self.briefing_texto(), 'aovivo': self.aovivo.estado(self.names),
                 'restauracoes': (self.state or {}).get('restauracoes', [])[-5:][::-1]}
@@ -2255,7 +2288,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -2946,6 +2979,32 @@ class H(BaseHTTPRequestHandler):
                         body['id'], int(body['pergunta']), int(body['resposta']), mu)
                     A.persist()
                     return self.send(200, {'ok': True, 'tom': tom})
+                if u.path == '/api/coletiva/livre':
+                    texto = (body.get('texto') or '').strip()
+                    if len(texto) < 3:
+                        return self.send(400, {'erro': 'Escreva a resposta.'})
+                    G = gestao.Gestao(A.state, A.clube(), A.tid())
+                    c_ = next((x for x in G.g['coletivas'] if x['id'] == body.get('id')), None)
+                    if not c_:
+                        return self.send(400, {'erro': 'Coletiva não encontrada.'})
+                    q_ = c_['perguntas'][int(body['pergunta'])]
+                    ctx_ = f"{A.clube()} · {c_.get('titulo', '')}"
+                    aval = ia.avaliar_resposta(CFG, ctx_, q_.get('texto', ''), texto)
+                    mu = mundo.Mundo(A.state, A.clube(), A.tid())
+                    tom = G.responder_livre(body['id'], int(body['pergunta']), texto, mu, aval)
+                    A.persist()
+                    return self.send(200, {'ok': True, 'tom': tom, 'avaliacao': aval})
+                if u.path == '/api/ia/config':
+                    for k in ('ia_modo', 'ia_modelo', 'ia_ollama_url', 'ia_nuvem_url'):
+                        if k in body:
+                            CFG[k] = str(body[k] or '')
+                    if body.get('ia_chave'):
+                        CFG['ia_chave'] = str(body['ia_chave'])
+                    jsave(os.path.join(DATA, 'config.json'), CFG)
+                    return self.send(200, {'ok': True})
+                if u.path == '/api/ia/testar':
+                    j_ = ia.gerar_json(CFG, 'Responda só JSON {"ok": true, "frase": "..."} com uma frase curta de futebol.', 'teste')
+                    return self.send(200, {'ok': bool(j_), 'resposta': j_, 'modelos': ia.modelos_ollama(CFG.get('ia_ollama_url') or 'http://localhost:11434')})
                 if u.path == '/api/diretoria/sondagem':
                     mu = mundo.Mundo(A.state, A.clube(), A.tid())
                     diretoria.responder_sondagem(A.state, eng, mu, bool(body.get('aceitar')))
@@ -3003,6 +3062,12 @@ class H(BaseHTTPRequestHandler):
                     if pr.get('custo'):
                         A.aplicar_creditos()
                     A.persist(); return self.send(200, {'ok': True, 'processo': pr})
+                if u.path == '/api/museu/aposentar':
+                    museu.aposentar(A.state, int(body.get('numero')), str(body.get('nome') or '')[:60])
+                    A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/olheiros':
+                    res_ = olheiros.buscar(A.pool_mercado(), body.get('missao'), A.tid(), body.get('pos') or None)
+                    return self.send(200, {'lista': res_})
                 if u.path == '/api/logistica':
                     md = A.state.get('matchday') or {}
                     prox, L = md.get('proximo'), md.get('logistica') or {}

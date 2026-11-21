@@ -233,11 +233,43 @@ class Gestao:
         if all(p['escolha'] is not None for p in c['perguntas']):
             c['status'] = 'respondida'
             r = random.Random(_seed('colnot', cid))
-            frase = c['perguntas'][0]['respostas'][c['perguntas'][0]['escolha']]
+            p0 = c['perguntas'][0]
+            frase = p0.get('livre') if p0['escolha'] == -1 else p0['respostas'][p0['escolha']]
+            frase = (frase or '')[:120]
             mundo.m['noticias'].append({'data': self.s.get('data'), 'tipo': 'coletiva', 'destaque': False,
                                         'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN', 'UOL Esporte']),
                                         'titulo': f'Técnico do {self.clube}: "{frase}"'})
         return tom
+
+    def responder_livre(self, cid, q, texto, mundo, aval):
+        """Resposta com as palavras do técnico, já avaliada (IA ou regras): impactos entre -5 e +5."""
+        c = next((x for x in self.g['coletivas'] if x['id'] == cid), None)
+        if not c or c['status'] != 'aberta':
+            raise ValueError('Essa coletiva já terminou.')
+        perg = c['perguntas'][q]
+        if perg['escolha'] is not None:
+            raise ValueError('Pergunta já respondida.')
+        perg['escolha'] = -1
+        perg['livre'] = texto[:600]
+        perg['avaliacao'] = aval
+        mundo._torcida(aval['torcida'])
+        mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + aval['diretoria'])))
+        from . import vestiario
+        vestiario.coletiva(self.s, aval['estilo'], c['data'])
+        k = perg.get('reporter') or 'lacerda'
+        bom = aval['estilo'] in APROVA.get(k, set()) or aval.get('imprensa', 0) > 0
+        rr = random.Random(_seed('reac', cid, q, texto[:40]))
+        perg['reacao'] = {'texto': aval.get('reacao') or rr.choice(REACAO[aval['estilo']][0 if bom else 1]), 'bom': bom}
+        self.g['imprensa'] = int(max(0, min(100, self.g.get('imprensa', 55) + (aval.get('imprensa') or (3 if bom else -3)))))
+        if all(p['escolha'] is not None for p in c['perguntas']):
+            c['status'] = 'respondida'
+            r = random.Random(_seed('colnot', cid))
+            p0 = c['perguntas'][0]
+            frase = (p0.get('livre') if p0['escolha'] == -1 else p0['respostas'][p0['escolha']]) or ''
+            mundo.m['noticias'].append({'data': self.s.get('data'), 'tipo': 'coletiva', 'destaque': False,
+                                        'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN', 'UOL Esporte']),
+                                        'titulo': f'Técnico do {self.clube}: "{frase[:120]}"'})
+        return 'feliz' if aval['torcida'] + aval['diretoria'] > 1 else 'irritado' if aval['torcida'] + aval['diretoria'] < -1 else 'neutro'
 
     # ---------- eventos do vestiário (só no app) ----------
     EVENTOS = [

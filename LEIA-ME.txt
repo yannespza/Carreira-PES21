@@ -519,3 +519,16 @@ VERSÃO 4.5.0
 - Aba Jogo > Bilheteria: faixa de preço do ingresso em casa (Popular, Padrão, Jogo grande, Premium). O app soma
   ou desconta a diferença para a Padrão e mexe no humor da torcida; na vitória o humor sempre sobe. Sócios
   sobem com vitórias e clássicos e caem com derrotas seguidas.
+
+VERSÃO 4.6.0
+- Nova aba "História" (museu do clube). A partir de agora cada partida do clube fica guardada para sempre no
+  app, mesmo quando o PES vira a temporada.
+  Almanaque: artilheiros, assistências, maior vitória e derrota, maior invencibilidade e aproveitamento por
+  temporada. Hall da fama (150 jogos ou 100 gols) e camisas aposentadas (registro no app).
+  Rivais e carrascos: histórico contra cada adversário; jogador rival com 3+ gols contra o clube vira
+  "carrasco" e aparece no painel do jogo quando enfrentar o Palmeiras.
+  Olheiros: missões (talentos até 23 anos, sem clube, destaques da temporada, experientes) por posição.
+  Análise: atacantes na seca, bons jogadores sem jogar e série sem sofrer gols.
+- IA opcional (aba Sistema): desligada por padrão. Com Ollama no PC ou uma API na nuvem, você pode responder a
+  coletiva com as suas palavras e a IA avalia (impactos sempre entre -5 e +5). Sem IA, a resposta escrita é
+  avaliada por regras prontas.

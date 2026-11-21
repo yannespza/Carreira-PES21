@@ -35,6 +35,10 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Prêmios da liga (craque da rodada, artilharia, seleção) | `core/premios.py` |
 | Diagnóstico de memória do jogo via Sider (somente leitura; relatórios `memoria_*.txt` vão na cópia remota, pasta `memoria/`) | `core/memoria_jogo.py` |
 | Cópia do save para o GitHub privado (análise a distância) | `core/copia_remota.py` (repo yannespza/carreira-pes21-saves: `saves/AAAA-MM-DD/HHMMSS_<arquivo>.pesz`, uma versão por gravação; na virada da semana ficam só as 2 mais recentes de cada save e o histórico do repo recomeça). Abrir/comparar/montar no /tmp/sim: `ferramentas/saves_remotos.py` |
+| Aba Jogo (dia de jogo): clima/torcida no Sider, dossiê, tribunal, fadiga, viagem, bilheteria | `core/matchday.py` (force_weather.ini do StadiumServer, crowd_behavior.ini/crowd_standings.csv), `core/cidades.py` (cidade/altitude por nome), `core/dossie.py`, `core/tribunal.py`, `core/fadiga.py`, `core/forca.py` (AppCarreiraForca.lua: soma força no MATCH_INFO+0x20/+0x28 como o Dynamic_Difficulty), `core/bilheteria.py`; app: `App.matchday_atualizar`, `fadiga_atualizar`, `tribunal_dossie`; UI `rJogo()`/`JOGO_R` |
+| Formações do patch (catálogo do EDIT, 628 B por time) e gravar formação | `escalacao.catalogo`, `escalacao.gravar_formacao` (tipo de gravação `formacao`, passa pelo espaço de teste); UI `escTrocarForm`, `papelZona`, `hungaro` |
+| Aba História: museu permanente, hall da fama, carrascos, olheiros, análise | `core/museu.py` (state['museu']), `core/olheiros.py`; UI `rHist()`/`HIST_R` |
+| IA opcional (Ollama/nuvem, JSON, 8 s, corte -5..+5) | `core/ia.py`; coletiva com resposta livre `gestao.responder_livre`, rota `/api/coletiva/livre`; config na aba Sistema |
 Esses módulos são chamados em `App.mercado_processar` e `App.extras_processar`; a tela recebe `extras_view()`.
 Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o teste no PC).
 
