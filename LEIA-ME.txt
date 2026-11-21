@@ -491,3 +491,18 @@ VERSÃO 4.3.0
 - Torcida: o app manda para o módulo de torcida do patch (crowd_behavior) as rivalidades do clube, a torcida
   única nos clássicos paulistas (Palmeiras, Corinthians, São Paulo, Santos) e a tabela real do Brasileirão
   (crowd_standings.csv), para o público acompanhar a campanha.
+
+VERSÃO 4.4.0
+- Formações: o app junta todas as formações dos planos de jogo dos times do patch (256 variações, lidas do
+  arquivo EDIT). Em Elenco > Escalação, "Trocar a formação…" põe a formação no campinho e distribui os
+  titulares pela aptidão de cada um para as posições novas.
+- Campinho livre: arraste um jogador para um espaço vazio do gramado e ele muda de posição; a função (ZC, LE,
+  VOL, MAT, PTE, CA…) muda conforme a zona, como no jogo.
+- Gravar formação é uma gravação nova: só funciona no espaço de teste até você confirmar no jogo
+  ("Funcionou no jogo" na aba Sistema).
+- Aba Jogo > Dossiê do adversário: provável time deles, jogo aéreo (altura, cabeceio, impulsão) contra o
+  nosso, velocidade da defesa, batedores e cabeceadores perigosos. Carta de plano tático por jogo: se o plano
+  funcionar, o grupo ganha moral.
+- Aba Jogo > Tribunal: vermelho direto (sem amarelo antes) abre processo. Defesa do clube (grátis, 2 a 4
+  jogos) ou banca de advogados (do orçamento; absolvição ou 1 a 2 jogos). A pena bloqueia o jogador na
+  escalação do app. Sem escolha até o próximo jogo, vai a defesa do clube.

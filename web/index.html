@@ -247,6 +247,10 @@ dialog select,dialog input{width:100%}
 .eschip{position:absolute;transform:translate(-50%,-50%);background:var(--lime);color:var(--onlime);font-family:var(--head);font-size:12px;padding:4px 8px;border-radius:12px;white-space:nowrap;cursor:grab;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4);user-select:none}
 .eschip small{opacity:.7;margin-right:4px}
 .mdjogo{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:6px}.mdjogo>div{display:flex;flex-direction:column;align-items:center;gap:6px;width:40%;text-align:center}.mdjogo img{width:84px;height:84px;object-fit:contain}.mdjogo>span{font-size:28px;color:var(--mut)}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.tb{width:100%;border-collapse:collapse}.tb td,.tb th{padding:5px 8px;border-bottom:1px solid #ffffff12;text-align:center}
+.lin{display:flex;align-items:center;gap:4px;margin:4px 0}.cartas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cartat{text-transform:none;letter-spacing:0;font-family:inherit;text-align:left;padding:12px;border-radius:10px;border:1px solid #ffffff22;background:var(--panel2);color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.cartat.on{border-color:var(--lime);box-shadow:0 0 0 2px var(--lime) inset}.cartat em{font-size:11px;color:var(--lime);font-style:normal}.cartat span{font-size:12px;color:var(--mut)}
 .mdalerta{padding:8px 12px;border:1px solid #ff9b3d66;border-radius:8px;background:#ff9b3d14;margin:8px 0}
 
 .stft{width:26px;height:26px;border-radius:50%;object-fit:cover;object-position:50% 10%;vertical-align:middle;margin-right:6px;background:#0003}
@@ -761,6 +765,8 @@ dialog{border-radius:20px}
       <div class="box" style="margin-top:14px"><h3>Súmulas <small>últimas partidas do clube · clique para abrir</small></h3><div id="stSum"></div></div></div>
     <div id="e-pran" class="hidden"><div class="grid2" style="grid-template-columns:minmax(300px,440px) 1fr">
       <div class="box"><h3>Plano de jogo <small id="escInfo">titulares no campo · lido do save</small></h3>
+        <div class="row" style="gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap"><select id="escForm" onchange="escTrocarForm(this.value)" style="max-width:640px"><option value="">Trocar a formação…</option></select><small id="escFormInfo" style="color:var(--lime)"></small></div>
+        <p style="font-size:12px;color:var(--mut);margin:0 0 8px">Arraste um jogador sobre outro para trocar os dois; arraste para um espaço vazio do gramado para mudar a posição dele (a função muda conforme a zona).</p>
         <div class="campo" id="escCampo"><div class="area t"></div><div class="area b"></div></div>
         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
           <button class="lime" id="escAplicar" onclick="escAplicar()" disabled>Aplicar no jogo</button>
@@ -1841,6 +1847,32 @@ JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
   <div class="box"><h3>Torcida</h3>
    ${M.torcida?`<p class="mdalerta" style="border-color:#f5d14266">🏟️ ${esc(M.torcida.texto)}</p>`:'<p>Torcida mista: o público e a divisão entre as torcidas seguem o módulo de torcida do patch.</p>'}
    <p style="font-size:12px;color:var(--mut)">O app manda para o módulo de torcida do patch a tabela real do Brasileirão (posição, pontos e forma), as rivalidades do clube e a torcida única nos clássicos paulistas. ${simNao(M.torcida_no_jogo,'Configuração gravada.','Módulo de torcida não encontrado.')}</p></div>`};
+
+const ftMini=(id)=>`<img class="stft" src="/foto/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`;
+JOGO_R.dos=()=>{const D=S.dossie;if(!D)return '<div class="box"><div class="empty">O dossiê aparece quando houver próximo jogo e o adversário tiver partidas no save.</div></div>';
+  const ar=(k)=>`<tr><td style="text-align:left">${k=='altura'?'Altura média':k=='cabeceio'?'Cabeceio':'Impulsão'}</td><td>${D.aereo_deles[k]??'—'}</td><td>${D.aereo_nosso[k]??'—'}</td></tr>`;
+  return `<div class="box"><h3>Dossiê: ${esc(D.adv)} <small>${dt(D.data)}</small></h3>
+   ${D.alertas.length?D.alertas.map(a=>`<p class="mdalerta">${esc(a)}</p>`).join(''):'<p style="color:var(--mut)">Nada fora do comum nos números deles.</p>'}
+   <div class="cols2"><div><h4>Jogo aéreo</h4><table class="tb"><tr><th></th><th>Eles</th><th>Nós</th></tr>${ar('altura')}${ar('cabeceio')}${ar('impulsao')}</table>
+     <p style="font-size:13px">Defesa deles: velocidade média <b>${D.vel_defesa??'—'}</b>, aceleração <b>${D.acel_defesa??'—'}</b></p></div>
+   <div><h4>Batedores prováveis</h4>${D.batedores.map(b=>`<div class="lin">${ftMini(b.id)}${esc(b.nome)} <small style="color:var(--mut)">curva ${b.curva} · chute colocado ${b.colocado}</small></div>`).join('')||'—'}
+     <h4>Mais fortes no alto</h4>${D.cabeceadores.map(b=>`<div class="lin">${ftMini(b.id)}${esc(b.nome)} <small style="color:var(--mut)">cabeceio ${b.cabeceio}${b.altura?' · '+b.altura+' cm':''}</small></div>`).join('')||'—'}</div></div>
+   <h4>Provável time deles</h4><div class="citados">${D.titulares.map(t=>`<span class="citado">${ftMini(t.id)}<small>${esc(t.pos||'')} ${esc(t.nome)}</small></span>`).join('')}</div></div>
+  <div class="box"><h3>Carta de plano tático <small>uma por jogo · conferida depois da partida</small></h3>
+   <div class="cartas">${Object.entries(D.cartas).map(([k,c])=>`<button class="cartat ${D.carta_escolhida==k?'on':''}" data-carta="${k}"><b>${esc(c.nome)}</b>${D.sugestao.includes(k)?'<em>sugestão da comissão</em>':''}<span>${esc(c.texto)}</span></button>`).join('')}</div>
+   <p style="font-size:12px;color:var(--mut)">Se o plano funcionar (vitória; no bloco baixo, empate fora também vale), o grupo ganha moral. A carta é do app: no PES, monte o plano de jogo de acordo.</p></div>`};
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-carta]');if(!b)return;
+  try{await api('/api/dossie/carta',{carta:b.dataset.carta});toast('Carta escolhida.');await load()}catch(x){toast(x.message,1)}});
+JOGO_R.trib=()=>{const T=S.tribunal||{processos:[]},E=T.estrategias||{};
+  const card=p=>`<div class="box proc"><h3>${ftMini(p.jogador_id)}${esc(p.jogador)} <small>expulso contra ${esc(p.adversario)} · ${dt(p.data_jogo)}</small></h3>
+   ${p.status=='aguardando'?`<p>Vermelho direto: o tribunal vai julgar. O jogo já cumpre 1 partida sozinho; a pena pode aumentar.</p>
+     <div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn ghost" data-def="padrao" data-proc="${esc(p.id)}">Defesa do clube (grátis) · pena de 2 a 4 jogos</button>
+     <button class="btn" data-def="advogados" data-proc="${esc(p.id)}">Banca de advogados (${eurM(E.advogados?E.advogados.custo:0)}) · absolvição ou 1 a 2 jogos</button></div>`
+   :`<p><b>${esc(p.resultado)}</b>${p.volta?` · fica fora da escalação do app até ${dt(p.volta)}`:''} · ${esc((E[p.estrategia]||{}).nome||'')}</p>`}</div>`;
+  return (T.processos.length?T.processos.map(card).join(''):'<div class="box"><div class="empty">Nenhum processo. Só vermelho direto (sem amarelo antes) vai a julgamento, e só nas partidas que você joga: nas simuladas o jogo não grava cartões.</div></div>')};
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-def]');if(!b)return;
+  if(b.dataset.def=='advogados'&&!confirm('Contratar a banca de advogados? O valor sai do orçamento de transferências.'))return;
+  try{const r=await api('/api/tribunal/defesa',{id:b.dataset.proc,estrategia:b.dataset.def});toast(r.processo.resultado);await load()}catch(x){toast(x.message,1)}});
 function rStats(){const E=S.estatisticas;
   if(!E||!E.jogadores.length){$('stCards').innerHTML='';$('stInfo').textContent='';
     $('stTab').innerHTML='<tr><td class="empty" style="text-align:left">As estatísticas aparecem depois que o clube jogar pelo menos uma partida e você salvar a carreira.</td></tr>';$('stSum').innerHTML='';return}
@@ -1860,14 +1892,14 @@ function rStats(){const E=S.estatisticas;
       ${STABERTA===i?`<table class="tabcl" style="margin-top:8px"><tr><th style="text-align:left">Jogador</th><th>Min</th><th>Gols</th><th>Assist.</th><th>Nota</th></tr>${p.jogadores.map(j=>`<tr><td style="text-align:left">${esc(j.nome)}${j.amarelo?' 🟨':''}${j.vermelho?' 🟥':''}${sumTroca(p,j)}</td><td>${j.min}</td><td>${j.gols?'⚽'.repeat(Math.min(j.gols,4)):''}</td><td>${j.assist||''}</td><td style="${notaCls(j.nota)}">${nota1(j.nota)}</td></tr>`).join('')}</table>`:''}</div>`}).join('')||'<div class="empty">Nenhuma partida ainda.</div>';
 }
 // escalação: plano de jogo lido do save (ordem de 40 vagas); arrastar um jogador sobre outro troca os dois
-let ESC=null,ESCO=null,ESCARR=null;
+let ESC=null,ESCO=null,ESCARR=null,FORM=null,CATF=null;
 const posJogo=p=>({GL:'GO',ZAG:'ZC',MEI:'MAT',ME:'MLE',MD:'MLD',PE:'PTE',PD:'PTD',ATA:'CA'})[p]||p||'';
 const posGrupo=g=>g=='GO'?'G':['ZC','LE','LD'].includes(g)?'D':['VOL','MLG','MLE','MLD','MAT'].includes(g)?'M':'A';
 function escItens(){const E=S.escalacao;if(!E)return {};const m={};[...E.titulares,...E.reservas,...E.fora].forEach(x=>m[x.vaga]=x);return m}
 function rEscalacao(){const E=S.escalacao;
   if(!E){$('escCampo').querySelectorAll('.eschip').forEach(f=>f.remove());$('escBanco').innerHTML='<div class="empty">A escalação aparece depois que o app ler o save.</div>';$('escFora').innerHTML='';return}
-  if(!ESC||ESCO!==E.ordem.join(',')){ESC=E.ordem.slice();ESCO=E.ordem.join(',')}
-  const M=escItens(),F=E.formacao;
+  if(!ESC||ESCO!==E.ordem.join(',')+JSON.stringify(E.formacao)){ESC=E.ordem.slice();ESCO=E.ordem.join(',')+JSON.stringify(E.formacao);FORM=E.formacao?JSON.parse(JSON.stringify(E.formacao)):null}
+  const M=escItens(),F=FORM;
   const chip=(i,campo)=>{const x=M[ESC[i]]||{};if(!x.id)return '';const lk=x.fora;
     const st=campo&&F?`left:${Math.max(7,Math.min(93,F[i].lado/1.04))}%;top:${Math.max(5,Math.min(94,97-F[i].prof*1.95))}%`:'';
     return `<div class="eschip ${lk?'lock':''} ${ESC[i]!==E.ordem[i]?'mov':''}" data-i="${i}" style="${st}" title="${esc(x.nome)} (${esc(x.pos||'')})${lk?' · '+esc(lk.motivo)+' até '+dt(lk.volta):''}">${campo?`<img class="escft" src="/foto/${x.id}.png" loading="lazy" onerror="this.remove()">`:''}<small class="pos${posGrupo(campo&&F?F[i].sigla:posJogo(x.pos))}">${esc(campo&&F?(F[i].sigla||F[i].papel):posJogo(x.pos))}</small>${lk?'🔒 ':''}${esc(campo?x.nome.split(' ').slice(-1)[0]:x.nome)}${(()=>{const j=(S.elenco||[]).find(p=>p.id==x.id)||{};const en=j.energia;const mo=j.moral;return (en!=null?`<i class="escen" title="Energia estimada ${en}%"><i style="width:${en}%;background:${en>=80?'#3ddc84':en>=60?'#f5c542':'#ff5b5b'}"></i></i>`:'')+(campo&&mo!=null?`<b class="escmo m${mo}" title="Moral (Dados do time)">${'↓↘→↗↑'[mo]||''}</b>`:'')})()}</div>`};
@@ -1877,7 +1909,8 @@ function rEscalacao(){const E=S.escalacao;
   $('escFora').innerHTML=[...Array(17).keys()].map(i=>chip(23+i)).join('')||'<div class="empty">Ninguém.</div>';
   $('escInfo').textContent=(E.formacao_nome?'formação '+E.formacao_nome+' · ':'')+'posições do plano de jogo do save';
   $('escAuto').checked=!!E.auto;
-  $('escAplicar').disabled=ESC.join(',')===E.ordem.join(',');
+  $('escAplicar').disabled=ESC.join(',')===E.ordem.join(',')&&!formMudou();
+  escFormSel();
   try{rBola()}catch(x){console.error(x)}
   $('escHist').innerHTML=(E.hist||[]).length?'<b style="font-size:13px">Últimos ajustes automáticos</b>'+E.hist.map(h=>`<div style="font-size:12px;color:var(--mut);margin-top:4px">${dt(h.data)}: ${h.mudancas.map(esc).join('; ')||'—'}</div>`).join(''):'';}
 document.addEventListener('mousedown',e=>{const t=e.target.closest('.eschip[data-i]');if(!t)return;e.preventDefault();
@@ -1886,12 +1919,53 @@ document.addEventListener('mousedown',e=>{const t=e.target.closest('.eschip[data
 document.addEventListener('mousemove',e=>{if(!ESCARR)return;ESCARR.el.style.left=e.clientX+'px';ESCARR.el.style.top=e.clientY+'px';
   document.querySelectorAll('.eschip.alvo').forEach(x=>x.classList.remove('alvo'));const o=document.elementFromPoint(e.clientX,e.clientY);const a=o&&o.closest('.eschip[data-i]');if(a)a.classList.add('alvo')});
 document.addEventListener('mouseup',e=>{if(!ESCARR)return;const a=ESCARR;ESCARR=null;a.el.remove();document.querySelectorAll('.eschip.alvo').forEach(x=>x.classList.remove('alvo'));
-  const o=document.elementFromPoint(e.clientX,e.clientY);const t=o&&o.closest('.eschip[data-i]');if(!t)return;const b=+t.dataset.i;if(b===a.i)return;
+  const o=document.elementFromPoint(e.clientX,e.clientY);const t=o&&o.closest('.eschip[data-i]');
+  if(!t){const cp=$('escCampo'),r=cp.getBoundingClientRect();
+    if(FORM&&a.i<11&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+      if(FORM[a.i].cod===0){toast('O goleiro fica no gol.',true);return}
+      const lx=(e.clientX-r.left)/r.width*100,ty=(e.clientY-r.top)/r.height*100;
+      const lado=Math.round(Math.max(4,Math.min(95,lx*1.04))),prof=Math.round(Math.max(6,Math.min(48,(97-ty)/1.95)));
+      const c=papelZona(prof,lado);FORM[a.i]={...FORM[a.i],prof,lado,cod:c,sigla:SIGLAS[c]};rEscalacao()}
+    return}
+  const b=+t.dataset.i;if(b===a.i)return;
   const M=escItens(),pa=M[ESC[a.i]],pb=M[ESC[b]];
   if((pa&&pa.fora&&b<23)||(pb&&pb.fora&&a.i<23)){toast('Jogador afastado pelo app não pode ser relacionado.',true);return}
   [ESC[a.i],ESC[b]]=[ESC[b],ESC[a.i]];rEscalacao()});
-async function escAplicar(){try{const r=await api('/api/escalacao',{ordem:ESC});toast(r.mudou?'Escalação gravada no save. No jogo, volte ao menu e carregue a carreira.':'Nada mudou.');ESC=null;load()}catch(e){}}
-function escDesfazer(){ESC=null;rEscalacao()}
+function formMudou(){const E=S.escalacao;return !!(FORM&&E&&JSON.stringify(FORM.map(v=>[v.cod,v.prof,v.lado]))!==JSON.stringify((E.formacao||[]).map(v=>[v.cod,v.prof,v.lado])))}
+async function escAplicar(){if(formMudou()){try{await api('/api/escalacao/formacao',{vagas:FORM.map(v=>({cod:v.cod,prof:v.prof,lado:v.lado})),ordem:ESC});toast('Formação gravada no save. No jogo, volte ao menu e carregue a carreira.');ESC=null;load()}catch(e){}return}
+  try{const r=await api('/api/escalacao',{ordem:ESC});toast(r.mudou?'Escalação gravada no save. No jogo, volte ao menu e carregue a carreira.':'Nada mudou.');ESC=null;load()}catch(e){}}
+function escDesfazer(){ESC=null;FORM=null;rEscalacao()}
+// formações: catálogo tirado dos planos de jogo de todos os times do patch (arquivo EDIT)
+const SIGLAS=['GO','ZC','LE','LD','VOL','MLG','MLE','MLD','MAT','PTE','PTD','SA','CA'];
+const grupoCod=c=>c==0?'G':c<=3?'D':c<=8?'M':'A';
+function papelZona(prof,lado){const e=lado<=24,d=lado>=80;
+  if(prof<=15)return e?2:d?3:1;if(prof<=24)return e?6:d?7:4;if(prof<=30)return e?6:d?7:5;
+  if(prof<=37)return lado<=30?9:lado>=74?10:8;if(prof<=41)return lado<=30?9:lado>=74?10:11;return lado<=20?9:lado>=84?10:12}
+async function escFormSel(){const sel=$('escForm');if(!sel)return;
+  if(!CATF){CATF=[];try{CATF=(await api('/api/formacoes')).lista||[]}catch(e){}}
+  if(sel.options.length<=1&&CATF.length){let g='',h='<option value="">Trocar a formação…</option>';
+    CATF.forEach((f,i)=>{if(f.nome!==g){if(g)h+='</optgroup>';h+=`<optgroup label="${esc(f.nome)}">`;g=f.nome}h+=`<option value="${i}">${esc(f.rotulo)} (${f.usos} times)</option>`});sel.innerHTML=h+'</optgroup>'}
+  $('escFormInfo').textContent=formMudou()?'formação alterada na tela: clique em "Aplicar no jogo"':''}
+// atribuição de menor custo total (algoritmo húngaro); devolve, para cada linha, a coluna escolhida
+function hungaro(a){const n=a.length,u=Array(n+1).fill(0),v=Array(n+1).fill(0),p=Array(n+1).fill(0),way=Array(n+1).fill(0);
+  for(let i=1;i<=n;i++){p[0]=i;let j0=0;const minv=Array(n+1).fill(Infinity),used=Array(n+1).fill(false);
+    do{used[j0]=true;const i0=p[j0];let d=Infinity,j1=0;
+      for(let j=1;j<=n;j++)if(!used[j]){const c=a[i0-1][j-1]-u[i0]-v[j];if(c<minv[j]){minv[j]=c;way[j]=j0}if(minv[j]<d){d=minv[j];j1=j}}
+      for(let j=0;j<=n;j++){if(used[j]){u[p[j]]+=d;v[j]-=d}else minv[j]-=d}j0=j1}while(p[j0]!=0);
+    do{const j1=way[j0];p[j0]=p[j1];j0=j1}while(j0)}
+  const r=Array(n);for(let j=1;j<=n;j++)r[p[j]-1]=j-1;return r}
+function escTrocarForm(i){const nf=CATF[+i];if(!nf||!FORM)return;
+  // cada titular vai para a vaga nova mais parecida (mesmo setor, lado e altura mais próximos)
+  // custo: aptidão do jogador para a posição nova (ficha do patch) + distância da vaga antiga; escolhe sempre o par mais barato
+  const M=escItens(),apt=k=>{const x=M[ESC[k]]||{};const j=(S.elenco||[]).find(p=>p.id==x.id)||{};return ((j.ficha||{}).posicoes)||{}};
+  const VIZ={LE:['MLE'],LD:['MLD'],MLE:['PTE','LE'],MLD:['PTD','LD'],PTE:['MLE','SA'],PTD:['MLD','SA'],MAT:['SA','MLG'],SA:['CA','MAT'],CA:['SA'],VOL:['MLG','ZC'],MLG:['VOL','MAT'],ZC:['VOL','LE','LD']};
+  const custo=(k,v)=>{const o=FORM[k];if((o.cod==0)!==(v.cod==0))return 1e6;const A=apt(k);
+    const a=Math.max(A[v.sigla]||0,...(VIZ[v.sigla]||[]).map(x=>(A[x]||0)-1),0);
+    return (2-a)*100+(a==0&&grupoCod(o.cod)!==grupoCod(v.cod)?80:0)+Math.abs(o.lado-v.lado)+Math.abs(o.prof-v.prof)*1.5};
+  const C=[...Array(11).keys()].map(j=>[...Array(11).keys()].map(k=>custo(k,nf.vagas[j]))),par=hungaro(C),novaOrd=Array(11);
+  par.forEach((k,j)=>novaOrd[j]=ESC[k]);
+  for(let j=0;j<11;j++)ESC[j]=novaOrd[j];
+  FORM=nf.vagas.map(v=>({cod:v.cod,sigla:v.sigla,papel:v.papel,prof:v.prof,lado:v.lado}));$('escForm').value='';rEscalacao()}
 // capitão e batedores (lidos do plano de jogo do save; cada valor é a vaga do jogador no elenco)
 let BOLA=null,BOLAO='';
 function rBola(){const E=S.escalacao,B=E&&E.bola,el=$('bolaBox');if(!el)return;

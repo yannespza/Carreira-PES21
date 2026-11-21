@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie
 from core.logos import LogoBank
 
 PORT = 8765
@@ -602,6 +602,51 @@ class App:
         if self.state is not None:
             self.state['matchday'] = md
         return md
+
+    def _msg_app(self, de, assunto, texto, tipo='diretoria'):
+        st = self.state
+        st.setdefault('mensagens', []).append({
+            'id': self.engine._id() if self.engine else f'm{int(time.time() * 1000)}', 'data': st.get('data'),
+            'empresa': '__diretoria__', 'de': de, 'assunto': assunto, 'texto': texto, 'tipo': tipo,
+            'oferta_id': None, 'lida': False})
+
+    def tribunal_dossie(self, st, todas, nomes_cl, hoje, car):
+        """Abre processos por vermelho direto, julga os vencidos, monta o dossiê e confere a carta tática."""
+        nj = savedata.nomes_jogadores(os.path.join(os.path.dirname(car.path), 'EDIT00000000'))
+        tid = self.tid()
+        hoje_s = str(hoje)
+        for p in tribunal.detectar(st, todas, tid, nj, nomes_cl):
+            self._msg_app('Departamento jurídico', f"Processo no tribunal: {p['jogador']}",
+                          f"{p['jogador']} foi expulso direto contra {p['adversario']} e vai a julgamento. Escolha a defesa "
+                          f"na aba Jogo > Tribunal antes do próximo jogo; sem escolha, vai a defesa do clube.")
+        for p in tribunal.julgar_vencidos(st, st.get('proximos') or [], hoje_s):
+            self._msg_app('Departamento jurídico', f"Julgamento: {p['jogador']}", f"{p['jogador']}: {p['resultado']}.")
+        prox = next((p for p in (st.get('proximos') or []) if not p.get('jogada')), None)
+        self.dossie = None
+        if prox:
+            adv = prox['v'] if int(prox['m']) == int(tid) else prox['m']
+            meus = dossie.provaveis(todas, tid)
+            fich = lambda pid: jogadores.ficha(savedata.FICHAS.get(pid))
+            self.dossie = dossie.montar(todas, adv, (self.names or {}).get(adv) or f'Time {adv}', meus, nj, fich)
+            if self.dossie:
+                self.dossie['data'] = prox['data']
+        for c in dossie.conferir_cartas(st, todas, tid):
+            if c['resultado'] == 'funcionou':
+                gestao.moral_ajuste(st, '*', 1, hoje_s, f"plano tático cumprido ({dossie.CARTAS[c['carta']][0]})", 10)
+            self._msg_app('Comissão técnica', 'Plano tático: ' + c['resultado'],
+                          f"{dossie.CARTAS[c['carta']][0]} contra {c.get('adv', 'o adversário')}: {c['placar']}. "
+                          + ('O grupo ganhou confiança.' if c['resultado'] == 'funcionou' else 'Fica a lição para o próximo.'))
+
+    def tribunal_view(self):
+        return tribunal.view(self.state or {})
+
+    def dossie_view(self):
+        d = getattr(self, 'dossie', None)
+        if not d:
+            return None
+        esc = next((c for c in ((self.state or {}).get('dossie') or {}).get('cartas_escolhidas', [])
+                    if c['data'] == d.get('data')), None)
+        return {**d, 'carta_escolhida': esc and esc['carta']}
 
     def matchday_view(self):
         st = self.state or {}
@@ -1288,6 +1333,55 @@ class App:
             pass
         self.status['aviso'] = 'Escalação: capitão e batedores gravados no save. Volte ao menu do PES e carregue a carreira para valer.'
 
+    def formacoes_catalogo(self):
+        """Todas as formações dos times do patch (lidas do EDIT), em cache até o EDIT mudar."""
+        car = self.career
+        if not car:
+            return []
+        edit = os.path.join(os.path.dirname(car.path), 'EDIT00000000')
+        cache = os.path.join(DATA, 'formacoes.json')
+        try:
+            mt = os.path.getmtime(edit)
+        except OSError:
+            return []
+        c = jload(cache, {})
+        if c.get('mtime') == mt and c.get('lista'):
+            return c['lista']
+        from core import pescrypt
+        lista = escalacao.catalogo(bytes(pescrypt.decrypt(open(edit, 'rb').read()).data))
+        jsave(cache, {'mtime': mt, 'lista': lista})
+        return lista
+
+    def formacao_salvar(self, vagas, ordem):
+        """Grava formação (posições e funções) e a ordem dos jogadores juntas."""
+        car, esc = self.career, self.escalacao
+        if not car or not esc:
+            raise ValueError('Ainda não li a escalação do save.')
+        self.gravacao_liberada('formacao')
+        if os.path.getmtime(car.path) != car.mtime:
+            raise ValueError('O jogo salvou de novo. Espere o app ler o save e tente outra vez.')
+        ordem = [int(x) for x in ordem]
+        if sorted(ordem) != sorted(esc['ordem']):
+            raise ValueError('Escalação inválida.')
+        escalacao.validar(ordem, esc['vagas'], self._indisponivel_fn(car.date))
+        antes_o = list(esc['ordem'])
+        f = esc['off'] - escalacao.OFF_FORM_ATIVA
+        antes_f = escalacao.gravar_formacao(car, esc, vagas)
+        try:
+            escalacao.gravar(car, esc, ordem)
+            car.write(os.path.join(DATA, 'backups_save'), log, 'formação e escalação montadas na tela')
+        except Exception:
+            car.sf.data[f:f + 3 * escalacao.N_TIT] = antes_f
+            car.sf.data[esc['off']:esc['off'] + escalacao.TAM] = bytes(antes_o)
+            esc['ordem'] = antes_o
+            raise
+        self.save_mtime = car.mtime
+        esc['formacao'] = escalacao.formacao(bytes(car.sf.data), esc['off'])
+        self.status['aviso'] = ('Formação gravada no save. No jogo, volte ao menu principal e carregue a carreira '
+                                'de novo. Não salve antes de recarregar.')
+        self.state['aviso_recarregar'] = True
+        log('formação gravada pela tela')
+
     def escalacao_salvar(self, ordem):
         """Grava no save a escalação montada na tela."""
         car, esc = self.career, self.escalacao
@@ -1481,6 +1575,10 @@ class App:
         except Exception:
             log(traceback.format_exc())
             self.analise_adv = None
+        try:
+            self.tribunal_dossie(st, todas, nomes_cl, hoje, car)
+        except Exception:
+            log(traceback.format_exc())
         try:
             self.briefing_gravar()
         except Exception:
@@ -2081,7 +2179,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -2181,6 +2279,9 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
+            if u.path == '/api/formacoes':
+                with LOCK:
+                    return self.send(200, {'lista': A.formacoes_catalogo()})
             if u.path == '/api/sistema':
                 with LOCK:
                     return self.send(200, A.sistema_view())
@@ -2819,6 +2920,21 @@ class H(BaseHTTPRequestHandler):
                     if cap is not None:
                         vestiario.definir_capitao(A.state, A._nome(A.escalacao['vagas'][cap]), A.state.get('data'))
                     A.persist(); return self.send(200, {'ok': True})
+                if u.path == '/api/tribunal/defesa':
+                    pr = tribunal.julgar(A.state, body.get('id'), body.get('estrategia'), A.state.get('proximos') or [],
+                                         A.state.get('data'))
+                    A._msg_app('Departamento jurídico', f"Julgamento: {pr['jogador']}", f"{pr['jogador']}: {pr['resultado']}.")
+                    if pr.get('custo'):
+                        A.aplicar_creditos()
+                    A.persist(); return self.send(200, {'ok': True, 'processo': pr})
+                if u.path == '/api/dossie/carta':
+                    d = getattr(A, 'dossie', None)
+                    if not d or body.get('carta') not in dossie.CARTAS:
+                        return self.send(400, {'erro': 'Sem próximo adversário ou carta inválida.'})
+                    D = A.state.setdefault('dossie', {}).setdefault('cartas_escolhidas', [])
+                    D[:] = [c for c in D if c['data'] != d['data']] + [{'data': d['data'], 'carta': body['carta'], 'adv': d['adv']}]
+                    del D[:-20]
+                    A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/sistema/restaurar':
                     A.restaurar_backup(body.get('id'))
                     return self.send(200, {'ok': True})
@@ -2842,6 +2958,9 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/escalacao':
                     mudou = A.escalacao_salvar(body.get('ordem') or [])
                     A.persist(); return self.send(200, {'ok': True, 'mudou': mudou})
+                if u.path == '/api/escalacao/formacao':
+                    A.formacao_salvar(body.get('vagas') or [], body.get('ordem') or [])
+                    A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/escalacao/auto':
                     CFG['escalacao_auto'] = bool(body.get('auto'))
                     jsave(os.path.join(DATA, 'config.json'), CFG)

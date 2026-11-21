@@ -284,3 +284,80 @@ def gravar_bola_parada(car, esc, valores):
         novo[i] = v
     car.sf.data[ini:ini + 10] = bytes(novo)
     return antes
+
+
+# ---------------------------------------------------------------- formações do jogo
+# O arquivo EDIT guarda o plano de jogo de todos os times (628 bytes cada; 3 táticas de 160 bytes a partir de +4,
+# cada uma começando pelo mesmo bloco de 33 bytes da formação: 11 códigos + 11 pares profundidade/lado).
+# O catálogo junta as formações de todos os times do patch: uma por nome e conjunto de posições, com as
+# coordenadas mais usadas.
+PLANO = 628
+TATICA = 160
+
+
+def catalogo(edit: bytes):
+    import collections
+    ini = None
+    for f in range(0, len(edit) - 33):
+        if edit[f] == 0:
+            b = _bloco(edit, f)
+            if b and b[0]['prof'] < 12 and _bloco(edit, f + TATICA) and _bloco(edit, f + PLANO):
+                ini = f - 4
+                break
+    if ini is None:
+        return []
+    usos = collections.Counter()
+    for t in range((len(edit) - ini) // PLANO):
+        base = ini + t * PLANO
+        for k in range(3):
+            b = _bloco(edit, base + 4 + TATICA * k)
+            if b:
+                usos[tuple(sorted((x['cod'], x['prof'], x['lado']) for x in b))] += 1
+    grupos = collections.defaultdict(list)
+    for chave, n in usos.items():
+        vagas = [{'cod': c, 'sigla': PAPEL_EXATO[c], 'papel': PAPEL[c], 'prof': p, 'lado': l} for c, p, l in chave]
+        nome = nome_formacao(vagas)[0]
+        if nome:
+            grupos[(nome, tuple(sorted(c for c, _, _ in chave)))].append((n, vagas))
+    out = []
+    for (nome, cods), L in grupos.items():
+        n, vagas = max(L, key=lambda t: t[0])
+        vagas = sorted(vagas, key=lambda v: (v['cod'] != 0, v['prof'], v['lado']))
+        out.append({'nome': nome, 'usos': sum(x[0] for x in L), 'vagas': vagas,
+                    'rotulo': nome + ' · ' + ' '.join(v['sigla'] for v in vagas if v['cod'])})
+    out.sort(key=lambda f: (f['nome'], -f['usos']))
+    return out
+
+
+def papel_por_zona(prof, lado):
+    """Função tática pela zona do campo (como o PES rotula quando você arrasta um jogador no plano de jogo)."""
+    lat_e, lat_d = lado <= 24, lado >= 80
+    if prof <= 15:
+        return 2 if lat_e else 3 if lat_d else 1
+    if prof <= 24:
+        return 6 if lat_e else 7 if lat_d else 4
+    if prof <= 30:
+        return 6 if lat_e else 7 if lat_d else 5
+    if prof <= 37:
+        return 9 if lado <= 30 else 10 if lado >= 74 else 8
+    if prof <= 41:
+        return 9 if lado <= 30 else 10 if lado >= 74 else 11
+    return 9 if lado <= 20 else 10 if lado >= 84 else 12
+
+
+def gravar_formacao(car, esc, vagas):
+    """Grava a formação (11 vagas na ordem do plano) no bloco ativo. A gravação no disco é feita por car.write."""
+    if len(vagas) != N_TIT:
+        raise ValueError('A formação precisa de 11 posições.')
+    cod = [int(v['cod']) for v in vagas]
+    xy = []
+    for v in vagas:
+        xy += [int(v['prof']), int(v['lado'])]
+    if cod.count(0) != 1 or any(not 0 <= c < len(PAPEL_EXATO) for c in cod) or not all(0 < x < 0x60 for x in xy):
+        raise ValueError('Formação inválida (um goleiro e posições dentro do campo).')
+    f = esc['off'] - OFF_FORM_ATIVA
+    if not _bloco(bytes(car.sf.data), f):
+        raise RuntimeError('A formação mudou de lugar no save.')
+    antes = bytes(car.sf.data[f:f + 3 * N_TIT])
+    car.sf.data[f:f + 3 * N_TIT] = bytes(cod) + bytes(xy)
+    return antes
