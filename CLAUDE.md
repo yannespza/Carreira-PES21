@@ -75,6 +75,11 @@ Não reescreva a parte binária (`pescrypt.py`, `savedata.Career.write`, `escala
 - Ainda NÃO feito (depende de achar no save/memória): efetivar transferências/empréstimos/renovações, escrever na RAM.
 - Versão: cada publicação vai direto para o PC do usuário; marque etapas concluídas com `git tag`.
 
+## Lua do Sider do patch (conferido no debug_log.txt do jogo)
+- NÃO existe `pcall`/`xpcall`/`require`; existem `ffi`, `memory`, `match`, `io`, `log`, `os`, `bit`, `zlib`, `fs`.
+- `ctx.mis` chega como userdata: use `ffi.cast("char*", ctx.mis)` (como o Dynamic_Difficulty). `memory.read(numero, n)` funciona.
+- Captura da partida: `core/captura.py` (AppCarreiraCaptura.lua v3) grava em `GOGOSZ\AppCarreira\captura\cap_*.bin` + `inicio.txt`.
+
 ## Gravações no save
 
 Toda gravação passa por `App.aplicar_creditos()`. Ela junta as pendências e grava uma vez, com backup em `data/backups_save`:
