@@ -623,3 +623,13 @@ VERSÃO 4.9.6
   clique em Procurar. O módulo procura esses números na memória do jogo; no 2º tempo ele descarta sozinho os
   lugares errados (passes só sobem). No fim, mande a foto da tela de fim de jogo. É uma vez só: depois o app
   passa a ler as estatísticas sozinho. Continua só lendo; nada é gravado no jogo.
+
+VERSÃO 4.9.7
+- Busca das estatísticas mais esperta. Na partida contra o Flamengo, a busca rodou, mas aceitou combinações
+  soltas demais e encheu o limite antes de varrer toda a memória. Agora:
+  - o time de fora tem que ter a mesma arrumação do time da casa (derrubou de 1 milhão para poucos candidatos
+    no teste);
+  - o 2º tempo descarta quem pula para números absurdos (mais de 12 passes por minuto) ou cujos passes errados
+    diminuem;
+  - novo botão "Confirmar no fim": na tela de fim de jogo, digite os passes finais e fica só quem bate
+    exatamente (igual ao "próxima busca" do Cheat Engine).

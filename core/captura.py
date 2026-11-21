@@ -26,7 +26,7 @@ local MAXHITS, JANELA, MAXCAND = 40, 0x800, 1000000
 local BUSCA = nil
 local VQ, MBI, MBISZ = nil, nil, 0
 local hits = {}
-local busca_feita, ult_poll, ptr_feito = "", -10, false
+local busca_feita, confirma_feita, ult_poll, ptr_feito = "", "", -10, false
 local n, ult_placar, ult_bloco = 0, "", -1
 local relogio, parado_desde, pausa_gravada = nil, nil, false
 
@@ -76,37 +76,28 @@ end
 -- candidatos guardados de forma compacta (até 1 milhão, ~40 MB), para aguentar memória cheia de números pequenos
 local CAND, ncand, REGS = nil, 0, {}
 
--- varre um bloco de memória como inteiros de w bytes atrás de A (total da casa), C (certos da casa) perto,
--- e B/D (fora) dentro da janela. Guarda todos os candidatos (o 2º tempo elimina os falsos).
+-- varre um bloco de memória como inteiros de w bytes atrás de A (total da casa) e C (certos da casa) a até 0x40
+-- bytes; o time de fora tem que ter a MESMA arrumação: B em A+ob e D em A+ob+oc (|ob| até 0x800).
+-- Um candidato por (endereço, arrumação).
 local function varre(base, size, w, A, C, B, D, ireg)
     local p = ffi.cast(w == 2 and "uint16_t*" or "uint32_t*", ptr(base))
     local cnt = math.floor(size / w)
-    local r1, r2 = math.floor(0x100 / w), math.floor(JANELA / w)
+    local r1, r2 = math.floor(0x40 / w), math.floor(JANELA / w)
     for i = 0, cnt - 1 do
         if p[i] == A then
-            local j0, j1 = i - r1, i + r1
-            if j0 < 0 then j0 = 0 end
-            if j1 > cnt - 1 then j1 = cnt - 1 end
-            for jc = j0, j1 do
-                if jc ~= i and p[jc] == C then
-                    local k0, k1 = i - r2, i + r2
-                    if k0 < 0 then k0 = 0 end
-                    if k1 > cnt - 1 then k1 = cnt - 1 end
-                    for jb = k0, k1 do
-                        if jb ~= i and jb ~= jc and p[jb] == B then
-                            local q0, q1 = jb - r1, jb + r1
-                            if q0 < k0 then q0 = k0 end
-                            if q1 > k1 then q1 = k1 end
-                            for jd = q0, q1 do
-                                if jd ~= i and jd ~= jc and jd ~= jb and p[jd] == D then
-                                    if ncand >= MAXCAND then return end
-                                    local c = CAND[ncand]
-                                    c.a = base + i * w; c.w = w; c.reg = ireg
-                                    c.oc = (jc - i) * w; c.ob = (jb - i) * w; c.od = (jd - i) * w
-                                    c.v0, c.v1, c.v2, c.v3 = A, C, B, D
-                                    ncand = ncand + 1
-                                end
-                            end
+            for dc = -r1, r1 do
+                local jc = i + dc
+                if dc ~= 0 and jc >= 0 and jc < cnt and p[jc] == C then
+                    for db = -r2, r2 do
+                        local jb, jd = i + db, i + db + dc
+                        if db ~= 0 and db ~= dc and jb >= 0 and jd >= 0 and jb < cnt and jd < cnt
+                           and p[jb] == B and p[jd] == D then
+                            if ncand >= MAXCAND then return end
+                            local c = CAND[ncand]
+                            c.a = base + i * w; c.w = w; c.reg = ireg
+                            c.oc = dc * w; c.ob = db * w; c.od = (db + dc) * w
+                            c.v0, c.v1, c.v2, c.v3 = A, C, B, D
+                            ncand = ncand + 1
                         end
                     end
                 end
@@ -123,21 +114,26 @@ local function le(c, o)
     return ffi.cast("uint32_t*", ptr(a))[0]
 end
 
--- confere os candidatos: passes só sobem; quem cair ou a região sumir sai da lista.
--- "de verdade" = os 4 números subiram desde a busca (total e certos dos dois times).
-local function conferir(A, C, B, D)
+-- confere os candidatos. Fica quem se comporta como passes: total e certos só sobem, errados (total - certos)
+-- também só sobem, certos <= total, no máximo 12 passes por minuto de jogo por time.
+-- exato = {A, C, B, D}: confirmação do fim de jogo, fica só quem tem exatamente esses números.
+local function conferir(A, C, B, D, minutos, exato)
     for k, r in ipairs(REGS) do r[3] = legivel(r[1], r[2]) or false end
     local m2 = 0
     hits = {}
+    local teto = 12 * math.max(1, minutos) + 10
     for i = 0, ncand - 1 do
         local c = CAND[i]
         if REGS[c.reg][3] then
             local a, cc, b, d = le(c, 0), le(c, c.oc), le(c, c.ob), le(c, c.od)
-            if a and cc and b and d and a >= c.v0 and cc >= c.v1 and b >= c.v2 and d >= c.v3
-               and cc <= a and d <= b and a < 2000 and b < 2000 then
+            local ok = a and cc and b and d and a >= c.v0 and cc >= c.v1 and b >= c.v2 and d >= c.v3
+               and cc <= a and d <= b and a - cc >= c.v0 - c.v1 and b - d >= c.v2 - c.v3
+               and a - c.v0 <= teto and b - c.v2 <= teto
+            if ok and exato then ok = a == exato[1] and cc == exato[2] and b == exato[3] and d == exato[4] end
+            if ok then
                 c.v0, c.v1, c.v2, c.v3 = a, cc, b, d
                 if m2 ~= i then CAND[m2] = c end
-                if a > A and cc > C and b > B and d > D and #hits < MAXHITS then
+                if (exato or (a > A and cc > C and b > B and d > D)) and #hits < MAXHITS then
                     hits[#hits + 1] = { a = c.a, w = c.w, oc = c.oc, ob = c.ob, od = c.od,
                         rb = REGS[c.reg][1], rf = REGS[c.reg][2], v = { a, cc, b, d } }
                 end
@@ -198,12 +194,32 @@ local function buscar(txt)
     end
     local A, C, B, D = v[1], v[2], v[3], v[4]
     prepara()
+    if v[6] == 2 then
+        if not BUSCA then log("AppCarreiraCaptura: confirmação sem busca anterior nesta partida") return end
+        local st = match and match.stats and match.stats() or {}
+        local antes = ncand
+        conferir(BUSCA[1], BUSCA[2], BUSCA[3], BUSCA[4], st.clock_minutes or 90, { A, C, B, D })
+        n = n + 1
+        local linhas = { string.format("momento=%d confirmacao=%d(%d) x %d(%d) antes=%d ficaram=%d", n, A, C, B, D, antes, ncand) }
+        for k, h in ipairs(hits) do
+            linhas[#linhas + 1] = string.format("achado %d em %s largura=%d certos%+d fora%+d fora_certos%+d valores=%d(%d) x %d(%d)",
+                k, hex(h.a), h.w, h.oc, h.ob, h.od, h.v[1], h.v[2], h.v[3], h.v[4])
+        end
+        if #hits > 0 and #hits <= 10 then ptr_feito = true; ponteiros(linhas) end
+        local partes = {}
+        for _, h in ipairs(hits) do partes[#partes + 1] = trecho(h) end
+        escreve(string.format("hits_%03d.txt", n), table.concat(linhas, "\n") .. "\n")
+        if #partes > 0 then escreve(string.format("hits_%03d.bin", n), table.concat(partes), true) end
+        escreve("confirmacao.txt", table.concat(linhas, "\n") .. "\n")
+        log(string.format("AppCarreiraCaptura: confirmação no fim: %d de %d candidatos batem", ncand, antes))
+        return
+    end
     log(string.format("AppCarreiraCaptura: procurando passes %d(%d) x %d(%d)...", A, C, B, D))
     local t0 = agora()
     if not CAND then CAND = ffi.new("ACC_CAND[?]", MAXCAND) end
     ncand, REGS, hits = 0, {}, {}
     BUSCA = { A, C, B, D }
-    local nreg, mb = 0, 0
+    local nreg, mb, cheio = 0, 0, false
     local a = 0x10000
     while a < 0x7FFFFFFF0000 do
         local b, f, st, pr, tp = regiao(a)
@@ -213,7 +229,7 @@ local function buscar(txt)
             REGS[nreg] = { b, f, true }
             varre(b, f - b, 4, A, C, B, D, nreg)
             varre(b, f - b, 2, A, C, B, D, nreg)
-            if ncand >= MAXCAND then log("AppCarreiraCaptura: limite de candidatos atingido") break end
+            if ncand >= MAXCAND and not cheio then cheio = true; log("AppCarreiraCaptura: limite de candidatos atingido") end
         end
         a = f
     end
@@ -226,7 +242,7 @@ end
 -- a cada momento-chave: elimina candidatos falsos e grava os que sobraram
 local function gravar(st, motivo)
     if not BUSCA or n >= 80 then return end
-    conferir(BUSCA[1], BUSCA[2], BUSCA[3], BUSCA[4])
+    conferir(BUSCA[1], BUSCA[2], BUSCA[3], BUSCA[4], math.max(1, (st.clock_minutes or 45) - 45), nil)
     n = n + 1
     local linhas = { string.format("momento=%d tempo=%d:%02d placar=%dx%d periodo=%d motivo=%s candidatos=%d cresceram=%d",
         n, st.clock_minutes or 0, st.clock_seconds or 0, st.home_score or 0, st.away_score or 0, st.period or 0,
@@ -260,6 +276,12 @@ function m.frame(ctx)
             local txt = f:read("*a") or ""
             f:close()
             if txt ~= busca_feita and txt:match("%d") then busca_feita = txt; buscar(txt) end
+        end
+        local g = io.open(DIR .. "confirma.txt", "r")
+        if g then
+            local txt = g:read("*a") or ""
+            g:close()
+            if txt ~= confirma_feita and txt:match("%d") then confirma_feita = txt; buscar(txt) end
         end
     end
     if not BUSCA then return end
@@ -309,15 +331,16 @@ def _pasta(pasta_jogo):
     return _os.path.join(pasta_jogo or '', 'GOGOSZ', 'AppCarreira', 'captura')
 
 
-def pedir_busca(pasta_jogo, casa_total, casa_certos, fora_total, fora_certos):
+def pedir_busca(pasta_jogo, casa_total, casa_certos, fora_total, fora_certos, fim=False):
     """Grava captura\\busca.txt com os passes da tela; o módulo lê em até 2 s e varre a memória."""
     v = [int(casa_total), int(casa_certos), int(fora_total), int(fora_certos)]
     if not (0 < v[0] < 2000 and 0 <= v[1] <= v[0] and 0 < v[2] < 2000 and 0 <= v[3] <= v[2]):
         raise ValueError('Confira os números: os certos não podem passar do total.')
     d = _pasta(pasta_jogo)
     _os.makedirs(d, exist_ok=True)
-    with open(_os.path.join(d, 'busca.txt'), 'w') as f:
-        f.write('%d %d %d %d %d\n' % (tuple(v) + (int(_time.time()),)))
+    # fim=True: confirmação na tela de fim de jogo (fica só quem tem exatamente esses números)
+    with open(_os.path.join(d, 'confirma.txt' if fim else 'busca.txt'), 'w') as f:
+        f.write('%d %d %d %d %d %d\n' % (tuple(v) + (int(_time.time()), 2 if fim else 1)))
     return v
 
 
@@ -345,6 +368,13 @@ def estado(pasta_jogo):
     except OSError:
         nomes = []
     out['momentos'] = len(nomes)
+    try:
+        txt = open(_os.path.join(d, 'confirmacao.txt')).read()
+        m = _re.search(r'antes=(\d+) ficaram=(\d+)', txt)
+        out['confirmacao'] = {'antes': int(m.group(1)), 'ficaram': int(m.group(2)),
+                              'ponteiros': len(_re.findall(r'^ptr ', txt, _re.M))} if m else None
+    except OSError:
+        out['confirmacao'] = None
     if nomes:
         txt = open(_os.path.join(d, nomes[-1])).read()
         m = _re.search(r'cresceram=(\d+)', txt)

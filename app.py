@@ -3299,7 +3299,7 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/estatisticas/busca':
                     try:
                         v_ = captura.pedir_busca(CFG.get('pasta_jogo', ''), body.get('ct'), body.get('cc'),
-                                                 body.get('ft'), body.get('fc'))
+                                                 body.get('ft'), body.get('fc'), bool(body.get('fim')))
                     except (TypeError, ValueError) as e_:
                         return self.send(400, {'erro': str(e_) or 'Números inválidos.'})
                     log('busca de estatísticas pedida: %s' % v_)

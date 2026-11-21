@@ -1995,8 +1995,8 @@ JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
 let ESTB=null,ESTB_T=null;
 async function estAtual(){try{ESTB=await api('/api/estatisticas/busca')}catch(e){ESTB=null}
   if(JTAB=='est'&&!document.querySelector('#estForm input:focus'))rJogo()}
-async function estBuscar(){const g=id=>$(id).value.trim();
-  try{await api('/api/estatisticas/busca',{ct:g('estCT'),cc:g('estCC'),ft:g('estFT'),fc:g('estFC')});
+async function estBuscar(fim){const g=id=>$(id).value.trim();
+  try{await api('/api/estatisticas/busca',{ct:g('estCT'),cc:g('estCC'),ft:g('estFT'),fc:g('estFC'),fim:!!fim});
     toast('Pedido enviado. Volte ao jogo: a busca leva alguns segundos e a tela pode travar um pouco.');estAtual()}
   catch(e){toast(e.message||'Confira os números.',true)}}
 JOGO_R.est=()=>{if(!ESTB_T){ESTB_T=setInterval(()=>{if(JTAB=='est'&&document.querySelector('#jogoBox'))estAtual()},4000);estAtual()}
@@ -2009,7 +2009,7 @@ JOGO_R.est=()=>{if(!ESTB_T){ESTB_T=setInterval(()=>{if(JTAB=='est'&&document.que
     ${passo(buscou,'Jogue o 1º tempo normalmente. Na tela do <b>intervalo</b>, olhe a linha <b>Passes (Certos)</b>.')}
     ${passo(buscou,'Digite aqui os 4 números e clique em <b>Procurar</b>. Volte ao jogo; a tela pode travar uns segundos.')}
     ${passo(achou,'Jogue o 2º tempo normalmente. O módulo elimina sozinho os lugares errados (passes só sobem).')}
-    ${passo(false,'No fim, me mande a foto da tela de fim de jogo para eu confirmar.')}
+    ${passo(!!(E.confirmacao&&E.confirmacao.ficaram),'Na tela de <b>fim de jogo</b>, digite os passes finais nos mesmos campos e clique em <b>Confirmar no fim</b>.')}
    </ol>
    <div id="estForm" class="cards" style="align-items:end">
     <div class="card"><span>Casa · passes</span><input id="estCT" type="number" min="0" inputmode="numeric" placeholder="44"></div>
@@ -2017,12 +2017,13 @@ JOGO_R.est=()=>{if(!ESTB_T){ESTB_T=setInterval(()=>{if(JTAB=='est'&&document.que
     <div class="card"><span>Fora · passes</span><input id="estFT" type="number" min="0" inputmode="numeric" placeholder="47"></div>
     <div class="card"><span>Fora · certos</span><input id="estFC" type="number" min="0" inputmode="numeric" placeholder="35"></div>
    </div>
-   <p><button class="btn" onclick="estBuscar()">Procurar</button></p>
+   <p><button class="btn" onclick="estBuscar(false)">Procurar (intervalo)</button> <button class="btn" onclick="estBuscar(true)">Confirmar no fim</button></p>
    <p style="font-size:12px;color:var(--mut)">Exemplo da tela: "44 (33)  Passes (Certos)  47 (35)" → casa 44 e 33, fora 47 e 35. Só leitura: nada é gravado no jogo.</p></div>
   <div class="box"><h3>Situação</h3>
    ${E.pedida&&!buscou?`<p>⏳ Pedido enviado (${E.pedida.join(' ')}). O módulo faz a busca assim que o jogo estiver aberto.</p>`:''}
    ${buscou?`<p>🔎 Busca feita em ${E.segundos??'?'} s: <b>${E.candidatos.toLocaleString('pt-BR')}</b> lugares com esses 4 números.</p>`:''}
    ${E.momentos?`<p>⏱️ ${E.momentos} conferências no 2º tempo. ${achou?`<b style="color:#3ddc84">${E.cresceram} lugar(es) acompanharam os passes subindo</b>: ${E.achados.map(esc).join(' · ')}`:'Ainda nenhum lugar acompanhou os passes subindo; continue jogando.'}</p>`:''}
+   ${E.confirmacao?`<p>${E.confirmacao.ficaram?'✅':'❌'} Confirmação no fim: <b>${E.confirmacao.ficaram}</b> de ${E.confirmacao.antes.toLocaleString('pt-BR')} lugares têm exatamente os passes finais.${E.confirmacao.ficaram?'':' Me avise para eu olhar.'}</p>`:''}
    ${E.ponteiros?`<p>📌 Caminho fixo encontrado (${E.ponteiros}): nas próximas partidas o app poderá ler sozinho.</p>`:''}
    ${!E.pedida&&!buscou?'<p style="color:var(--mut)">Nenhuma busca ainda.</p>':''}</div>`};
 const ftMini=(id)=>`<img class="stft" src="/foto/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`;
