@@ -16,13 +16,13 @@ Histórico:
 
 MODULO = 'AppCarreiraCaptura.lua'
 
-LUA = r'''-- AppCarreiraCaptura.lua (App de Carreira PES 21) · versão 4 · SOMENTE LEITURA
+LUA = r'''-- AppCarreiraCaptura.lua (App de Carreira PES 21) · versão 5 · SOMENTE LEITURA
 -- Acha as estatísticas da partida na memória (como o Cheat Engine): no intervalo, o app grava os passes da
 -- tela em captura\busca.txt e este módulo procura esses números. Não escreve nada no jogo. Gerado pelo app.
 -- Feito para o Lua do Sider do patch: sem pcall; leitura direta pelo ffi só em memória conferida pelo VirtualQuery.
 local m = {}
 local DIR = nil
-local MAXHITS, JANELA, MAXCAND = 40, 0x800, 1000000
+local MAXHITS, JANELA, MAXCAND = 40, 0x800, 2000000
 local BUSCA = nil
 local VQ, MBI, MBISZ = nil, nil, 0
 local hits = {}
@@ -47,7 +47,7 @@ local function prepara()
             size_t RegionSize; uint32_t State; uint32_t Protect; uint32_t Type; } ACC_MBI;
         size_t ACC_VirtualQuery(const void* lpAddress, ACC_MBI* lpBuffer, size_t dwLength) asm("VirtualQuery");
         typedef struct _ACC_CAND { double a; int32_t reg; int16_t oc, ob, od; uint8_t w;
-            uint16_t v0, v1, v2, v3; } ACC_CAND;
+            uint16_t v0, v1, v2, v3; uint8_t modo; } ACC_CAND;
     ]]
     VQ = ffi.C.ACC_VirtualQuery
     MBI = ffi.new("ACC_MBI[1]")
@@ -76,31 +76,39 @@ end
 -- candidatos guardados de forma compacta (até 1 milhão, ~40 MB), para aguentar memória cheia de números pequenos
 local CAND, ncand, REGS = nil, 0, {}
 
--- varre um bloco de memória como inteiros de w bytes atrás de A (total da casa) e C (certos da casa) a até 0x40
--- bytes; o time de fora tem que ter a MESMA arrumação: B em A+ob e D em A+ob+oc (|ob| até 0x800).
--- Um candidato por (endereço, arrumação).
-local function varre(base, size, w, A, C, B, D, ireg)
-    local p = ffi.cast(w == 2 and "uint16_t*" or "uint32_t*", ptr(base))
+-- varre um bloco de memória como inteiros de w bytes (1, 2 ou 4) atrás de A (total da casa) e C (certos ou
+-- errados da casa, até 0x40 bytes); o time de fora tem que ter a MESMA arrumação (B em A+ob, D em A+ob+oc).
+-- Para cada endereço de A guarda só a arrumação mais próxima (evita milhões de combinações do mesmo lugar).
+local function varre(base, size, w, A, C, B, D, ireg, modo)
+    local p = ffi.cast(w == 1 and "uint8_t*" or (w == 2 and "uint16_t*" or "uint32_t*"), ptr(base))
     local cnt = math.floor(size / w)
     local r1, r2 = math.floor(0x40 / w), math.floor(JANELA / w)
     for i = 0, cnt - 1 do
         if p[i] == A then
+            local melhor_c, melhor_b = nil, nil
             for dc = -r1, r1 do
                 local jc = i + dc
                 if dc ~= 0 and jc >= 0 and jc < cnt and p[jc] == C then
-                    for db = -r2, r2 do
-                        local jb, jd = i + db, i + db + dc
-                        if db ~= 0 and db ~= dc and jb >= 0 and jd >= 0 and jb < cnt and jd < cnt
-                           and p[jb] == B and p[jd] == D then
-                            if ncand >= MAXCAND then return end
-                            local c = CAND[ncand]
-                            c.a = base + i * w; c.w = w; c.reg = ireg
-                            c.oc = dc * w; c.ob = db * w; c.od = (db + dc) * w
-                            c.v0, c.v1, c.v2, c.v3 = A, C, B, D
-                            ncand = ncand + 1
+                    for k = 1, r2 do
+                        for _, db in ipairs({ k, -k }) do
+                            local jb, jd = i + db, i + db + dc
+                            if db ~= dc and jb >= 0 and jd >= 0 and jb < cnt and jd < cnt
+                               and p[jb] == B and p[jd] == D then
+                                if not melhor_b or math.abs(db) < math.abs(melhor_b) then melhor_c, melhor_b = dc, db end
+                            end
                         end
+                        if melhor_b and k >= math.abs(melhor_b) then break end
                     end
                 end
+            end
+            if melhor_b then
+                if ncand >= MAXCAND then return end
+                local c = CAND[ncand]
+                c.a = base + i * w; c.w = w; c.reg = ireg; c.modo = modo
+                c.oc = melhor_c * w; c.ob = melhor_b * w; c.od = (melhor_b + melhor_c) * w
+                if modo == 2 then c.v0, c.v1, c.v2, c.v3 = A, A - C, B, B - D   -- guarda sempre certos
+                else c.v0, c.v1, c.v2, c.v3 = A, C, B, D end
+                ncand = ncand + 1
             end
         end
     end
@@ -110,6 +118,7 @@ local function le(c, o)
     local r = REGS[c.reg]
     local a = c.a + o
     if a < r[1] or a + c.w > r[2] then return nil end
+    if c.w == 1 then return ffi.cast("uint8_t*", ptr(a))[0] end
     if c.w == 2 then return ffi.cast("uint16_t*", ptr(a))[0] end
     return ffi.cast("uint32_t*", ptr(a))[0]
 end
@@ -126,12 +135,13 @@ local function conferir(A, C, B, D, minutos, exato)
         local c = CAND[i]
         if REGS[c.reg][3] then
             local a, cc, b, d = le(c, 0), le(c, c.oc), le(c, c.ob), le(c, c.od)
+            if a and cc and b and d and c.modo == 2 then cc, d = a - cc, b - d end   -- guardado como errados
             local ok = a and cc and b and d and a >= c.v0 and cc >= c.v1 and b >= c.v2 and d >= c.v3
-               and cc <= a and d <= b and a - cc >= c.v0 - c.v1 and b - d >= c.v2 - c.v3
+               and cc >= 0 and d >= 0 and cc <= a and d <= b and a - cc >= c.v0 - c.v1 and b - d >= c.v2 - c.v3
                and a - c.v0 <= teto and b - c.v2 <= teto
             if ok and exato then ok = a == exato[1] and cc == exato[2] and b == exato[3] and d == exato[4] end
             if ok then
-                c.v0, c.v1, c.v2, c.v3 = a, cc, b, d
+                c.v0, c.v1, c.v2, c.v3 = a, cc, b, d   -- sempre guardado como certos
                 if m2 ~= i then CAND[m2] = c end
                 if (exato or (a > A and cc > C and b > B and d > D)) and #hits < MAXHITS then
                     hits[#hits + 1] = { a = c.a, w = c.w, oc = c.oc, ob = c.ob, od = c.od,
@@ -227,9 +237,14 @@ local function buscar(txt)
         if st == 0x1000 and tp == 0x20000 and GRAVAVEL[pr] then
             nreg = nreg + 1; mb = mb + (f - b) / 1048576
             REGS[nreg] = { b, f, true }
-            varre(b, f - b, 4, A, C, B, D, nreg)
-            varre(b, f - b, 2, A, C, B, D, nreg)
-            if ncand >= MAXCAND and not cheio then cheio = true; log("AppCarreiraCaptura: limite de candidatos atingido") end
+            for _, w in ipairs({ 4, 2, 1 }) do
+                varre(b, f - b, w, A, C, B, D, nreg, 1)            -- certos
+                varre(b, f - b, w, A, A - C, B, B - D, nreg, 2)    -- errados (total - certos)
+            end
+            if ncand >= MAXCAND and not cheio then
+                cheio = true
+                log(string.format("AppCarreiraCaptura: limite de candidatos atingido depois de %d MB", math.floor(mb)))
+            end
         end
         a = f
     end
@@ -261,10 +276,10 @@ end
 
 function m.after_set_conditions(ctx)
     hits, n, ult_placar, ult_bloco, ptr_feito = {}, 0, "", -1, false
+    -- (a busca e a confirmação já feitas continuam marcadas: não repete sozinha na partida seguinte)
     ncand, BUSCA = 0, nil
     relogio, parado_desde, pausa_gravada = nil, nil, false
-    busca_feita = ""
-    log("AppCarreiraCaptura 4: partida começou; digite os passes no app no intervalo")
+    log("AppCarreiraCaptura 5: partida começou; digite os passes no app no intervalo")
 end
 
 function m.frame(ctx)
@@ -307,7 +322,7 @@ function m.init(ctx)
     DIR = (ctx.sider_dir or ".\\") .. "GOGOSZ\\AppCarreira\\captura\\"
     ctx.register("after_set_conditions", m.after_set_conditions)
     ctx.register("display_frame", m.frame)
-    log("AppCarreiraCaptura 4: carregado (somente leitura), pasta " .. DIR)
+    log("AppCarreiraCaptura 5: carregado (somente leitura), pasta " .. DIR)
 end
 
 return m

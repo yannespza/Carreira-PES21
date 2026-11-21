@@ -637,3 +637,11 @@ VERSÃO 4.9.7
 VERSÃO 4.9.8
 - Nomes: 277 jogadores cujo nome começa com letra acentuada (Ángel Correa, Óscar, Édson...) apareciam no app
   como "Jogador 60168". Corrigido; o Ángel Correa, recém-chegado, já aparece com o nome certo.
+
+VERSÃO 4.9.9
+- Busca das estatísticas (módulo de captura versão 5): no jogo contra o Athletico a busca encheu o limite
+  em 2,1 GB e nenhum candidato acompanhou os passes. Agora:
+  - procura também os passes ERRADOS (o jogo pode guardar errados em vez de certos) e números de 1 byte;
+  - guarda só 1 candidato por lugar da memória (antes um mesmo lugar virava milhares de combinações);
+  - não repete a busca sozinha na partida seguinte (foi o que estragou a confirmação no fim).
+  A busca pode travar a tela por alguns segundos a mais no intervalo.
