@@ -474,3 +474,7 @@ VERSÃO 4.2.2
 - Corrigido: um arquivo de partida antigo (de um jogo que travou) fazia o app achar que havia partida em andamento
   por 90 segundos depois de abrir, e recusava gravar. Agora a idade vem da hora do próprio arquivo.
 - Diagnóstico de memória: o app não tinha religado na 4.1.6 (o número de versão do módulo não mudou). Agora religa.
+
+VERSÃO 4.2.3
+- Corrigido: depois de atualizar o patch GOGOSZ, o instalador reescreve o sider.ini e tira o módulo do app
+  (gramado, faixas e bandeirinhas sumiam). Agora o app recoloca o módulo sempre que abre.

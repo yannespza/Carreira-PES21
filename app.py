@@ -261,6 +261,12 @@ class App:
                 aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
+        # o instalador do patch reescreve o sider.ini; recoloca o módulo do visual do estádio (gramado, faixas)
+        if CFG.get('pasta_jogo') and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
+            try:
+                ingame.instalar_modulo(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
+            except Exception:
+                log(traceback.format_exc())
         self.elenco = []
         self.campeonatos = []
         self.juniores = []
