@@ -272,6 +272,7 @@ class App:
                 ingame.instalar_modulo(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
+        threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
         self.elenco = []
         self.campeonatos = []
         self.juniores = []
@@ -1229,6 +1230,7 @@ class App:
                     log(traceback.format_exc())
                     fatos = None
                 g.coletiva_nova(ult, nomes, self.rivais_ids(), fatos)
+                threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
                 try:
                     self.imprensa_moral(ult, mu)
                 except Exception:
@@ -3202,10 +3204,10 @@ class H(BaseHTTPRequestHandler):
                     if body.get('ia_chave'):
                         CFG['ia_chave'] = str(body['ia_chave'])
                     jsave(os.path.join(DATA, 'config.json'), CFG)
+                    threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
                     return self.send(200, {'ok': True})
                 if u.path == '/api/ia/testar':
-                    j_ = ia.gerar_json(CFG, 'Responda só JSON {"ok": true, "frase": "..."} com uma frase curta de futebol.', 'teste')
-                    return self.send(200, {'ok': bool(j_), 'resposta': j_, 'modelos': ia.modelos_ollama(CFG.get('ia_ollama_url') or 'http://localhost:11434')})
+                    return self.send(200, ia.testar(CFG))
                 if u.path == '/api/diretoria/sondagem':
                     mu = mundo.Mundo(A.state, A.clube(), A.tid())
                     diretoria.responder_sondagem(A.state, eng, mu, bool(body.get('aceitar')))

@@ -38,7 +38,7 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Aba Jogo (dia de jogo): clima/torcida no Sider, dossiê, tribunal, fadiga, viagem, bilheteria | `core/matchday.py` (force_weather.ini do StadiumServer, crowd_behavior.ini/crowd_standings.csv), `core/cidades.py` (cidade/altitude por nome), `core/dossie.py`, `core/tribunal.py`, `core/fadiga.py`, `core/forca.py` (AppCarreiraForca.lua: soma força no MATCH_INFO+0x20/+0x28 como o Dynamic_Difficulty), `core/bilheteria.py`; app: `App.matchday_atualizar`, `fadiga_atualizar`, `tribunal_dossie`; UI `rJogo()`/`JOGO_R` |
 | Formações do patch (catálogo do EDIT, 628 B por time) e gravar formação | `escalacao.catalogo`, `escalacao.gravar_formacao` (tipo de gravação `formacao`, passa pelo espaço de teste); UI `escTrocarForm`, `papelZona`, `hungaro` |
 | Aba História: museu permanente, hall da fama, carrascos, olheiros, análise | `core/museu.py` (state['museu']), `core/olheiros.py`; UI `rHist()`/`HIST_R` |
-| IA opcional (Ollama/nuvem, JSON, 8 s, corte -5..+5) | `core/ia.py`; coletiva com resposta livre `gestao.responder_livre`, rota `/api/coletiva/livre`; config na aba Sistema |
+| IA opcional (Ollama/nuvem, JSON, 20 s ou 120 s na carga, think=False, corte -5..+5; ia.testar explica o erro, ia.aquecer carrega o modelo) | `core/ia.py`; coletiva com resposta livre `gestao.responder_livre`, rota `/api/coletiva/livre`; config na aba Sistema |
 Esses módulos são chamados em `App.mercado_processar` e `App.extras_processar`; a tela recebe `extras_view()`.
 Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o teste no PC).
 

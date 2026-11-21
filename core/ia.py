@@ -2,15 +2,21 @@
 
 Regras de segurança do app:
 - toda resposta tem de ser JSON com as chaves esperadas; números fora da faixa são cortados (-5 a +5);
-- tempo máximo de 8 segundos; qualquer falha devolve None e o app usa o texto pronto (modo "Desligada");
+- tempo máximo de 20 segundos (2 minutos na primeira, enquanto o modelo carrega); qualquer falha devolve None e o app usa o texto pronto (modo "Desligada");
 - a chave da API fica só no config do app no seu PC, nunca vai para a tela.
 """
 import json
 import re
+import socket
+import time
+import urllib.error
 import urllib.request
 
-TIMEOUT = 8
+TIMEOUT = 20          # resposta normal (modelo já carregado na placa)
+TIMEOUT_CARGA = 120   # primeira chamada: o Ollama ainda está levando o modelo para a placa de vídeo
+MANTER = '60m'        # quanto tempo o Ollama segura o modelo na placa depois da última pergunta
 ESTILOS = ['humilde', 'corporativo', 'empolgar', 'provocar', 'culpa', 'expor', 'proteger', 'arbitragem', 'pressao']
+ULTIMO_ERRO = {'texto': ''}
 
 
 def _post(url, corpo, headers=None, timeout=TIMEOUT):
@@ -20,16 +26,36 @@ def _post(url, corpo, headers=None, timeout=TIMEOUT):
         return json.loads(r.read().decode('utf-8'))
 
 
-def modelos_ollama(url='http://localhost:11434'):
+def _base(url):
+    # no Windows "localhost" às vezes tenta o endereço IPv6 primeiro e o Ollama só escuta no 127.0.0.1
+    return (url or 'http://127.0.0.1:11434').rstrip('/').replace('://localhost', '://127.0.0.1')
+
+
+def modelos_ollama(url='http://127.0.0.1:11434'):
     try:
-        with urllib.request.urlopen(url.rstrip('/') + '/api/tags', timeout=3) as r:
+        with urllib.request.urlopen(_base(url) + '/api/tags', timeout=3) as r:
             return [m['name'] for m in json.loads(r.read().decode('utf-8')).get('models', [])]
     except Exception:
         return []
 
 
+def ollama_carregado(cfg):
+    """O modelo configurado já está na memória da placa?"""
+    try:
+        with urllib.request.urlopen(_base(cfg.get('ia_ollama_url')) + '/api/ps', timeout=3) as r:
+            nomes = [m.get('name') for m in json.loads(r.read().decode('utf-8')).get('models', [])]
+        return _nome(cfg) in nomes or (_nome(cfg) + ':latest') in nomes
+    except Exception:
+        return False
+
+
+def _nome(cfg):
+    return (cfg.get('ia_modelo') or 'gemma4:12b').strip()
+
+
 def _json_do_texto(t):
     t = (t or '').strip()
+    t = re.sub(r'^```(?:json)?|```$', '', t, flags=re.M).strip()
     try:
         return json.loads(t)
     except ValueError:
@@ -42,16 +68,45 @@ def _json_do_texto(t):
     return None
 
 
-def gerar_json(cfg, sistema, pedido):
-    """Chama a IA configurada e devolve um dicionário, ou None (desligada, erro ou demora)."""
+def _erro_http(e):
+    try:
+        return json.loads(e.read().decode('utf-8')).get('error') or str(e)
+    except Exception:
+        return str(e)
+
+
+def _ollama(cfg, sistema, pedido, timeout):
+    url = _base(cfg.get('ia_ollama_url')) + '/api/chat'
+    corpo = {'model': _nome(cfg), 'stream': False, 'format': 'json', 'think': False, 'keep_alive': MANTER,
+             'options': {'temperature': 0.7},
+             'messages': [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': pedido}]}
+    try:
+        r = _post(url, corpo, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        msg = _erro_http(e)
+        if 'not found' in msg.lower():
+            raise RuntimeError(f'O modelo "{_nome(cfg)}" não está baixado. No PowerShell rode: ollama pull {_nome(cfg)}')
+        if 'think' not in msg.lower():
+            raise RuntimeError(msg)
+        corpo.pop('think')          # modelo sem "modo pensar": tenta de novo sem a opção
+        r = _post(url, corpo, timeout=timeout)
+    msg = r.get('message') or {}
+    return _json_do_texto(msg.get('content') or msg.get('thinking'))
+
+
+def gerar_json(cfg, sistema, pedido, timeout=None):
+    """Chama a IA configurada e devolve um dicionário, ou None (desligada, erro ou demora).
+    O motivo da última falha fica em ULTIMO_ERRO['texto']."""
     modo = (cfg or {}).get('ia_modo', 'desligada')
+    ULTIMO_ERRO['texto'] = ''
     try:
         if modo == 'ollama':
-            url = (cfg.get('ia_ollama_url') or 'http://localhost:11434').rstrip('/') + '/api/chat'
-            r = _post(url, {'model': cfg.get('ia_modelo') or 'gemma3:12b', 'stream': False, 'format': 'json',
-                            'keep_alive': '5m', 'options': {'temperature': 0.7},
-                            'messages': [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': pedido}]})
-            return _json_do_texto((r.get('message') or {}).get('content'))
+            if timeout is None:
+                timeout = TIMEOUT if ollama_carregado(cfg) else TIMEOUT_CARGA
+            j = _ollama(cfg, sistema, pedido, timeout)
+            if j is None:
+                ULTIMO_ERRO['texto'] = 'O modelo respondeu, mas não no formato que o app entende.'
+            return j
         if modo == 'nuvem':
             url = cfg.get('ia_nuvem_url') or 'https://api.openai.com/v1/chat/completions'
             chave = cfg.get('ia_chave') or ''
@@ -59,15 +114,57 @@ def gerar_json(cfg, sistema, pedido):
                 r = _post(url + ('&' if '?' in url else '?') + 'key=' + chave,
                           {'systemInstruction': {'parts': [{'text': sistema}]},
                            'contents': [{'role': 'user', 'parts': [{'text': pedido}]}],
-                           'generationConfig': {'responseMimeType': 'application/json'}})
+                           'generationConfig': {'responseMimeType': 'application/json'}}, timeout=timeout or TIMEOUT)
                 return _json_do_texto(r['candidates'][0]['content']['parts'][0]['text'])
             r = _post(url, {'model': cfg.get('ia_modelo') or 'gpt-4o-mini', 'response_format': {'type': 'json_object'},
                             'messages': [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': pedido}]},
-                      {'Authorization': 'Bearer ' + chave})
+                      {'Authorization': 'Bearer ' + chave}, timeout=timeout or TIMEOUT)
             return _json_do_texto(r['choices'][0]['message']['content'])
-    except Exception:
-        return None
+        ULTIMO_ERRO['texto'] = 'A IA está desligada (escolha "Ollama no meu PC" e clique em Salvar).'
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, 'reason', None), (TimeoutError, socket.timeout)) or 'timed out' in str(e):
+            ULTIMO_ERRO['texto'] = 'Demorou demais para responder.'
+        elif modo == 'ollama':
+            ULTIMO_ERRO['texto'] = ('Não achei o Ollama aberto no PC. Abra o Ollama (ícone perto do relógio) '
+                                    'ou rode "ollama serve" no PowerShell.')
+        else:
+            ULTIMO_ERRO['texto'] = 'Sem conexão com o serviço: ' + str(e)
+    except (TimeoutError, socket.timeout):
+        ULTIMO_ERRO['texto'] = 'Demorou demais para responder.'
+    except Exception as e:
+        ULTIMO_ERRO['texto'] = str(e)[:200]
     return None
+
+
+def testar(cfg):
+    """Teste da aba Sistema: espera o modelo carregar e explica o problema em português."""
+    modo = (cfg or {}).get('ia_modo', 'desligada')
+    mods = modelos_ollama(cfg.get('ia_ollama_url')) if modo == 'ollama' else []
+    if modo == 'ollama':
+        nome = _nome(cfg)
+        if mods and nome not in mods and (nome + ':latest') not in mods:
+            return {'ok': False, 'modelos': mods,
+                    'erro': f'O modelo "{nome}" não está baixado. No PowerShell rode: ollama pull {nome} '
+                            f'(ou escreva um destes no campo: {", ".join(mods)}).'}
+    t0 = time.time()
+    j = gerar_json(cfg, 'Responda só JSON {"ok": true, "frase": "..."} com uma frase curta de futebol, '
+                        'em português do Brasil.', 'teste', timeout=TIMEOUT_CARGA)
+    seg = round(time.time() - t0, 1)
+    if j:
+        return {'ok': True, 'resposta': j, 'segundos': seg, 'modelos': mods}
+    erro = ULTIMO_ERRO['texto'] or 'Não respondeu.'
+    return {'ok': False, 'erro': erro, 'segundos': seg, 'modelos': mods}
+
+
+def aquecer(cfg):
+    """Carrega o modelo na placa em segundo plano (chamado ao abrir o app e ao abrir a coletiva)."""
+    if (cfg or {}).get('ia_modo') != 'ollama' or ollama_carregado(cfg):
+        return
+    try:
+        _post(_base(cfg.get('ia_ollama_url')) + '/api/generate', {'model': _nome(cfg), 'keep_alive': MANTER},
+              timeout=TIMEOUT_CARGA)
+    except Exception:
+        pass
 
 
 def _clamp(v, lo=-5, hi=5):
@@ -104,9 +201,10 @@ def avaliar_resposta(cfg, contexto, pergunta, resposta):
         return {'estilo': j['estilo'], 'torcida': _clamp(j.get('torcida')), 'diretoria': _clamp(j.get('diretoria')),
                 'vestiario': _clamp(j.get('vestiario')), 'imprensa': _clamp(j.get('imprensa')),
                 'reacao': str(j.get('reacao') or '')[:200], 'fonte': 'ia'}
+    motivo = ULTIMO_ERRO['texto']
     t = (resposta or '').lower()
     pont = {k: sum(t.count(p) for p in ps) for k, ps in PALAVRAS.items()}
     estilo = max(pont, key=pont.get) if max(pont.values()) else 'corporativo'
     tor, dire, vest = EFEITO[estilo]
     return {'estilo': estilo, 'torcida': tor, 'diretoria': dire, 'vestiario': vest, 'imprensa': 0, 'reacao': '',
-            'fonte': 'regras'}
+            'fonte': 'regras', 'motivo': motivo}

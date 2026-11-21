@@ -595,3 +595,11 @@ VERSÃO 4.9.1
 VERSÃO 4.9.2
 - Planos salvos: usar um plano e clicar em "Aplicar no jogo" dava "Escalação inválida". O app perdia as vagas
   vazias do elenco ao montar o plano na tela. Corrigido.
+
+VERSÃO 4.9.3
+- IA (Ollama): o teste agora espera o modelo carregar na placa de vídeo (até 2 minutos na primeira vez) e diz
+  em português o que está errado: Ollama fechado, modelo não baixado ou resposta fora do formato.
+- O app já carrega o modelo ao abrir e quando chega uma coletiva, e pede ao Ollama para mantê-lo pronto por 1
+  hora. Antes, o limite de 8 segundos acabava antes de o modelo terminar de carregar.
+- O "modo pensar" dos modelos novos (como o Gemma 4) fica desligado, para responder rápido.
+- Na coletiva, ao responder com as suas palavras, aparece se quem avaliou foi a IA ou as regras prontas.
