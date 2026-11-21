@@ -591,3 +591,7 @@ VERSÃO 4.9.1
 - Novo módulo de captura (AppCarreiraCaptura.lua, só leitura): durante a partida guarda, a cada 20 segundos e
   quando o placar muda, uma cópia da estrutura da partida (MATCH_INFO) em GOGOSZ\AppCarreira\captura. Serve para
   descobrir onde o jogo guarda cartões, posse de bola e finalizações. Não escreve nada no jogo.
+
+VERSÃO 4.9.2
+- Planos salvos: usar um plano e clicar em "Aplicar no jogo" dava "Escalação inválida". O app perdia as vagas
+  vazias do elenco ao montar o plano na tela. Corrigido.

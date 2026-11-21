@@ -2092,7 +2092,8 @@ function planoUsar(nome){const p=(S.planos_salvos||[]).find(x=>x.nome==nome);if(
   // quem saiu do elenco ou está indisponível dá lugar ao próximo da ordem atual
   const ind=v=>{const x=M[v]||{};return x.fora||x.indisponivel};
   const novo=[],usado=new Set();quer.forEach(v=>{if(!ind(v)){novo.push(v);usado.add(v)}else fora.push(v)});
-  ESC.forEach(v=>{if(!usado.has(v)){novo.push(v);usado.add(v)}});
+  ESC.forEach(v=>{if(v===255){return}if(!usado.has(v)){novo.push(v);usado.add(v)}});
+  while(novo.length<ESC.length)novo.push(255); // vagas vazias do elenco ficam no fim, como no save
   ESC=novo;FORM=p.formacao.map(v=>({...v}));rEscalacao();
   toast(fora.length?`Plano "${nome}" na tela. ${fora.length} jogador(es) indisponível(is) foram trocados. Confira e clique em Aplicar no jogo.`:`Plano "${nome}" na tela. Clique em Aplicar no jogo.`)}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-plano]');if(b){planoUsar(b.dataset.plano);return}
