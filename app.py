@@ -9,7 +9,7 @@ from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
 from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho, captura
 from core.logos import LogoBank
 
 PORT = 8765
@@ -259,6 +259,11 @@ class App:
         if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
             try:
                 aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
+            except Exception:
+                log(traceback.format_exc())
+        if CFG.get('pasta_jogo') and CFG.get('captura_partida', True) and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
+            try:
+                captura.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
         # o instalador do patch reescreve o sider.ini; recoloca o módulo do visual do estádio (gramado, faixas)

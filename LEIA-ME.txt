@@ -586,3 +586,8 @@ VERSÃO 4.9.0
   verba.
 - Aba Jogo: perfil do árbitro de cada partida (rigoroso, caseiro ou deixa o jogo correr), também no painel do
   jogo. Com árbitro rigoroso, a pena no tribunal tende a ser maior.
+
+VERSÃO 4.9.1
+- Novo módulo de captura (AppCarreiraCaptura.lua, só leitura): durante a partida guarda, a cada 20 segundos e
+  quando o placar muda, uma cópia da estrutura da partida (MATCH_INFO) em GOGOSZ\AppCarreira\captura. Serve para
+  descobrir onde o jogo guarda cartões, posse de bola e finalizações. Não escreve nada no jogo.
