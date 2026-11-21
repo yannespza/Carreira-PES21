@@ -618,3 +618,31 @@ def moral_usert(path, ids):
         if o >= 0 and o + 280 <= len(d):
             out[pid] = d[o + 279] & 7
     return out
+
+
+# ---------------------------------------------------------------- propostas de emprego ao técnico (jogo)
+# Achado em 20/11/2026 comparando saves antes e depois de chegar a 2ª proposta (Coritiba, depois Universidad
+# Católica): lista de u32 a FIN - 0x7C6D4 .. FIN - 0x7C6A4 (12 vagas). Cada vaga: (id do clube << 14) | código
+# (6 e 332 nos exemplos; significado ainda não conhecido), 0xFFFFFFFF = vazia.
+OFERTAS_TEC_INI = -0x7C6D8
+OFERTAS_TEC_VAGAS = 14
+
+
+def ofertas_tecnico(data: bytes, fin_off, clubes=None):
+    """Clubes que fizeram proposta ao técnico no jogo: [{'time_id', 'codigo', 'vaga'}]."""
+    if fin_off is None:
+        return []
+    ini = fin_off + OFERTAS_TEC_INI
+    out = []
+    for k in range(OFERTAS_TEC_VAGAS):
+        o = ini + 4 * k
+        if o < 0 or o + 4 > len(data):
+            continue
+        v = struct.unpack_from('<I', data, o)[0]
+        if v == 0xFFFFFFFF or v == 0:
+            continue
+        tid, cod = v >> 14, v & 0x3FFF
+        if clubes is not None and tid not in clubes:
+            continue
+        out.append({'time_id': tid, 'codigo': cod, 'vaga': k})
+    return out

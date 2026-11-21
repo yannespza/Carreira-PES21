@@ -7,7 +7,7 @@
   é de altitude).
 - Verde: normal. Amarelo: 3 seguidos, ou 2 com carga, ou 360+ minutos em 14 dias. Vermelho: 4+ seguidos, ou 3 com
   carga pesada.
-- Quem estava no vermelho e jogou: sorteio de lesão muscular (45% a 65%, vezes o fator de altitude) no
+- Quem estava no vermelho e jogou: sorteio de lesão muscular (12% a 30%, vezes o fator de altitude, no máximo 2 por jogo) no
   processamento depois do jogo; a lesão vai para o departamento médico do app.
 - O efeito em campo (força do time) vai pelo módulo AppCarreiraForca.lua: o adversário ganha +1 ou +2 de força
   quando o grupo está muito desgastado ou na altitude. Mesmo mecanismo do Dynamic_Difficulty do patch.
@@ -110,7 +110,10 @@ def estado_jogadores(partidas, team_id, elenco, hoje, cargas):
 
 
 def prob_lesao(info, fator_alt):
-    return round(min(0.9, min(0.65, 0.45 + 0.05 * max(0, info['seq'] - 4)) * fator_alt), 2)
+    # calibrado em 20/11/2026: 45-65% derrubou 5 titulares de uma vez; agora 12% a 30% (altitude até 45%)
+    return round(min(0.45, min(0.30, 0.12 + 0.03 * max(0, info['seq'] - 4)) * fator_alt), 2)
+
+MAX_LESOES_JOGO = 2
 
 
 def rolar_lesoes(st, partidas, team_id, hoje):
@@ -127,7 +130,10 @@ def rolar_lesoes(st, partidas, team_id, hoje):
         lado = p['escalacao_mandante'] if p['mandante'] == team_id else p['escalacao_visitante']
         jogou = {x['id']: x['min'] for x in lado}
         fator = snap.get('_fator_alt', 1.0)
-        for pid_s, info in snap.items():
+        n_les = 0
+        for pid_s, info in sorted(snap.items(), key=lambda kv: -(kv[1].get('seq', 0) if isinstance(kv[1], dict) else 0)):
+            if n_les >= MAX_LESOES_JOGO:
+                break
             if pid_s.startswith('_') or info['nivel'] != 'vermelho':
                 continue
             pid = int(pid_s)
@@ -145,6 +151,7 @@ def rolar_lesoes(st, partidas, team_id, hoje):
                                f"{volta.strftime('%d/%m/%Y')}.", 'volta': volta.isoformat()}
                 st.setdefault('gestao', {}).setdefault('eventos', []).append(ev)
                 feitos.append(ev)
+                n_les += 1
         antes.pop(data, None)
     F['antes'] = antes
     return feitos

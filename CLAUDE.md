@@ -51,6 +51,8 @@ Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o 
 - Contratos: registros de 48 bytes. Use `contratos_clube`.
 - Formação ativa: lista −0x1E0.
 - Partidas: registros 0x254 (`sumulas`).
+- Propostas de emprego ao técnico (jogo): `savedata.ofertas_tecnico` — u32 em FIN − 0x7C6D8 (14 vagas): (id do clube << 14) | código; 0xFFFFFFFF vazia.
+- Uniformes: `App.kits_conferir` regrava se o patch trocar as texturas (`state['kits_arquivos']` = tamanho e data de cada variação).
 - Tabela de jogadores do clube: registros 0x170 (`jogadores.juniores`).
 - Detalhes completos: doc do projeto `claude/plano-de-jogo-no-save.md`.
 - Estrutura do arquivo EDIT (Team-Player 284 B, plano de jogo 628 B, ficha 240 B): doc do projeto `claude/edit-file-wiki-pes2021.md`. Para procurar a tabela Team-Player num save: `ferramentas/achar_team_player.py`.

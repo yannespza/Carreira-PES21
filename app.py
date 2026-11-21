@@ -380,6 +380,12 @@ class App:
             # o save guarda a energia do fim do último jogo; o jogo soma a recuperação dos dias seguintes
             self.ultimo_jogo = {}
             try:
+                try:
+                    self.ofertas_jogo = savedata.ofertas_tecnico(bytes(car.sf.data), car.fin_off,
+                                                                 savedata.nomes_clubes(bytes(car.sf.data)))
+                except Exception:
+                    log(traceback.format_exc())
+                    self.ofertas_jogo = []
                 self._partidas = sumulas.partidas(bytes(car.sf.data))
                 for p_ in self._partidas:
                     if car.team_id in (p_['mandante'], p_['visitante']):
@@ -895,6 +901,10 @@ class App:
 
     # ----- leitura do save -----
     def tick(self):
+        try:
+            self.kits_conferir()
+        except Exception:
+            log(traceback.format_exc())
         path = self.find_save()
         if not path:
             self.status['erro'] = 'Não encontrei o save do Master League. Confira a pasta de saves.'
@@ -1229,6 +1239,22 @@ class App:
                 if self.engine else p['presidente'],
                 'diretor': {**p['diretor'], **(dv or {})}, 'assessor': p['assessor'],
                 'marcas_novas': (self.state.get('marcas_novas') or [])[-6:]}
+
+    def ofertas_jogo_view(self):
+        st = self.state
+        nomes = getattr(self, 'names', None) or {}
+        lst = []
+        for o in getattr(self, 'ofertas_jogo', None) or []:
+            lst.append({**o, 'clube': nomes.get(o['time_id']) or f"Time {o['time_id']}"})
+        if st is not None:
+            vistas = st.setdefault('ofertas_tecnico_vistas', [])
+            for o in lst:
+                if o['time_id'] not in vistas:
+                    vistas.append(o['time_id'])
+                    self._msg_app('Seu empresário', f"Proposta de emprego: {o['clube']}",
+                                  f"O {o['clube']} fez uma proposta para você assumir o time. A proposta está no jogo "
+                                  f"(Master League > ofertas do técnico); aceitar ou recusar é lá. O app acompanha.")
+        return lst
 
     def carreira_view(self):
         st = self.state or {}
@@ -2187,6 +2213,7 @@ class App:
                     self.state['kits_aplicados'] = sig
                     self.state['kits_desenho'] = kits.VERSAO_DESENHO
                     self.state['kits_variantes'] = sorted(v[0] for v in kits.VARIANTS)
+                    self.state['kits_arquivos'] = self._kits_assinatura_disco()
                     self.state['estudio_aplicado'] = est
                     self.persist()
                 self.status['kits'] = 'ok'
@@ -2199,6 +2226,45 @@ class App:
 
         self.kit_thread = threading.Thread(target=run, daemon=True)
         self.kit_thread.start()
+
+    def _kits_assinatura_disco(self):
+        out = {}
+        for variant, fname, _ in kits.VARIANTS:
+            f = os.path.join(self.time['pasta'], variant, fname + '.ftex')
+            try:
+                out[variant] = [os.path.getsize(f), int(os.path.getmtime(f))]
+            except OSError:
+                out[variant] = None
+        return out
+
+    def kits_conferir(self):
+        """Se outro programa (o instalador do patch) trocou as texturas que o app gravou, grava de novo."""
+        if time.time() < getattr(self, '_kits_conf_t', 0):
+            return
+        self._kits_conf_t = time.time() + 60
+        st = self.state or {}
+        ant = st.get('kits_arquivos')
+        if not ant and st.get('kits_aplicados') and self.time and self.time.get('preparado') and \
+                not (self.kit_thread and self.kit_thread.is_alive()):
+            # versões antigas não guardavam os arquivos: grava uma vez (o patch 4.7 sobrescreveu os uniformes)
+            log('uniformes: conferência inicial, gravando de novo todas as variações')
+            try:
+                self.aplicar_kits()
+            except Exception:
+                log(traceback.format_exc())
+            return
+        if not ant or not self.time or not self.time.get('preparado') or (self.kit_thread and self.kit_thread.is_alive()):
+            return
+        agora = self._kits_assinatura_disco()
+        trocados = [v for v, a in ant.items() if a and agora.get(v) and agora[v] != a]
+        if trocados:
+            log('uniformes trocados por outro programa (patch?):', ', '.join(trocados), '- gravando de novo')
+            self.status['aviso'] = ('O patch substituiu os uniformes do clube; o app está gravando de novo os patrocínios '
+                                    'em todas as variações.')
+            try:
+                self.aplicar_kits()
+            except Exception:
+                log(traceback.format_exc())
 
     def time_view(self):
         t = self.time
@@ -2288,7 +2354,7 @@ class App:
             'zerar_pat': st.get('zerar_pat'),
             'dirigentes': self.dirigentes_view() if st else None,
             'marketing': self.marketing_view() if st else None,
-            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(),
+            'estatisticas': self.estatisticas_view(), 'matchday': self.matchday_view(), 'tribunal': self.tribunal_view(), 'dossie': self.dossie_view(), 'bilheteria': self.bilheteria_view(), 'museu': self.museu_view(), 'ofertas_jogo': self.ofertas_jogo_view(),
             'escalacao': self.escalacao_view() if st else None,
             'multa_estimada': {c['id']: eng.multa_rescisao(c) for c in st.get('contratos', [])
                                if c['status'] == 'ativo'} if eng and eng.hoje() else {},
@@ -3062,6 +3128,13 @@ class H(BaseHTTPRequestHandler):
                     if pr.get('custo'):
                         A.aplicar_creditos()
                     A.persist(); return self.send(200, {'ok': True, 'processo': pr})
+                if u.path == '/api/dm/cancelar':
+                    ev_ = A.state.setdefault('gestao', {}).setdefault('eventos', [])
+                    alvo = next((e for e in ev_ if e.get('id') == body.get('id') and str(e.get('id', '')).startswith('fad')), None)
+                    if not alvo:
+                        return self.send(400, {'erro': 'Só dá para cancelar lesão por desgaste criada pelo app.'})
+                    ev_.remove(alvo)
+                    A.persist(); return self.send(200, {'ok': True})
                 if u.path == '/api/museu/aposentar':
                     museu.aposentar(A.state, int(body.get('numero')), str(body.get('nome') or '')[:60])
                     A.persist(); return self.send(200, {'ok': True})

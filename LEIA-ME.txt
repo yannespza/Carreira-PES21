@@ -545,3 +545,13 @@ VERSÃO 4.6.2
 - Estrelas de campeão: centradas no desenho do escudo (não mais na caixa detectada) e nunca saem pelo topo da
   textura. Se o escudo já tem enfeite em cima (a estrela vermelha do Palmeiras) e não há espaço acima, as
   estrelas ficam dos dois lados dele, na mesma altura.
+
+VERSÃO 4.7.0
+- Uniformes: o instalador do patch (atualização de 20/11) tinha trocado as texturas que o app grava, e as
+  camisas e calções voltaram sem os patrocínios do app. O app agora confere os arquivos a cada minuto: se outro
+  programa trocar, ele grava de novo todas as variações (verdes iguais entre si, brancas iguais etc.). Nesta
+  versão ele grava tudo de novo uma vez ao abrir.
+- Propostas de emprego que o técnico recebe no jogo (outros clubes) aparecem em Clube > Carreira do técnico e
+  chegam como mensagem. Aceitar ou recusar continua sendo no jogo.
+- Fadiga: a chance de lesão por desgaste caiu para 12% a 30% (altitude até 45%), no máximo 2 lesões por jogo.
+  Lesões por desgaste criadas pelo app podem ser canceladas no departamento médico ("cancelar lesão").
