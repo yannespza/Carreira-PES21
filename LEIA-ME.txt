@@ -615,3 +615,11 @@ VERSÃO 4.9.5
   Refeita só com o que o seu Sider oferece (conferido no registro do próprio jogo), lendo o endereço da partida
   do mesmo jeito que o Dynamic_Difficulty do patch. Grava sozinha nos gols, no intervalo, no fim e a cada 5
   minutos; você não precisa pausar.
+
+VERSÃO 4.9.6
+- A captura da 4.9.5 funcionou (46 cópias na partida contra o Santos), mas o endereço da partida guarda só um
+  bloco pequeno sem as estatísticas. Mudança de estratégia, igual ao Cheat Engine:
+- Nova sub-aba Jogo > Estatísticas: no intervalo, digite os passes da tela (casa e fora, total e certos) e
+  clique em Procurar. O módulo procura esses números na memória do jogo; no 2º tempo ele descarta sozinho os
+  lugares errados (passes só sobem). No fim, mande a foto da tela de fim de jogo. É uma vez só: depois o app
+  passa a ler as estatísticas sozinho. Continua só lendo; nada é gravado no jogo.

@@ -694,6 +694,7 @@ nav#nav a.on:before{background:var(--lime) !important;box-shadow:0 0 10px var(--
 .dn{background:var(--lime);color:var(--onlime);border-radius:8px;padding:1px 7px;font-size:11px}
 .dm2{color:var(--mut)}
 @media(max-width:820px){.dash{grid-template-columns:1fr 1fr}}
+#estForm input{width:100%;margin-top:6px;padding:8px;font-size:20px;font-weight:700;background:var(--bg);color:var(--txt);border:1px solid var(--lime,#8CFF2E);border-radius:8px}
 </style>
 </head>
 <body>
@@ -874,7 +875,7 @@ nav#nav a.on:before{background:var(--lime) !important;box-shadow:0 0 10px var(--
   <!-- SISTEMA -->
   <section id="t-jogo" class="hidden">
     <div class="crumb">Início / <b>Dia de jogo</b></div>
-    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Viagem</a><a data-j="fad">Fadiga</a><a data-j="dos">Dossiê</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria</a></div>
+    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Viagem</a><a data-j="fad">Fadiga</a><a data-j="dos">Dossiê</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria</a><a data-j="est">Estatísticas</a></div>
     <div id="jogoBox"><div class="empty">Carregando…</div></div>
   </section>
   <section id="t-hist" class="hidden">
@@ -1989,6 +1990,41 @@ JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
    ${M.torcida?`<p class="mdalerta" style="border-color:#f5d14266">🏟️ ${esc(M.torcida.texto)}</p>`:'<p>Torcida mista: o público e a divisão entre as torcidas seguem o módulo de torcida do patch.</p>'}
    <p style="font-size:12px;color:var(--mut)">O app manda para o módulo de torcida do patch a tabela real do Brasileirão (posição, pontos e forma), as rivalidades do clube e a torcida única nos clássicos paulistas. ${simNao(M.torcida_no_jogo,'Configuração gravada.','Módulo de torcida não encontrado.')}</p></div>`};
 
+
+// ---- Achar as estatísticas da partida na memória (uma vez só) ----
+let ESTB=null,ESTB_T=null;
+async function estAtual(){try{ESTB=await api('/api/estatisticas/busca')}catch(e){ESTB=null}
+  if(JTAB=='est'&&!document.querySelector('#estForm input:focus'))rJogo()}
+async function estBuscar(){const g=id=>$(id).value.trim();
+  try{await api('/api/estatisticas/busca',{ct:g('estCT'),cc:g('estCC'),ft:g('estFT'),fc:g('estFC')});
+    toast('Pedido enviado. Volte ao jogo: a busca leva alguns segundos e a tela pode travar um pouco.');estAtual()}
+  catch(e){toast(e.message||'Confira os números.',true)}}
+JOGO_R.est=()=>{if(!ESTB_T){ESTB_T=setInterval(()=>{if(JTAB=='est'&&document.querySelector('#jogoBox'))estAtual()},4000);estAtual()}
+  const E=ESTB||{};
+  const passo=(ok,t)=>`<li style="color:${ok?'#3ddc84':'var(--txt)'}">${ok?'✔ ':''}${t}</li>`;
+  const buscou=E.candidatos!=null, achou=(E.cresceram||0)>0;
+  return `<div class="box"><h3>Achar as estatísticas na memória <small>só uma vez</small></h3>
+   <p>Para o app ler posse, chutes, passes e cartões ao vivo, ele precisa descobrir onde o jogo guarda esses números. É como o Cheat Engine faz: procurar números que você está vendo na tela.</p>
+   <ol style="margin:6px 0 10px 18px;line-height:1.7">
+    ${passo(buscou,'Jogue o 1º tempo normalmente. Na tela do <b>intervalo</b>, olhe a linha <b>Passes (Certos)</b>.')}
+    ${passo(buscou,'Digite aqui os 4 números e clique em <b>Procurar</b>. Volte ao jogo; a tela pode travar uns segundos.')}
+    ${passo(achou,'Jogue o 2º tempo normalmente. O módulo elimina sozinho os lugares errados (passes só sobem).')}
+    ${passo(false,'No fim, me mande a foto da tela de fim de jogo para eu confirmar.')}
+   </ol>
+   <div id="estForm" class="cards" style="align-items:end">
+    <div class="card"><span>Casa · passes</span><input id="estCT" type="number" min="0" inputmode="numeric" placeholder="44"></div>
+    <div class="card"><span>Casa · certos</span><input id="estCC" type="number" min="0" inputmode="numeric" placeholder="33"></div>
+    <div class="card"><span>Fora · passes</span><input id="estFT" type="number" min="0" inputmode="numeric" placeholder="47"></div>
+    <div class="card"><span>Fora · certos</span><input id="estFC" type="number" min="0" inputmode="numeric" placeholder="35"></div>
+   </div>
+   <p><button class="btn" onclick="estBuscar()">Procurar</button></p>
+   <p style="font-size:12px;color:var(--mut)">Exemplo da tela: "44 (33)  Passes (Certos)  47 (35)" → casa 44 e 33, fora 47 e 35. Só leitura: nada é gravado no jogo.</p></div>
+  <div class="box"><h3>Situação</h3>
+   ${E.pedida&&!buscou?`<p>⏳ Pedido enviado (${E.pedida.join(' ')}). O módulo faz a busca assim que o jogo estiver aberto.</p>`:''}
+   ${buscou?`<p>🔎 Busca feita em ${E.segundos??'?'} s: <b>${E.candidatos.toLocaleString('pt-BR')}</b> lugares com esses 4 números.</p>`:''}
+   ${E.momentos?`<p>⏱️ ${E.momentos} conferências no 2º tempo. ${achou?`<b style="color:#3ddc84">${E.cresceram} lugar(es) acompanharam os passes subindo</b>: ${E.achados.map(esc).join(' · ')}`:'Ainda nenhum lugar acompanhou os passes subindo; continue jogando.'}</p>`:''}
+   ${E.ponteiros?`<p>📌 Caminho fixo encontrado (${E.ponteiros}): nas próximas partidas o app poderá ler sozinho.</p>`:''}
+   ${!E.pedida&&!buscou?'<p style="color:var(--mut)">Nenhuma busca ainda.</p>':''}</div>`};
 const ftMini=(id)=>`<img class="stft" src="/foto/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`;
 JOGO_R.dos=()=>{const D=S.dossie;if(!D)return '<div class="box"><div class="empty">O dossiê aparece quando houver próximo jogo e o adversário tiver partidas no save.</div></div>';
   const ar=(k)=>`<tr><td style="text-align:left">${k=='altura'?'Altura média':k=='cabeceio'?'Cabeceio':'Impulsão'}</td><td>${D.aereo_deles[k]??'—'}</td><td>${D.aereo_nosso[k]??'—'}</td></tr>`;

@@ -78,7 +78,7 @@ Não reescreva a parte binária (`pescrypt.py`, `savedata.Career.write`, `escala
 ## Lua do Sider do patch (conferido no debug_log.txt do jogo)
 - NÃO existe `pcall`/`xpcall`/`require`; existem `ffi`, `memory`, `match`, `io`, `log`, `os`, `bit`, `zlib`, `fs`.
 - `ctx.mis` chega como userdata: use `ffi.cast("char*", ctx.mis)` (como o Dynamic_Difficulty). `memory.read(numero, n)` funciona.
-- Captura da partida: `core/captura.py` (AppCarreiraCaptura.lua v3) grava em `GOGOSZ\AppCarreira\captura\cap_*.bin` + `inicio.txt`.
+- Estatísticas da partida: `core/captura.py` (AppCarreiraCaptura.lua v4). O MATCH_INFO (ctx.mis) é um bloco de 4 KB sem estatísticas (testado 21/11). v4 = busca estilo Cheat Engine: aba Jogo > Estatísticas grava `captura\busca.txt` (passes casa/certos, fora/certos, hora); o módulo varre a memória privada (VirtualQuery), guarda até 1 milhão de candidatos (ffi), elimina no 2º tempo os que não sobem e grava `resultado.txt`, `hits_NNN.txt/.bin` e ponteiros `exe+offset`. Rotas GET/POST `/api/estatisticas/busca`.
 
 ## Gravações no save
 

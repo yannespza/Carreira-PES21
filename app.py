@@ -2591,6 +2591,8 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
+            if u.path == '/api/estatisticas/busca':
+                return self.send(200, captura.estado(CFG.get('pasta_jogo', '')))
             if u.path == '/api/formacoes':
                 with LOCK:
                     return self.send(200, {'lista': A.formacoes_catalogo()})
@@ -3294,6 +3296,14 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/olheiros':
                     res_ = olheiros.buscar(A.pool_mercado(), body.get('missao'), A.tid(), body.get('pos') or None)
                     return self.send(200, {'lista': res_})
+                if u.path == '/api/estatisticas/busca':
+                    try:
+                        v_ = captura.pedir_busca(CFG.get('pasta_jogo', ''), body.get('ct'), body.get('cc'),
+                                                 body.get('ft'), body.get('fc'))
+                    except (TypeError, ValueError) as e_:
+                        return self.send(400, {'erro': str(e_) or 'Números inválidos.'})
+                    log('busca de estatísticas pedida: %s' % v_)
+                    return self.send(200, {'ok': True})
                 if u.path == '/api/logistica':
                     md = A.state.get('matchday') or {}
                     prox, L = md.get('proximo'), md.get('logistica') or {}
