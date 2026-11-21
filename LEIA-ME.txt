@@ -603,3 +603,9 @@ VERSÃO 4.9.3
   hora. Antes, o limite de 8 segundos acabava antes de o modelo terminar de carregar.
 - O "modo pensar" dos modelos novos (como o Gemma 4) fica desligado, para responder rápido.
 - Na coletiva, ao responder com as suas palavras, aparece se quem avaliou foi a IA ou as regras prontas.
+
+VERSÃO 4.9.4
+- Captura da partida (AppCarreiraCaptura.lua versão 2): a versão anterior carregava mas não gravava nada. Agora
+  guarda uma cópia maior da memória da partida quando sai gol, no intervalo, no fim, a cada 5 minutos de jogo e
+  sempre que você pausa (relógio parado por 3 segundos). As cópias da pausa casam com as fotos da tela de
+  estatísticas. Continua só lendo, sem escrever nada no jogo, e registra no sider.log o que fez.
