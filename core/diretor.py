@@ -13,7 +13,7 @@ import datetime as dt
 import random
 
 from .sim import d2s, s2d, _seed, fmt_eur
-from .vozes import L, Memoria, fmt
+from .vozes import L, Memoria
 
 ESPERA_APORTE = 45          # dias entre pedidos de verba extra
 ESPERA_RECUSA = 21          # depois de uma recusa

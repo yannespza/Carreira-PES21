@@ -654,3 +654,19 @@ VERSÃO 4.10.0
   "Enviar foto da tela" (foto do celular).
 - Se o print sair preto, coloque o PES em "janela sem bordas" nas configurações do jogo.
 - A busca na memória foi desligada (o módulo continua instalado, mas sem fazer nada).
+
+VERSÃO 4.11.0 · faxina geral
+- Saiu a IA (Ollama): a coletiva voltou a ser só de respostas prontas, sem a caixa de escrever. A configuração
+  da IA sumiu da aba Sistema. Pode desinstalar o Ollama do PC se quiser.
+- Saíram também a leitura das estatísticas por print, a busca na memória e o leitor de memória. Os módulos
+  AppCarreiraCaptura.lua e AppCarreiraMemoria.lua são tirados do jogo sozinhos ao abrir o app (com backup do
+  sider.ini). O módulo ao vivo não grava mais "sondas" a cada gol.
+- Coletiva: cerca de 60 perguntas novas com respostas mais criativas, mais reações dos jornalistas e mais
+  aberturas para cada um deles.
+- Erros corrigidos:
+  - depois da 30ª coletiva, todas as novas ganhavam o mesmo código e o app dizia "Essa coletiva já terminou"
+    ao responder. Carreiras antigas são renumeradas sozinhas;
+  - o mesmo problema podia acontecer nos eventos do vestiário e do departamento médico (mais de 60);
+  - telas de uniforme não davam mais erro quando nenhum uniforme foi detectado ainda.
+- Limpeza: código sem uso removido; a atualização agora apaga do PC os arquivos de código que saíram do projeto
+  (guardando cópia em data\versoes) e mantém só as 5 últimas versões guardadas.

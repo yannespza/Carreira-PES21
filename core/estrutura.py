@@ -10,6 +10,7 @@ Cada melhoria vira uma obra com prazo; o efeito vale quando a obra termina.
 Valor da marca (0 a 100): sobe com títulos, acessos, campanhas boas e torcida feliz; cai com rebaixamento.
 Ela entra na atratividade para os patrocinadores e destrava investidas de empresas maiores."""
 import datetime as dt
+from .gestao import novo_id as _novo_id
 from .sim import d2s, s2d, fmt_eur
 
 DEPTOS = {
@@ -103,7 +104,7 @@ def investir_gramado(state, k, hoje):
     orc = (state.get('dinheiro') or {}).get('orc_transf')
     if orc is not None and orc < c:
         raise ValueError(f'O orçamento de transferências ({fmt_eur(orc)}) não cobre o serviço ({fmt_eur(c)}).')
-    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+    state.setdefault('debitos', []).append({'id': _novo_id(state.get('debitos', []), 'deb'), 'data': d2s(hoje),
                                             'valor': c, 'status': 'pendente', 'motivo': f"Gramado: {a['nome']}"})
     if a['dias']:
         gr['obra'] = {'acao': k, 'nome': a['nome'], 'ganho': a['ganho'], 'inicio': d2s(hoje),
@@ -138,7 +139,7 @@ def investir(state, k, hoje):
     n = e[k]['nivel']
     fim = hoje + dt.timedelta(days=OBRA_DIAS[n - 1])
     e[k]['obra'] = {'para': n + 1, 'inicio': d2s(hoje), 'fim': d2s(fim), 'custo': c}
-    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+    state.setdefault('debitos', []).append({'id': _novo_id(state.get('debitos', []), 'deb'), 'data': d2s(hoje),
                                             'valor': c, 'status': 'pendente',
                                             'motivo': f"Obra: {DEPTOS[k]['nome']} nível {n + 1}"})
     return e[k]['obra']

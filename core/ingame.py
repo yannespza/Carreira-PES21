@@ -381,6 +381,31 @@ def instalar_modulo(pasta_jogo, backup_dir, log=print, nome=None, conteudo=None)
     return True
 
 
+def remover_modulo(pasta_jogo, nome, backup_dir, log=print):
+    """Tira um módulo Lua do app do jogo: a linha do sider.ini (com backup) e o arquivo em modules."""
+    ini = os.path.join(pasta_jogo, 'sider.ini')
+    mudou = False
+    try:
+        txt = open(ini, encoding='utf-8', errors='replace').read()
+        linhas = txt.splitlines(True)
+        novas = [ln for ln in linhas if not (ln.strip().lower().startswith('lua.module') and nome.lower() in ln.lower())]
+        if len(novas) != len(linhas):
+            os.makedirs(backup_dir, exist_ok=True)
+            shutil.copy2(ini, os.path.join(backup_dir, 'sider.ini.%d.bak' % int(time.time())))
+            open(ini, 'w', encoding='utf-8').write(''.join(novas))
+            mudou = True
+    except OSError:
+        pass
+    try:
+        os.remove(os.path.join(pasta_jogo, 'modules', nome))
+        mudou = True
+    except OSError:
+        pass
+    if mudou:
+        log(f'módulo {nome} removido do jogo')
+    return mudou
+
+
 def gerar(pasta_jogo, team_id, clube, cores, escudo, patro, plano, gram, log=print):
     """plano: resultado de plano_faixas; gram: (nivel, forca) de nivel_gramado."""
     """Monta as texturas do clube atual e o mapa.txt que o módulo do Sider lê. Devolve um resumo."""

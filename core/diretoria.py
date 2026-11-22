@@ -9,7 +9,7 @@
 - Demitido, chegam propostas de outros clubes. Para assumir, comece uma carreira nova com o clube no jogo:
   o app passa a acompanhar o novo time sozinho e a carreira do técnico continua (tecnico_carreira.py).
 """
-import random, datetime as dt
+import random
 from .sim import d2s, s2d, _seed
 
 PRAZO_ULTIMATO = 4
@@ -162,7 +162,7 @@ def processar(state, engine, mundo, hoje, nomes):
         return
     e = _e(state)
     ds = d2s(hoje)
-    meta = metas_da_temporada(state, engine, hoje)
+    metas_da_temporada(state, engine, hoje)   # cria as metas da temporada, se ainda faltarem
     e.setdefault('contrato_ate', temporada(hoje) + 1)
     if e['status'] != 'empregado':
         return

@@ -33,12 +33,10 @@ Depois de publicar, lembre o usuário de reiniciar o app com o botão ⏻.
 | Gestão do elenco: renovação, empréstimo, insatisfeitos, conversa, histórico | `core/gestao_elenco.py` |
 | Pressão por vendas, planejamento, protestos/festa, convocação | `core/clube_eventos.py` |
 | Prêmios da liga (craque da rodada, artilharia, seleção) | `core/premios.py` |
-| Diagnóstico de memória do jogo via Sider (somente leitura; relatórios `memoria_*.txt` vão na cópia remota, pasta `memoria/`) | `core/memoria_jogo.py` |
 | Cópia do save para o GitHub privado (análise a distância) | `core/copia_remota.py` (repo yannespza/carreira-pes21-saves: `saves/AAAA-MM-DD/HHMMSS_<arquivo>.pesz`, uma versão por gravação; na virada da semana ficam só as 2 mais recentes de cada save e o histórico do repo recomeça). Abrir/comparar/montar no /tmp/sim: `ferramentas/saves_remotos.py` |
 | Aba Jogo (dia de jogo): clima/torcida no Sider, dossiê, tribunal, fadiga, viagem, bilheteria | `core/matchday.py` (force_weather.ini do StadiumServer, crowd_behavior.ini/crowd_standings.csv), `core/cidades.py` (cidade/altitude por nome), `core/dossie.py`, `core/tribunal.py`, `core/fadiga.py`, `core/forca.py` (AppCarreiraForca.lua: soma força no MATCH_INFO+0x20/+0x28 como o Dynamic_Difficulty), `core/bilheteria.py`; app: `App.matchday_atualizar`, `fadiga_atualizar`, `tribunal_dossie`; UI `rJogo()`/`JOGO_R` |
 | Formações do patch (catálogo do EDIT, 628 B por time) e gravar formação | `escalacao.catalogo`, `escalacao.gravar_formacao` (tipo de gravação `formacao`, passa pelo espaço de teste); UI `escTrocarForm`, `papelZona`, `hungaro` |
 | Aba História: museu permanente, hall da fama, carrascos, olheiros, análise | `core/museu.py` (state['museu']), `core/olheiros.py`; UI `rHist()`/`HIST_R` |
-| IA opcional (Ollama/nuvem, JSON, 20 s ou 120 s na carga, think=False, corte -5..+5; ia.testar explica o erro, ia.aquecer carrega o modelo) | `core/ia.py`; coletiva com resposta livre `gestao.responder_livre`, rota `/api/coletiva/livre`; config na aba Sistema |
 Esses módulos são chamados em `App.mercado_processar` e `App.extras_processar`; a tela recebe `extras_view()`.
 Nenhum deles grava no save (troca de clube, renovação e empréstimo esperam o teste no PC).
 
@@ -78,7 +76,11 @@ Não reescreva a parte binária (`pescrypt.py`, `savedata.Career.write`, `escala
 ## Lua do Sider do patch (conferido no debug_log.txt do jogo)
 - NÃO existe `pcall`/`xpcall`/`require`; existem `ffi`, `memory`, `match`, `io`, `log`, `os`, `bit`, `zlib`, `fs`.
 - `ctx.mis` chega como userdata: use `ffi.cast("char*", ctx.mis)` (como o Dynamic_Difficulty). `memory.read(numero, n)` funciona.
-- Estatísticas da partida: busca na memória (`core/captura.py`, v1–v5) NÃO achou (21/11); o módulo agora é instalado vazio (`LUA_DESLIGADO`, `CFG['captura_memoria']` liga). Valem os prints: `core/estat_print.py` (ImageGrab no intervalo e no fim, disparado em `App.ao_vivo_evento` pelos eventos `periodo`/`fim`; leitura com `ia.ler_imagem_json` = Ollama com visão, gemma4) → `App.estat_lida` → `state['estat_jogos']`; rotas GET `/api/estatisticas`, POST `/foto`, `/print_agora`, `/ligar`; UI `JOGO_R.est`.
+- Pesquisa de memória encerrada (21/11): busca de estatísticas (captura v1–v5), estatísticas por print com IA e o leitor de memória saíram no 4.11.0. Na inicialização o app tira `AppCarreiraCaptura.lua` e `AppCarreiraMemoria.lua` do jogo (`ingame.remover_modulo`). `AppCarreiraAoVivo.lua` não grava mais sondas nos gols (`m.sondar_gols = false`).
+
+## Removido no 4.11.0 (não recriar sem o usuário pedir)
+- IA/Ollama (coletiva com resposta escrita, leitura de prints). A coletiva é só de respostas prontas (`core/coletiva_perguntas.py`, com o banco `EXTRA`).
+- Ids de listas cortadas: use `gestao.novo_id(lista, prefixo)`; contar `len(lista)` repetia ids (bug das coletivas depois da 30ª).
 
 ## Gravações no save
 

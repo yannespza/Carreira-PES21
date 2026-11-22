@@ -7,7 +7,6 @@ campo).
 Juniores: o save do Master League guarda os jogadores da base numa tabela de registros de 0x170 bytes
 (número sequencial, id do jogador...; +0x164 CGJ atual), com o time principal e os juniores juntos. Outra
 tabela, de 0xC0 bytes, guarda idade e a curva de CGJ de cada jogador do clube (principal e juniores)."""
-import struct
 
 import numpy as np
 

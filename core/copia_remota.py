@@ -107,10 +107,8 @@ def limpar_semana(token, repo, manter=MANTER_VERSOES):
             ficam.add(caminho)
             if nome.startswith('ML'):
                 ficam.add(caminho.replace('_' + nome + '.pesz', '_app_carreira.json'))
-    mem = sorted(t['path'] for t in blobs if t['path'].startswith('memoria/'))
-    ficam.update(mem[-6:])                 # relatórios de memória: só os 6 mais recentes
     novos = [{'path': t['path'], 'mode': t.get('mode', '100644'), 'type': 'blob', 'sha': t['sha']}
-             for t in blobs if not (t['path'].startswith('saves/') or t['path'].startswith('memoria/')) or t['path'] in ficam]
+             for t in blobs if not (t['path'].startswith('saves/') or t['path'].startswith('memoria/')) or t['path'] in ficam]  # memoria/ (antigo) sai
     removidos = len(blobs) - len(novos)
     if not removidos:
         return len(novos), 0
@@ -179,24 +177,6 @@ def _arquivos(pasta):
     return out
 
 
-def _enviar_memoria(c, token, repo, pasta_jogo):
-    """Manda os relatórios de memória do jogo (Sider) quando mudam."""
-    from . import memoria_jogo
-    env = c.setdefault('enviados', {})
-    n = 0
-    for arq in memoria_jogo.arquivos_lidos(pasta_jogo):
-        m = os.path.getmtime(arq)
-        if env.get(arq) == m:
-            continue
-        quando = dt.datetime.fromtimestamp(m)
-        caminho = f"memoria/{quando.date().isoformat()}/{quando.strftime('%H%M%S')}_{os.path.basename(arq)}"
-        with open(arq, 'rb') as f:
-            _enviar_arquivo(token, repo, caminho, f.read(), 'memória do jogo')
-        env[arq] = m
-        n += 1
-    return n
-
-
 def enviar(data_dir, save_path, estado_path, versao, forcar=False, pasta_jogo=None):
     """Manda uma versão nova de cada save (e do EDIT) que mudou desde o último envio. Devolve quantos enviou."""
     c = ler_cfg(data_dir)
@@ -215,23 +195,12 @@ def enviar(data_dir, save_path, estado_path, versao, forcar=False, pasta_jogo=No
     if not _lock.acquire(blocking=False):
         return 0
     if not pend:
-        try:
-            if pasta_jogo and _enviar_memoria(c, c['token'], c['repo'], pasta_jogo):
-                salvar_cfg(data_dir, c)
-        except Exception as e:
-            status['erro'] = f'memória: {e}'
-        finally:
-            _lock.release()
+        _lock.release()
         return 0
     status['enviando'] = True
     n = 0
     try:
         token, repo = c['token'], c['repo']
-        if pasta_jogo:
-            try:
-                _enviar_memoria(c, token, repo, pasta_jogo)
-            except Exception as e:
-                status['erro'] = f'memória: {e}'
         lista = []
         for m, arq in sorted(pend):
             quando = dt.datetime.fromtimestamp(m)

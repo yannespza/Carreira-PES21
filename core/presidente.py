@@ -5,11 +5,10 @@ negocia (pede mais) ou deixa passar, e procura empresas para espaços vazios. Se
 Cada contrato fechado vira nota na imprensa explicando por que o presidente escolheu a marca e por que a
 empresa quis o clube. O técnico continua controlando como a marca aparece no uniforme (aba Uniformes).
 """
-import datetime as dt
 import random
 
 from .sim import d2s, s2d, _seed, fmt_eur, pos_txt, SLOTS
-from .vozes import L, Memoria, fmt
+from .vozes import L, Memoria
 
 # quanto da "proposta justa" cada perfil aceita sem negociar, e quanto pede a mais
 REGUA = {'apaixonado': (0.9, 15), 'empresario': (1.02, 25), 'politico': (0.95, 15), 'conservador': (0.92, 10)}

@@ -92,7 +92,6 @@ class Mundo:
         return vozes.respostas(humor, mem, rnd, autor, vozes.torcedores(self.clube), v, n)
 
     def _lesionado(self):
-        from datetime import date
         hoje = self._hoje()
         for e in reversed((self.s.get('gestao') or {}).get('eventos', [])):
             if e.get('tipo') == 'lesao' and e.get('volta') and hoje and e['volta'] > hoje:

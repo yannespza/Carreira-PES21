@@ -1,7 +1,7 @@
 """Gestão do clube além dos patrocínios: coletivas de imprensa, eventos do vestiário, movimentação do
 elenco (chegadas e saídas), revisão anual dos contratos e prancheta. Tudo roda só no app (não mexe no save)."""
 import random, datetime as dt
-from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES, comp_de
+from .sim import d2s, s2d, fmt_eur, _seed, TITULO_PESO, COMP_NOMES
 
 # ---------------- coletivas de imprensa ----------------
 # cada resposta: texto, tom (rosto do técnico), efeito na torcida, efeito na diretoria e o estilo da resposta.
@@ -32,6 +32,41 @@ REACAO = {
     'pressao': (['Ele tem razão: o elenco é curto.', 'Recado dado à diretoria. Corajoso.', 'Cobrou a diretoria com coragem.', 'Disse em público o que todo mundo fala em off.'],
                 ['Jogar a culpa na diretoria em público? Isso tem preço.', 'Pedir reforço pelo microfone é queimar ponte.', 'Recado público à diretoria raramente termina bem.', 'Queimou a ponte com o presidente ao vivo.']),
 }
+
+
+# reações extras dos jornalistas (4.11.0)
+for _e, (_bom, _ruim) in {
+    'humilde': (['Discurso de quem conhece o tamanho do desafio.', 'Humildade que não é fraqueza. Bom sinal.'],
+                ['Técnico de clube grande não pode falar como quem luta para não cair.', 'Tanta cautela que parece medo.']),
+    'corporativo': (['Não caiu em nenhuma armadilha. Experiente.', 'Fala de quem não quer incêndio no vestiário.'],
+                    ['Respondeu como assessor de imprensa.', 'Bateu o recorde de frases feitas numa coletiva.']),
+    'empolgar': (['O torcedor vai dormir sorrindo hoje.', 'Tem que ter brilho no olho. Ele tem.'],
+                 ['Euforia é o primeiro degrau da queda.', 'Discurso de campeão em outubro costuma virar meme em dezembro.']),
+    'provocar': (['Atrevido. E o futebol precisa disso.', 'O rival vai pendurar essa frase no vestiário. Ótimo.'],
+                 ['Ganhou a coletiva e talvez perca o próximo jogo.', 'Provocação boa é a que vem depois da taça, não antes.']),
+    'culpa': (['Puxou a bronca para si. O grupo agradece em campo.', 'Raro ver técnico assumindo assim.'],
+              ['Assumir a culpa não é plano de jogo.', 'Mea-culpa bonita. Falta a correção.']),
+    'expor': (['Cobrou em público porque em particular não adiantou.', 'Alguém precisava dizer. Ele disse.'],
+              ['Tem jogador que vai ler isso no celular e fechar a cara.', 'Quem expõe o grupo um dia fica sem grupo.']),
+    'proteger': (['Ele vai ter esse elenco na mão por muito tempo.', 'Técnico que blinda colhe lealdade.'],
+                 ['Proteger demais vira conivência.', 'Não dá para chamar de azar o que foi erro.']),
+    'arbitragem': (['Falou com dados, não com raiva. Faz sentido.', 'Lance polêmico mesmo. A reclamação procede.'],
+                   ['Juiz é o culpado de sempre de quem não quer olhar para dentro.', 'Reclamou do apito para não falar do time.']),
+    'pressao': (['Cobrou quem tinha que cobrar.', 'Corajoso: pediu reforço sem rodeio.'],
+                ['O presidente não deve ter gostado nada do que ouviu.', 'Pedir reforço na coletiva é jogar a torcida contra a diretoria.']),
+}.items():
+    REACAO[_e][0].extend(_bom)
+    REACAO[_e][1].extend(_ruim)
+
+
+def novo_id(lista, prefixo):
+    """Próximo id livre ("ev61"); contar o tamanho da lista repetia ids quando ela é cortada."""
+    n = 0
+    for x in lista:
+        t = str(x.get('id', ''))
+        if t.startswith(prefixo) and t[len(prefixo):].isdigit():
+            n = max(n, int(t[len(prefixo):]))
+    return f'{prefixo}{n + 1}'
 
 
 def _preencher(t, v):
@@ -93,6 +128,11 @@ class Gestao:
         g.setdefault('prancheta', {})
         g.setdefault('revisoes', [])
         self.g = g
+        # carreiras com mais de 30 coletivas ficaram com ids repetidos ("col31"): renumera em ordem
+        ids = [c.get('id') for c in g['coletivas']]
+        if len(ids) != len(set(ids)):
+            for i, c in enumerate(g['coletivas'], 1):
+                c['id'] = f'col{i}'
 
     # ---------- coletiva depois de cada jogo novo ----------
     def coletiva_nova(self, partida, nomes, rivais=(), fatos=None):
@@ -162,13 +202,19 @@ class Gestao:
             qs.append((q, ans, None))
         qs = [(_preencher(q, v), [(_preencher(a[0], v), *a[1:]) for a in ans], j) for q, ans, j in qs[:5]]
         self.g['coletivas'].append({
-            'id': f"col{len(self.g['coletivas']) + 1}", 'partida': partida['chave'], 'data': partida['data'],
+            'id': self._novo_id_coletiva(), 'partida': partida['chave'], 'data': partida['data'],
             'titulo': f"{self.clube} {gp} x {gc} {adv}", 'tipo': tipo, 'status': 'aberta', 'classico': classico,
             'fatos_usados': fatos_usados,
             'perguntas': [{'texto': q, 'respostas': [a[0] for a in ans], 'efeitos': [list(a[1:]) for a in ans],
                            'escolha': None, 'jogador': jg or None, **_reporter(tipo, i, partida['chave'])}
                           for i, (q, ans, jg) in enumerate(qs)]})
         self.g['coletivas'] = self.g['coletivas'][-30:]
+
+    def _novo_id_coletiva(self):
+        # a lista guarda só as 30 últimas: contar o tamanho repetia o id depois da 30ª coletiva
+        nums = [int(c['id'][3:]) for c in self.g['coletivas'] if str(c.get('id', '')).startswith('col')
+                and str(c['id'])[3:].isdigit()]
+        return f"col{max(nums, default=0) + 1}"
 
     def _situacoes(self, partida, dia, cod, v):
         """[(urgência, chave do banco, jogador)] do momento do clube."""
@@ -225,7 +271,8 @@ class Gestao:
         return out
 
     def responder(self, cid, q, a, mundo):
-        c = next((x for x in self.g['coletivas'] if x['id'] == cid), None)
+        # a mais recente com esse id (carreiras antigas podem ter ids repetidos)
+        c = next((x for x in reversed(self.g['coletivas']) if x['id'] == cid), None)
         if not c or c['status'] != 'aberta':
             raise ValueError('Essa coletiva já terminou.')
         perg = c['perguntas'][q]
@@ -251,8 +298,7 @@ class Gestao:
             c['status'] = 'respondida'
             r = random.Random(_seed('colnot', cid))
             p0 = c['perguntas'][0]
-            frase = p0.get('livre') if p0['escolha'] == -1 else p0['respostas'][p0['escolha']]
-            frase = (frase or '')[:120]
+            frase = (p0['respostas'][p0['escolha']] if p0['escolha'] is not None and p0['escolha'] >= 0 else '')[:120]
             mundo.m['noticias'].append({'data': self.s.get('data'), 'tipo': 'coletiva', 'destaque': False,
                                         'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN', 'UOL Esporte']),
                                         'titulo': f'Técnico do {self.clube}: "{frase}"'})
@@ -266,37 +312,6 @@ class Gestao:
         d = {'proteger': 1, 'empolgar': 1, 'culpa': 1, 'expor': -2, 'provocar': 0}.get(estilo, 0)
         if d:
             moral_ajuste(self.s, j, d, data, 'o técnico o ' + ('defendeu' if d > 0 else 'criticou') + ' na coletiva', 14)
-
-    def responder_livre(self, cid, q, texto, mundo, aval):
-        """Resposta com as palavras do técnico, já avaliada (IA ou regras): impactos entre -5 e +5."""
-        c = next((x for x in self.g['coletivas'] if x['id'] == cid), None)
-        if not c or c['status'] != 'aberta':
-            raise ValueError('Essa coletiva já terminou.')
-        perg = c['perguntas'][q]
-        if perg['escolha'] is not None:
-            raise ValueError('Pergunta já respondida.')
-        perg['escolha'] = -1
-        perg['livre'] = texto[:600]
-        perg['avaliacao'] = aval
-        self._moral_citado(perg, aval['estilo'], c['data'])
-        mundo._torcida(aval['torcida'])
-        mundo.m['diretoria'] = int(max(0, min(100, mundo.m['diretoria'] + aval['diretoria'])))
-        from . import vestiario
-        vestiario.coletiva(self.s, aval['estilo'], c['data'])
-        k = perg.get('reporter') or 'lacerda'
-        bom = aval['estilo'] in APROVA.get(k, set()) or aval.get('imprensa', 0) > 0
-        rr = random.Random(_seed('reac', cid, q, texto[:40]))
-        perg['reacao'] = {'texto': aval.get('reacao') or rr.choice(REACAO[aval['estilo']][0 if bom else 1]), 'bom': bom}
-        self.g['imprensa'] = int(max(0, min(100, self.g.get('imprensa', 55) + (aval.get('imprensa') or (3 if bom else -3)))))
-        if all(p['escolha'] is not None for p in c['perguntas']):
-            c['status'] = 'respondida'
-            r = random.Random(_seed('colnot', cid))
-            p0 = c['perguntas'][0]
-            frase = (p0.get('livre') if p0['escolha'] == -1 else p0['respostas'][p0['escolha']]) or ''
-            mundo.m['noticias'].append({'data': self.s.get('data'), 'tipo': 'coletiva', 'destaque': False,
-                                        'fonte': r.choice(['Lance!', 'Globo Esporte', 'ESPN', 'UOL Esporte']),
-                                        'titulo': f'Técnico do {self.clube}: "{frase[:120]}"'})
-        return 'feliz' if aval['torcida'] + aval['diretoria'] > 1 else 'irritado' if aval['torcida'] + aval['diretoria'] < -1 else 'neutro'
 
     # ---------- eventos do vestiário (só no app) ----------
     EVENTOS = [
@@ -342,7 +357,7 @@ class Gestao:
         if tipo == 'lesao':
             dias = max(2, int(round(dias * estrutura.duracao_lesao(self.s))))
         volta = dia + dt.timedelta(days=dias)
-        ev = {'id': f"ev{len(self.g['eventos']) + 1}", 'data': ds, 'jogador_id': j['id'], 'jogador': j['nome'],
+        ev = {'id': novo_id(self.g['eventos'], 'ev'), 'data': ds, 'jogador_id': j['id'], 'jogador': j['nome'],
               'tipo': tipo, 'titulo': titulo, 'texto': f"{j['nome']} {txt}. Volta prevista: {volta.strftime('%d/%m/%Y')}.",
               'volta': d2s(volta)}
         self.g['eventos'].append(ev)

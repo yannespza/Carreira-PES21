@@ -329,22 +329,6 @@ def catalogo(edit: bytes):
     return out
 
 
-def papel_por_zona(prof, lado):
-    """Função tática pela zona do campo (como o PES rotula quando você arrasta um jogador no plano de jogo)."""
-    lat_e, lat_d = lado <= 24, lado >= 80
-    if prof <= 15:
-        return 2 if lat_e else 3 if lat_d else 1
-    if prof <= 24:
-        return 6 if lat_e else 7 if lat_d else 4
-    if prof <= 30:
-        return 6 if lat_e else 7 if lat_d else 5
-    if prof <= 37:
-        return 9 if lado <= 30 else 10 if lado >= 74 else 8
-    if prof <= 41:
-        return 9 if lado <= 30 else 10 if lado >= 74 else 11
-    return 9 if lado <= 20 else 10 if lado >= 84 else 12
-
-
 def gravar_formacao(car, esc, vagas):
     """Grava a formação (11 vagas na ordem do plano) no bloco ativo. A gravação no disco é feita por car.write."""
     if len(vagas) != N_TIT:

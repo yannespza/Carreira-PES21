@@ -13,7 +13,7 @@ import random
 import re
 
 from .sim import d2s, s2d, _seed
-from .vozes import L, Memoria, fmt, humanizar
+from .vozes import L, Memoria
 from . import vozes
 
 # ---------------- calendário de campanhas ----------------
@@ -235,14 +235,6 @@ o professor sabe o que faz"""),
         'zoeira': L("""vai ver o {corm} não combina com o técnico kkk|tem que fazer camisa pra isso? kkk|já ia reclamar da camisa também, melhor assim kkk"""),
     },
 }
-
-
-def _tem(n, k):
-    return k in n and bool(n[k])
-
-
-def _com_anos(d, a):
-    return d.year - a
 
 
 def _data(d):

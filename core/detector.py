@@ -213,20 +213,6 @@ def preencher(a, caixa, proibido, R=6, sw=6, so_baixo=False):
             reg[~feito] = cor
 
 
-def sugerir_manter(caixas):
-    """Índices que provavelmente são escudo/marca do fornecedor (desmarcados por padrão)."""
-    manter = set()
-    for i, c in enumerate(caixas):
-        x0, y0, x1, y1, zona = c[:5]
-        cx, cy, w, h = (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0
-        quadrado = 0.6 < w / max(1, h) < 1.6 and max(w, h) < 190
-        if zona == 'frente' and 1100 < cy < 1290 and quadrado:
-            manter.add(i)            # escudo e marca no peito
-        if zona in ('calcao_e', 'calcao_d') and quadrado and 1450 < cy < 1800:
-            manter.add(i)            # escudo/marca no calção
-    return manter
-
-
 def _tirar_manter(c, manter):
     """Encolhe a caixa para não encostar no escudo/marca do fornecedor."""
     x0, y0, x1, y1 = c[:4]
@@ -267,22 +253,6 @@ def limpar(img: Image.Image, caixas, manter=()):
     return Image.fromarray(a, 'RGBA')
 
 
-def desenhar(img: Image.Image, caixas, marcadas=None, largura=900):
-    """Imagem para revisão: caixas numeradas (verde = vai apagar, cinza = manter)."""
-    from PIL import ImageDraw
-    s = largura / 2048
-    im = img.convert('RGB').resize((largura, largura), Image.LANCZOS)
-    d = ImageDraw.Draw(im)
-    for i, c in enumerate(caixas):
-        on = marcadas is None or i in marcadas
-        cor = (200, 240, 49) if on else (130, 130, 130)
-        box = [c[0] * s, c[1] * s, c[2] * s, c[3] * s]
-        d.rectangle(box, outline=cor, width=2)
-        d.rectangle([box[0], box[1] - 12, box[0] + 18, box[1]], fill=cor)
-        d.text((box[0] + 3, box[1] - 12), str(i + 1), fill=(0, 0, 0))
-    return im
-
-
 # ---------------------------------------------------------------------------
 # Posições padrão do molde GUITAKITMAKER (usado na maioria dos uniformes do GOGOSZ).
 # Para cada posição: áreas de busca (x0,y0,x1,y1) na textura 2048 e o giro do logo em cada uma.
@@ -307,72 +277,7 @@ MOLDE = {
 }
 
 
-def _fundo(borda, minimo=0.04):
-    q = (borda // 20).reshape(-1, 3)
-    k = q[:, 0] * 10000 + q[:, 1] * 100 + q[:, 2]
-    vals, cont = np.unique(k, return_counts=True)
-    tot = cont.sum()
-    cores = [borda.reshape(-1, 3)[k == v].mean(0) for v, c in zip(vals, cont) if c / tot >= minimo]
-    if not cores:
-        cores = [np.median(borda.reshape(-1, 3), 0)]
-    return np.array(cores)
-
-
-def achar_no_retangulo(rgb, area, faixa=10, limiar=75, juntar=True, encosta=6):
-    """Procura um logo dentro de uma área: compara cada pixel com as cores da borda da área."""
-    x0, y0, x1, y1 = area
-    reg = rgb[y0:y1, x0:x1]
-    borda = np.concatenate([reg[:faixa].reshape(-1, 3), reg[-faixa:].reshape(-1, 3),
-                            reg[:, :faixa].reshape(-1, 3), reg[:, -faixa:].reshape(-1, 3)])
-    base = _fundo(borda)
-    d = np.min(np.linalg.norm(reg[:, :, None, :] - base[None, None], axis=3), axis=2)
-    m = d > limiar
-    if m.mean() < 0.006:
-        return None
-    # agrupa os pedaços (letras) e fica com o maior grupo e os que estão colados nele
-    h, w = m.shape
-    pequeno = Image.fromarray((m * 255).astype('uint8')).resize((max(1, w // 2), max(1, h // 2)), Image.BOX)
-    pequeno = np.array(pequeno.filter(ImageFilter.MaxFilter(7))) > 40
-    comps = [c for c in _componentes(pequeno) if c[4] >= 12]
-    if not comps:
-        return None
-    comps.sort(key=lambda c: -c[4])
-    g = list(comps[0][:4])
-    for c in comps[1:]:
-        perto = not (c[0] > g[2] + encosta or c[2] < g[0] - encosta or c[1] > g[3] + encosta or c[3] < g[1] - encosta)
-        # pedaços colados ao maior, ou outros logos de bom tamanho na mesma área (ex.: dois patrocínios nas costas)
-        if (perto and c[4] > 0.08 * comps[0][4]) or (juntar and c[4] > 0.12 * comps[0][4] and c[4] >= 40):
-            g = [min(g[0], c[0]), min(g[1], c[1]), max(g[2], c[2]), max(g[3], c[3])]
-    bx0, by0, bx1, by1 = g[0] * 2, g[1] * 2, g[2] * 2, g[3] * 2
-    bw, bh = bx1 - bx0, by1 - by0
-    if bw < 14 or bh < 14:
-        return None
-    if (bh > 0.85 * h and bw < 40) or (bw > 0.85 * w and bh < 30) or (bw > 0.9 * w and bh > 0.9 * h):
-        return None      # faixa/friso do desenho, não é logo
-    return [int(x0 + bx0 - 4), int(y0 + by0 - 4), int(x0 + bx1 + 4), int(y0 + by1 + 4)]
-
-
 # áreas de escudo e marca do fornecedor: nunca apagar e nunca usar como fonte de tecido
 MANTER = [(1060, 1124, 1250, 1300), (790, 1120, 965, 1270), (40, 1640, 205, 1790)]
 
 
-def detectar_manter(img: Image.Image):
-    rgb = np.array(img.convert('RGB')).astype(np.float32)
-    out = []
-    for area in MANTER:
-        c = achar_no_retangulo(rgb, area, juntar=False)
-        if c:
-            out.append(c)
-    return out
-
-
-def detectar_molde(img: Image.Image):
-    """Para cada posição do molde, devolve onde há patrocinador hoje (caixa justa) ou nada."""
-    rgb = np.array(img.convert('RGB')).astype(np.float32)
-    achados = []
-    for slot, info in MOLDE.items():
-        for i, (area, rot) in enumerate(info['busca']):
-            caixa = achar_no_retangulo(rgb, area)
-            if caixa:
-                achados.append({'slot': slot, 'lugar': i, 'rot': rot, 'caixa': caixa, 'zona': slot})
-    return achados

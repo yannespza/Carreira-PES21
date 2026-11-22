@@ -61,12 +61,6 @@ def achar_tabelas(data: bytes, minimo=2):
     return out
 
 
-def achar_tabela(data: bytes):
-    """A maior sequência (a liga). Mantida para quem só precisa dela."""
-    ts = achar_tabelas(data, 20)
-    return max(ts, key=lambda t: t[1]) if ts else None
-
-
 def _jogadores(data, base):
     out = []
     for j in range(LINHAS):

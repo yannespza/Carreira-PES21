@@ -10,7 +10,7 @@ escolhendo a cópia que melhor casa com o tecido em volta do logo. Só os pixels
 import numpy as np
 from PIL import Image, ImageFilter
 
-from .detector import ZONAS, IGNORAR, MOLDE, MANTER, achar_no_retangulo
+from .detector import ZONAS, IGNORAR, MOLDE
 
 _DEBUG = False
 ESC = 2                      # detecção em 1024x1024
@@ -164,16 +164,6 @@ def _slot_de(caixa):
                 if melhor is None or d < melhor[0]:
                     melhor = (d, slot, i, rot)
     return melhor[1:] if melhor else (None, None, 0)
-
-
-def detectar_manter(img):
-    rgb = np.array(img.convert('RGB')).astype(np.float32)
-    out = []
-    for area in BUSCA_ESCUDO:
-        c = achar_no_retangulo(rgb, area, juntar=False, encosta=1)
-        if c:
-            out.append(c)
-    return out
 
 
 def _media_caixa(m, k, kw=None):
@@ -393,16 +383,6 @@ def detectar(img: Image.Image):
 
 
 # ---------------- preenchimento ----------------
-class _SAT:
-    """Soma acumulada para saber em O(1) se um retângulo toca área proibida."""
-    def __init__(self, m):
-        self.s = np.pad(m.astype(np.int32).cumsum(0).cumsum(1), ((1, 0), (1, 0)))
-
-    def soma(self, y0, x0, y1, x1):
-        s = self.s
-        return s[y1, x1] - s[y0, x1] - s[y1, x0] + s[y0, x0]
-
-
 def limpar(img: Image.Image, itens, manter=()):
     """Apaga os itens (dicts de detectar() ou caixas desenhadas {'caixa': [...]}).
     'manter': caixas que nunca servem de fonte de tecido (escudo, marca, itens que o usuário quis manter)."""
@@ -770,14 +750,3 @@ def _interpolar(rgb, proib, x0, y0, x1, y1, zy0, zy1):
     return out
 
 
-def desenhar(img, itens, largura=1024):
-    from PIL import ImageDraw
-    s = largura / 2048
-    im = img.convert('RGB').resize((largura, largura), Image.LANCZOS)
-    d = ImageDraw.Draw(im)
-    for i, it in enumerate(itens):
-        c = it['caixa']
-        cor = (130, 130, 130) if it.get('escudo') else (0, 200, 255) if it.get('desenho') else (255, 0, 255)
-        d.rectangle([c[0] * s, c[1] * s, c[2] * s, c[3] * s], outline=cor, width=2)
-        d.text((c[0] * s + 2, c[1] * s - 11), str(i + 1), fill=cor)
-    return im

@@ -8,8 +8,8 @@ sys.path.insert(0, APP_DIR)
 from core import campeonatos, escudos, jogadores
 from core import marketing, ingame, cena, imprensa, tecnico, estudio, savedata, kits, sim, mundo, times, gestao, numeros
 from core import rivais, vestiario, estrutura, diretoria, retro, tecnico_carreira, ranking, medico, aovivo, sumulas
-from core import memoria_jogo, assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
-from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, ia, museu, olheiros, financas_clubes, conselho, captura, estat_print
+from core import assessor, dirigentes, diretor, presidente, escalacao, posicao, copia_remota, mercado
+from core import comissao, gestao_elenco, clube_eventos, premios, matchday, cidades, tribunal, dossie, fadiga, forca, bilheteria, museu, olheiros, financas_clubes, conselho
 from core.logos import LogoBank
 
 PORT = 8765
@@ -47,6 +47,13 @@ def jsave(p, obj):
 
 
 CFG = jload(os.path.join(DATA, 'config.json'), {})
+# chaves de recursos que saíram do app (IA, busca na memória, estatísticas por print, leitor de memória)
+_VELHAS = ('ia_modo', 'ia_modelo', 'ia_ollama_url', 'ia_nuvem_url', 'ia_chave', 'captura_partida', 'captura_memoria',
+           'print_estatisticas', 'memoria_diag', 'memoria_diag_versao', 'memoria_diag_motivo')
+if any(k in CFG for k in _VELHAS):
+    for _k in _VELHAS:
+        CFG.pop(_k, None)
+    jsave(os.path.join(DATA, 'config.json'), CFG)
 
 
 # ---------------- primeira configuração (PC novo, app emprestado) ----------------
@@ -255,27 +262,25 @@ class App:
         # partida ao vivo: o módulo Lua grava live_match_data.json; esta thread lê sem travar nada
         self.aovivo = aovivo.Monitor(lambda: CFG.get('pasta_jogo'), self.ao_vivo_evento, log=log)
         self.aovivo.start()
-        # estatísticas da partida: print da tela no intervalo e no fim, lido pela IA com visão (estat_print.py)
-        self.estprint = estat_print.Sessao(CFG, os.path.join(DATA, 'prints'), self.estat_lida, log)
         savedata.TRAVA = self.trava_gravacao
         if CFG.get('ao_vivo', True) and CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
             try:
                 aovivo.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
+        # módulos de pesquisa antigos (busca de estatísticas e leitor de memória): saem do jogo
         if CFG.get('pasta_jogo') and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
-            try:   # desligado por padrão: as estatísticas vêm do print da tela (estat_print.py)
-                captura.instalar(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log,
-                                 ativo=bool(CFG.get('captura_memoria', False)))
-            except Exception:
-                log(traceback.format_exc())
+            for mod_ in ('AppCarreiraCaptura.lua', 'AppCarreiraMemoria.lua'):
+                try:
+                    ingame.remover_modulo(CFG.get('pasta_jogo', ''), mod_, os.path.join(DATA, 'backups_save'), log)
+                except Exception:
+                    log(traceback.format_exc())
         # o instalador do patch reescreve o sider.ini; recoloca o módulo do visual do estádio (gramado, faixas)
         if CFG.get('pasta_jogo') and os.path.isdir(os.path.join(CFG.get('pasta_jogo', ''), 'modules')):
             try:
                 ingame.instalar_modulo(CFG.get('pasta_jogo', ''), os.path.join(DATA, 'backups_save'), log)
             except Exception:
                 log(traceback.format_exc())
-        threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
         self.elenco = []
         self.campeonatos = []
         self.juniores = []
@@ -347,27 +352,6 @@ class App:
             nomes = savedata.nomes_jogadores(edit) if os.path.exists(edit) else {}
             el = [{'id': i, **nomes.get(i, {'nome': f'Jogador {i}', 'pos': ''})} for i in ids]
             self.aovivo.jogadores = nomes          # goleador ao vivo: id -> nome
-            try:    # diagnóstico somente leitura da memória do jogo (Sider): ajuda a achar lesão/energia/contrato na RAM
-                if CFG.get('pasta_jogo') and os.path.isdir(CFG.get('pasta_jogo', '')):
-                    if CFG.get('memoria_diag_versao') != memoria_jogo.VERSAO_MOD:   # módulo novo: tenta de novo
-                        CFG.update(memoria_diag=True, memoria_diag_versao=memoria_jogo.VERSAO_MOD)
-                        CFG.pop('memoria_diag_motivo', None)
-                        jsave(os.path.join(DATA, 'config.json'), CFG)
-                        memoria_jogo.limpar_status(CFG['pasta_jogo'])
-                    if CFG.get('memoria_diag', True):
-                        prob = memoria_jogo.saude(CFG['pasta_jogo'])
-                        if prob != 'ok':
-                            log('memória: desligada automaticamente:', prob)
-                            CFG['memoria_diag'] = False
-                            CFG['memoria_diag_motivo'] = prob
-                            jsave(os.path.join(DATA, 'config.json'), CFG)
-                            memoria_jogo.desligar(CFG['pasta_jogo'])
-                        else:
-                            memoria_jogo.preparar(CFG['pasta_jogo'], bytes(car.sf.data), ids, os.path.join(DATA, 'backups_save'), log)
-                    else:
-                        memoria_jogo.desligar(CFG['pasta_jogo'])
-            except Exception:
-                log(traceback.format_exc())
             # moral: só existe no arquivo "Dados do time" (USERT...) que o jogo grava quando você salva o elenco
             us = sorted(glob.glob(os.path.join(os.path.dirname(car.path), 'USERT*')), key=os.path.getmtime)
             self.moral_data = None
@@ -688,49 +672,6 @@ class App:
             else:
                 forca.desinstalar(pj)
 
-    def estat_lida(self, alvo, dados, ctx, fonte):
-        """Guarda as estatísticas lidas do print/foto em state['estat_jogos'] (uma entrada por partida)."""
-        with LOCK:
-            st = self.state
-            if st is None:
-                return
-            jogos = st.setdefault('estat_jogos', [])
-            ctx = ctx or {}
-            if not ctx.get('casa'):
-                d_ = self.aovivo.dados or {}
-                ctx = {'casa': d_.get('casa'), 'fora': d_.get('fora'), 'data': st.get('data')}
-            ent = next((j for j in reversed(jogos) if j.get('casa') == ctx.get('casa') and j.get('fora') == ctx.get('fora')
-                        and j.get('data') == ctx.get('data')), None)
-            if ent is None:
-                ent = {'casa': ctx.get('casa'), 'fora': ctx.get('fora'), 'data': ctx.get('data')}
-                jogos.append(ent)
-            ent[alvo] = dict(dados, fonte=fonte, lido=time.strftime('%Y-%m-%d %H:%M'))
-            del jogos[:-30]
-            if alvo == 'fim':
-                meu = self.tid()
-                lado = 'casa' if ent.get('casa') == meu else 'fora'
-                outro = 'fora' if lado == 'casa' else 'casa'
-                n, o = dados[lado], dados[outro]
-                self._msg_app('Análise de desempenho', 'Números da partida',
-                              f"Posse {n['posse']}% x {o['posse']}%. Chutes {n['chutes']} ({n['chutes_gol']} no gol) x "
-                              f"{o['chutes']} ({o['chutes_gol']}). Passes {n['passes']} ({n['passes_certos']} certos) x "
-                              f"{o['passes']} ({o['passes_certos']}). Desarmes {n['desarmes']} x {o['desarmes']}.",
-                              tipo='comissao')
-            self.persist()
-
-    def estat_view(self):
-        st = self.state or {}
-        nomes = self.names or {}
-        jogos = []
-        for j in reversed((st.get('estat_jogos') or [])[-10:]):
-            j = dict(j)
-            for k in ('casa', 'fora'):
-                j[k + '_nome'] = (j.get('fim') or j.get('intervalo') or j.get('pausa') or {}).get('time_' + k) or nomes.get(j.get(k)) or f'Time {j.get(k)}'
-            jogos.append(j)
-        return {'status': self.estprint.status, 'jogos': jogos, 'campos': estat_print.CAMPOS, 'rotulos': estat_print.ROTULOS,
-                'ia_modo': CFG.get('ia_modo', 'desligada'), 'modelo': CFG.get('ia_modelo') or '', 'windows': os.name == 'nt',
-                'ligado': CFG.get('print_estatisticas', True), 'meu': self.tid()}
-
     def _msg_app(self, de, assunto, texto, tipo='diretoria'):
         st = self.state
         st.setdefault('mensagens', []).append({
@@ -857,11 +798,8 @@ class App:
                     mods.append({'nome': m_.group(1), 'nosso': m_.group(1).startswith('AppCarreira')})
         except OSError:
             pass
-        return {'ia': {'modo': CFG.get('ia_modo', 'desligada'), 'modelo': CFG.get('ia_modelo', ''),
-                       'ollama_url': CFG.get('ia_ollama_url', 'http://localhost:11434'),
-                       'nuvem_url': CFG.get('ia_nuvem_url', ''), 'tem_chave': bool(CFG.get('ia_chave'))},
-                'gravacao': self.estado_gravacao(), 'backups': self.backups_view(), 'slots': self.slots_view(),
-                'modulos': mods, 'memoria': {'ligado': CFG.get('memoria_diag', True), 'motivo': CFG.get('memoria_diag_motivo')},
+        return {'gravacao': self.estado_gravacao(), 'backups': self.backups_view(), 'slots': self.slots_view(),
+                'modulos': mods,
                 'briefing': self.briefing_texto(), 'aovivo': self.aovivo.estado(self.names),
                 'restauracoes': (self.state or {}).get('restauracoes', [])[-5:][::-1]}
 
@@ -1027,6 +965,7 @@ class App:
             if sp != self.state_path or self.state is None:
                 self.state_path = sp
                 self.state = jload(sp, {})
+                self.state.pop('estat_jogos', None)          # estatísticas por print (removidas no 4.11.0)
                 novo = not self.state
                 self.sync_estudio()
             st = self.state
@@ -1191,8 +1130,6 @@ class App:
         mu = mundo.Mundo(st, self.clube(), self.tid())
         for de, ass, txt in conselho.processar(st, pos, jov, mu.m, {'pos': pos, 'saldo_classicos': saldo}):
             self._msg_app(de, ass, txt)
-        if any(x.get('origem') == 'conselho' and x.get('status') == 'pendente' for x in st.get('debitos', [])):
-            self._conselho_pagar = True
 
     def imprensa_moral(self, p, mu):
         """A imprensa elogia quem foi muito bem (nota 7,5+) e detona quem foi muito mal (5 ou menos):
@@ -1276,7 +1213,6 @@ class App:
                     log(traceback.format_exc())
                     fatos = None
                 g.coletiva_nova(ult, nomes, self.rivais_ids(), fatos)
-                threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
                 try:
                     self.imprensa_moral(ult, mu)
                 except Exception:
@@ -1304,13 +1240,6 @@ class App:
         if meu not in (dados.get('casa'), dados.get('fora')):
             return
         lado_meu = 'casa' if dados.get('casa') == meu else 'fora'
-        if CFG.get('print_estatisticas', True) and os.name == 'nt':
-            ctx_ = {'casa': dados.get('casa'), 'fora': dados.get('fora'), 'data': (self.state or {}).get('data')}
-            for e in novos:
-                if e.get('tipo') == 'periodo' and e.get('de') == 1 and e.get('para') == 2:
-                    self.estprint.iniciar('intervalo', ctx_, duracao=90)
-                elif (e.get('tipo') == 'periodo' and (e.get('para') or 0) >= 3) or e.get('tipo') == 'fim':
-                    self.estprint.iniciar('fim', ctx_, duracao=150)
         with LOCK:
             st = self.state
             if not st:
@@ -2644,10 +2573,6 @@ class H(BaseHTTPRequestHandler):
                 f = 'icone.png' if u.path.endswith('png') else 'icone.ico'
                 return self.send(200, open(os.path.join(APP_DIR, 'web', f), 'rb').read(),
                                  'image/png' if f.endswith('png') else 'image/x-icon')
-            if u.path == '/api/estatisticas':
-                return self.send(200, A.estat_view())
-            if u.path == '/api/estatisticas/busca':
-                return self.send(200, captura.estado(CFG.get('pasta_jogo', '')))
             if u.path == '/api/formacoes':
                 with LOCK:
                     return self.send(200, {'lista': A.formacoes_catalogo()})
@@ -2711,14 +2636,18 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, open(p, 'rb').read(), 'image/png')
                 return self.send(404, {'erro': 'logo'})
             if u.path == '/api/estudio':
-                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                fam = q.get('familia') or next(iter(kits.FAMILIAS), None)
+                if not fam:
+                    return self.send(404, {'erro': 'nenhum uniforme detectado ainda'})
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 A.sync_estudio()
                 pal = estudio.paleta(kits.base_image(APP_DIR, variant, fname))
                 return self.send(200, {'paleta': pal, 'cfg': (A.state or {}).get('estudio', {}).get(fam),
                                        'presets': estudio.PRESETS, 'familias': kits.FAMILIAS})
             if u.path == '/api/estudio/previa':
-                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                fam = q.get('familia') or next(iter(kits.FAMILIAS), None)
+                if not fam:
+                    return self.send(404, {'erro': 'nenhum uniforme detectado ainda'})
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 A.sync_estudio()
                 cfg = json.loads(q['cfg']) if q.get('cfg') else None
@@ -2730,7 +2659,9 @@ class H(BaseHTTPRequestHandler):
                 kits.preview(img, int(q.get('w', 640))).save(out, 'JPEG', quality=88)
                 return self.send(200, out.getvalue(), 'image/jpeg')
             if u.path in ('/api/numero', '/api/numero/previa'):
-                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                fam = q.get('familia') or next(iter(kits.FAMILIAS), None)
+                if not fam:
+                    return self.send(404, {'erro': 'nenhum uniforme detectado ainda'})
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 kd = (A.time or {}).get('pasta') or ''
                 bd = kits.BASE['dir'] or os.path.join(APP_DIR, 'data', 'kits_base')
@@ -2756,7 +2687,9 @@ class H(BaseHTTPRequestHandler):
                 numeros.dez(img, camisa, int(q.get('h', 110))).save(out, 'PNG')
                 return self.send(200, out.getvalue(), 'image/png')
             if u.path == '/api/preview':
-                fam = q.get('familia') or next(iter(kits.FAMILIAS))
+                fam = q.get('familia') or next(iter(kits.FAMILIAS), None)
+                if not fam:
+                    return self.send(404, {'erro': 'nenhum uniforme detectado ainda'})
                 variant, fname, _ = next(v for v in kits.VARIANTS if v[2] == fam)
                 with LOCK:
                     cs = json.loads(json.dumps([c for c in (A.state or {}).get('contratos', [])
@@ -2804,6 +2737,8 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, {'clubes': financas_clubes.todos()})
             if u.path == '/api/valor_justo':
                 with LOCK:
+                    if not q.get('empresa') or not q.get('slot'):
+                        return self.send(400, {'erro': 'faltou empresa ou posição'})
                     return self.send(200, {'valor': A.engine.valor_justo(q['empresa'], q['slot'])})
             return self.send(404, {'erro': 'não encontrado'})
         except Exception as e:
@@ -3239,32 +3174,6 @@ class H(BaseHTTPRequestHandler):
                         body['id'], int(body['pergunta']), int(body['resposta']), mu)
                     A.persist()
                     return self.send(200, {'ok': True, 'tom': tom})
-                if u.path == '/api/coletiva/livre':
-                    texto = (body.get('texto') or '').strip()
-                    if len(texto) < 3:
-                        return self.send(400, {'erro': 'Escreva a resposta.'})
-                    G = gestao.Gestao(A.state, A.clube(), A.tid())
-                    c_ = next((x for x in G.g['coletivas'] if x['id'] == body.get('id')), None)
-                    if not c_:
-                        return self.send(400, {'erro': 'Coletiva não encontrada.'})
-                    q_ = c_['perguntas'][int(body['pergunta'])]
-                    ctx_ = f"{A.clube()} · {c_.get('titulo', '')}"
-                    aval = ia.avaliar_resposta(CFG, ctx_, q_.get('texto', ''), texto)
-                    mu = mundo.Mundo(A.state, A.clube(), A.tid())
-                    tom = G.responder_livre(body['id'], int(body['pergunta']), texto, mu, aval)
-                    A.persist()
-                    return self.send(200, {'ok': True, 'tom': tom, 'avaliacao': aval})
-                if u.path == '/api/ia/config':
-                    for k in ('ia_modo', 'ia_modelo', 'ia_ollama_url', 'ia_nuvem_url'):
-                        if k in body:
-                            CFG[k] = str(body[k] or '')
-                    if body.get('ia_chave'):
-                        CFG['ia_chave'] = str(body['ia_chave'])
-                    jsave(os.path.join(DATA, 'config.json'), CFG)
-                    threading.Thread(target=ia.aquecer, args=(CFG,), daemon=True).start()
-                    return self.send(200, {'ok': True})
-                if u.path == '/api/ia/testar':
-                    return self.send(200, ia.testar(CFG))
                 if u.path == '/api/diretoria/sondagem':
                     mu = mundo.Mundo(A.state, A.clube(), A.tid())
                     diretoria.responder_sondagem(A.state, eng, mu, bool(body.get('aceitar')))
@@ -3351,38 +3260,6 @@ class H(BaseHTTPRequestHandler):
                 if u.path == '/api/olheiros':
                     res_ = olheiros.buscar(A.pool_mercado(), body.get('missao'), A.tid(), body.get('pos') or None)
                     return self.send(200, {'lista': res_})
-                if u.path in ('/api/estatisticas/foto', '/api/estatisticas/print_agora'):
-                    if u.path.endswith('foto'):
-                        import base64 as _b64
-                        from PIL import Image as _Img
-                        try:
-                            raw_ = _b64.b64decode((body.get('imagem') or '').split(',')[-1])
-                            img_ = _Img.open(io.BytesIO(raw_))
-                            img_.load()
-                        except Exception:
-                            return self.send(400, {'erro': 'Não consegui abrir a imagem.'})
-                    else:
-                        img_ = estat_print.capturar()
-                        if img_ is None:
-                            return self.send(400, {'erro': 'Não consegui tirar print (só funciona no Windows).'})
-                    dados_, motivo_ = estat_print.ler(CFG, img_)
-                    if not dados_:
-                        return self.send(400, {'erro': 'Não deu para ler: ' + motivo_})
-                    A.estat_lida(dados_['tela'] if dados_['tela'] in ('intervalo', 'fim') else 'pausa', dados_, None,
-                                 'foto' if u.path.endswith('foto') else 'print')
-                    return self.send(200, {'ok': True, 'dados': dados_})
-                if u.path == '/api/estatisticas/ligar':
-                    CFG['print_estatisticas'] = bool(body.get('ligado'))
-                    jsave(os.path.join(DATA, 'config.json'), CFG)
-                    return self.send(200, {'ok': True})
-                if u.path == '/api/estatisticas/busca':
-                    try:
-                        v_ = captura.pedir_busca(CFG.get('pasta_jogo', ''), body.get('ct'), body.get('cc'),
-                                                 body.get('ft'), body.get('fc'), bool(body.get('fim')))
-                    except (TypeError, ValueError) as e_:
-                        return self.send(400, {'erro': str(e_) or 'Números inválidos.'})
-                    log('busca de estatísticas pedida: %s' % v_)
-                    return self.send(200, {'ok': True})
                 if u.path == '/api/logistica':
                     md = A.state.get('matchday') or {}
                     prox, L = md.get('proximo'), md.get('logistica') or {}
@@ -3559,6 +3436,26 @@ def atualizar():
         with open(dst, 'wb') as f:
             f.write(z.read(nome))
         n += 1
+    # código que saiu do projeto (ex.: core/ia.py): sai do PC também (guardado no backup da versão)
+    novos = {nome[len(raiz):] for nome in z.namelist()}
+    pasta_core = os.path.join(APP_DIR, 'core')
+    for arq in os.listdir(pasta_core) if os.path.isdir(pasta_core) else []:
+        rel = 'core/' + arq
+        if arq.endswith('.py') and rel not in novos:
+            os.makedirs(os.path.join(bk, 'core'), exist_ok=True)
+            try:
+                shutil.move(os.path.join(pasta_core, arq), os.path.join(bk, rel))
+                log('arquivo antigo removido:', rel)
+            except OSError:
+                pass
+    # guarda só as 5 versões anteriores mais recentes
+    try:
+        pv = os.path.join(DATA, 'versoes')
+        vs = sorted(os.listdir(pv), key=lambda v: os.path.getmtime(os.path.join(pv, v)))
+        for v in vs[:-5]:
+            shutil.rmtree(os.path.join(pv, v), ignore_errors=True)
+    except OSError:
+        pass
     log('atualizado do GitHub:', n, 'arquivos; versão anterior guardada em', bk)
     return n
 

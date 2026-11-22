@@ -513,7 +513,6 @@ def listar_backups(backup_dir):
 
 def restaurar_backup(backup_dir, bk_id, destino, log=print):
     """Volta o save para uma cópia de segurança. Antes guarda o save atual (dá para desfazer o desfazer)."""
-    import json
     if not re.fullmatch(r'ML_\d+\.bak', bk_id or ''):
         raise ValueError('Cópia inválida.')
     bk = os.path.join(backup_dir, bk_id)
@@ -624,19 +623,6 @@ def dados_usert(path, ids):
         if 2000 <= ano <= 2100 and 1 <= mes <= 12 and 1 <= dia <= 31:
             j['contrato_ate'] = f'{ano:04d}-{mes:02d}-{dia:02d}'
         out[pid] = j
-    return out
-
-
-def moral_usert(path, ids):
-    """Moral de cada jogador no arquivo USERT (salvar elenco no jogo): byte 279 do bloco do jogador
-    (que começa com o id repetido duas vezes), 3 bits: 4 = seta para cima ... 0 = seta para baixo."""
-    from . import pescrypt
-    d = bytes(pescrypt.decrypt(open(path, 'rb').read()).data)
-    out = {}
-    for pid in ids:
-        o = d.find(struct.pack('<II', pid, pid))
-        if o >= 0 and o + 280 <= len(d):
-            out[pid] = d[o + 279] & 7
     return out
 
 

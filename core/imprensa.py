@@ -231,6 +231,24 @@ INTRO = {
                 'ruim': ["Professor, eu que já vi muita coisa nesse futebol:", 'Professor, com a experiência de quem já viu de tudo:', 'Professor, no futebol de antigamente isso não passava:']},
 }
 
+# aberturas extras (4.11.0)
+for _k, _b, _r in (
+    ('duarte', ['Antes que a euforia tome conta:', 'Uma pergunta de quem olha a planilha, não o placar:'],
+               ['Vou fazer a pergunta que ninguém quer fazer.', 'Com todo o respeito ao trabalho, professor:']),
+    ('ferraz', ['Já que hoje o humor está bom, aproveito:', 'Uma provocação amigável:'],
+               ['O senhor costuma dizer que futebol é detalhe. Então:', 'Para efeito de memória futura:']),
+    ('lacerda', ['Apurei que teve churrasco no CT para comemorar.', 'O pessoal do CT anda sorridente, pelo que apurei.'],
+                ['Apurei que teve reunião longa depois do treino.', 'Há uma informação forte circulando no CT.']),
+    ('pilha', ['PROFESSOR, a galera tá fazendo meme do jogo!', 'Professor, a resenha hoje vai ser longa!'],
+              ['Professor, tem gente pedindo a sua cabeça na live!', 'Professor, sem papinha:']),
+    ('renata', ['Uma dúvida sobre a pressão pós-perda.', 'Repare comigo na linha de defesa:'],
+               ['Na saída de bola, alguma coisa não encaixou.', 'Os espaços entre as linhas chamaram a atenção.']),
+    ('arnaldo', ['Professor, esse time me fez lembrar de 1999.', 'Professor, eu já vi muito time bom e esse está no caminho.'],
+                ['Professor, no meu tempo quem jogava assim ia para o banco.', 'Professor, o futebol raiz pede passagem:']),
+):
+    INTRO[_k]['bom'].extend(_b)
+    INTRO[_k]['ruim'].extend(_r)
+
 
 def _rnd(*k):
     return random.Random(int(hashlib.md5('|'.join(map(str, k)).encode()).hexdigest()[:12], 16))

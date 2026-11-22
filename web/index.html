@@ -248,7 +248,6 @@ dialog select,dialog input{width:100%}
 .eschip small{opacity:.7;margin-right:4px}
 .mdjogo{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:6px}.mdjogo>div{display:flex;flex-direction:column;align-items:center;gap:6px;width:40%;text-align:center}.mdjogo img{width:84px;height:84px;object-fit:contain}.mdjogo>span{font-size:28px;color:var(--mut)}
 .nivel{display:inline-block;padding:2px 8px;border-radius:10px;color:#111;font-weight:700;font-size:12px}
-.livre{display:flex;gap:8px;margin-top:6px}.livre textarea{flex:1;background:#0006;color:#fff;border:1px solid #ffffff22;border-radius:8px;padding:8px;font:inherit}
 .barra{display:flex;align-items:center;gap:8px;margin:5px 0}.barra span{width:50px;color:var(--mut)}.barra i{display:block;height:14px;background:var(--lime);border-radius:4px;min-width:4px;max-width:60%}.barra b{font-size:12px;font-weight:500}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.tb{width:100%;border-collapse:collapse}.tb td,.tb th{padding:5px 8px;border-bottom:1px solid #ffffff12;text-align:center}
 .lin{display:flex;align-items:center;gap:4px;margin:4px 0}.cartas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -670,9 +669,6 @@ main{max-width:1240px}
 @media(max-width:760px){.sala .conteudo{grid-template-columns:1fr !important}}
 .planos{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
 .plano{display:inline-flex;align-items:center}.plano a{cursor:pointer;color:var(--mut);padding:0 6px;font-size:16px}
-.perg .livre{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:6px}
-.perg .livre textarea{width:100%;min-height:54px;resize:vertical;box-sizing:border-box}
-.perg .livre button{width:auto !important;padding:0 18px}
 /* ===== 4.9: tema do layout do Canva (verde-neon sobre preto esverdeado) ===== */
 :root{--bg:#050A07;--bg2:#08110C;--panel:#0B1510;--panel2:#112019;--line:rgba(140,255,46,.14);
   --lime:#8CFF2E;--lime2:#62D11A;--onlime:#071300;--green:#8CFF2E;--txt:#ECF5EE;--mut:#8EA394;--dim:#5F7366}
@@ -875,7 +871,7 @@ nav#nav a.on:before{background:var(--lime) !important;box-shadow:0 0 10px var(--
   <!-- SISTEMA -->
   <section id="t-jogo" class="hidden">
     <div class="crumb">Início / <b>Dia de jogo</b></div>
-    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Viagem</a><a data-j="fad">Fadiga</a><a data-j="dos">Dossiê</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria</a><a data-j="est">Estatísticas</a></div>
+    <div class="tabs2" id="jtabs"><a data-j="pre" class="on">Preparação</a><a data-j="log">Viagem</a><a data-j="fad">Fadiga</a><a data-j="dos">Dossiê</a><a data-j="trib">Tribunal</a><a data-j="bil">Bilheteria</a></div>
     <div id="jogoBox"><div class="empty">Carregando…</div></div>
   </section>
   <section id="t-hist" class="hidden">
@@ -970,24 +966,13 @@ function go(t){tab=t;document.querySelectorAll('#nav a').forEach(a=>a.classList.
   render();}
 // ---------- aba Sistema: segurança das gravações, espaço de teste, cópias, Sider
 let SIS=null,SISt=0;
-async function iaSalvar(){const m=$('iaModo').value;const b={ia_modo:m,ia_modelo:$('iaModelo').value};if(m=='nuvem')b.ia_nuvem_url=$('iaUrl').value;else b.ia_ollama_url=$('iaUrl').value;if($('iaChave').value)b.ia_chave=$('iaChave').value;
-  try{await api('/api/ia/config',b);toast('IA salva.');carregarSistema()}catch(e){}}
-async function iaTestar(){$('iaRes').textContent='Testando… na primeira vez o Ollama leva o modelo para a placa de vídeo, pode passar de 1 minuto.';try{const r=await api('/api/ia/testar',{});$('iaRes').textContent=r.ok?`Funcionou em ${r.segundos} s: ${(r.resposta||{}).frase||JSON.stringify(r.resposta)}`:'Não funcionou: '+(r.erro||'sem resposta')+(r.segundos?` (${r.segundos} s)`:'')+(r.modelos&&r.modelos.length?' · Modelos baixados: '+r.modelos.join(', '):'')}catch(e){$('iaRes').textContent='Erro no teste.'}}
 async function carregarSistema(){SISt=Date.now();try{SIS=await api('/api/sistema');if(document.activeElement&&document.activeElement.id=='sisDest')return;rSistema()}catch(e){}}
 function rSistema(){const el=$('sisBox');if(!el||!SIS)return;const G=SIS.gravacao||{},T=SIS.slots||{},bks=SIS.backups||[];
   const cor={verde:'Pode gravar à vontade.',ambar:'O app grava normalmente (dinheiro, escalação). Para valer no jogo, volte ao menu do PES e carregue a carreira. Desfazer e criar o espaço de teste pedem o jogo fechado.',vermelho:'Com a partida rolando o jogo segura a carreira na memória e grava por cima depois. O app guarda o que tiver para gravar e grava sozinho quando o jogo acabar.'};
   const dm=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
   const atual=(T.espacos||[]).find(x=>x.atual)||{};
   const livresOpc=(T.espacos||[]).filter(x=>!x.atual).map(x=>`<option value="${x.arquivo}">Espaço ${x.espaco}${x.existe?` · ${esc(x.nome||'')} ${esc(x.clube||'')} ${x.data?dm(x.data):''} (vai ser substituído)`:' · vazio'}</option>`).join('');
-  const IA=SIS.ia||{};
-  const iaBox=`<div class="box"><h3>Inteligência artificial (opcional) <small>sem IA o app funciona igual, com textos prontos</small></h3>
-   <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><select id="iaModo"><option value="desligada" ${IA.modo=='desligada'?'selected':''}>Desligada (textos prontos)</option><option value="ollama" ${IA.modo=='ollama'?'selected':''}>Ollama no meu PC</option><option value="nuvem" ${IA.modo=='nuvem'?'selected':''}>API na nuvem</option></select>
-   <input id="iaModelo" placeholder="modelo (ex.: gemma3:12b)" value="${esc(IA.modelo||'')}" style="width:220px">
-   <input id="iaUrl" placeholder="endereço" value="${esc(IA.modo=='nuvem'?IA.nuvem_url||'':IA.ollama_url||'')}" style="width:300px">
-   <input id="iaChave" type="password" placeholder="${IA.tem_chave?'chave guardada (deixe vazio para manter)':'chave da API (só nuvem)'}" style="width:260px">
-   <button class="lime" onclick="iaSalvar()">Salvar</button><button class="ghost" onclick="iaTestar()">Testar</button></div>
-   <p id="iaRes" style="font-size:12px;color:var(--mut)">Usada para avaliar a resposta escrita com as suas palavras na coletiva. O app deixa o modelo carregado por 1 hora; se a IA falhar ou passar de 20 segundos, ele usa as regras prontas.</p></div>`;
-  el.innerHTML=iaBox+`
+  el.innerHTML=`
   <div class="box"><h3>Gravação no save <small>${esc(G.slot||'')}</small></h3>
     <div class="sislin"><span><i class="dot ${G.cor}"></i><b>${esc(G.texto||'')}</b></span></div>
     <p style="font-size:13px;color:var(--mut);margin-top:8px">${cor[G.cor]||''}</p></div>
@@ -1005,8 +990,7 @@ function rSistema(){const el=$('sisBox');if(!el||!SIS)return;const G=SIS.gravaca
     <div class="sisbrief">${esc(SIS.briefing||'O painel aparece quando o app tiver o próximo jogo.')}</div>
     <p style="font-size:12px;color:var(--mut);margin-top:8px">É o mesmo texto que aparece no PES quando você abre o painel do Sider (módulo AppCarreiraAoVivo). Só mostra informação: não mexe no jogo.</p></div>
   <div class="box" style="margin-top:14px"><h3>Sider <small>módulos ativos no sider.ini</small></h3>
-    ${(SIS.modulos||[]).map(m=>`<div class="sislin"><span>${m.nosso?'<b>'+esc(m.nome)+'</b>':esc(m.nome)}</span><small>${m.nosso?'do app':''}</small></div>`).join('')||'<div class="empty">Não achei o sider.ini.</div>'}
-    <div class="sislin"><span>Leitor de memória (diagnóstico, só leitura)</span><small>${SIS.memoria&&SIS.memoria.ligado?'ligado':'desligado'+(SIS.memoria&&SIS.memoria.motivo?': '+esc(SIS.memoria.motivo):'')}</small></div></div>`}
+    ${(SIS.modulos||[]).map(m=>`<div class="sislin"><span>${m.nosso?'<b>'+esc(m.nome)+'</b>':esc(m.nome)}</span><small>${m.nosso?'do app':''}</small></div>`).join('')||'<div class="empty">Não achei o sider.ini.</div>'}</div>`}
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-restaurar]');if(!b)return;
   if(!confirm('Voltar o save para esta cópia? Feche o PES antes.'))return;
   try{await api('/api/sistema/restaurar',{id:b.dataset.restaurar});toast('Save restaurado. O app vai ler de novo.');carregarSistema();load()}catch(x){}});
@@ -1229,7 +1213,7 @@ function painelCards(){const M=S.matchday||{},C=M.clima,R=M.riscos||[],B=S.bilhe
   const moral=!mor.length?'—':pos>neg*2?'POSITIVA':neg>pos?'NEGATIVA':'EQUILIBRADA';
   const ult=(B.jogos||[])[0];
   const G=S.gestao||{},col=(G.coletivas||[]).filter(c=>c.status=='respondida').slice(-1)[0];
-  let frase='';if(col){const p0=col.perguntas[0];frase=p0.escolha===-1?p0.livre:(p0.respostas||[])[p0.escolha]||''}
+  let frase='';if(col){const p0=col.perguntas[0];frase=p0.escolha===-1?(p0.livre||''):(p0.respostas||[])[p0.escolha]||''}
   const ms=(S.mensagens||[]).slice(-3).reverse(),naoLidas=(S.mensagens||[]).filter(x=>!x.lida).length;
   return `<div class="dash">
    <div class="dc" onclick="go('jogo')"><h4>Clima e horário</h4>${C?`<div class="dl">${ic('<path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>')}<b>${esc(C.cidade).toUpperCase()}</b></div>
@@ -1527,8 +1511,6 @@ function palcoFoto(tom,chave){const cs=(S.gestao||{}).cena||[];if(!cs.length)ret
   const k=encodeURIComponent((S.cores||[]).join()+'|'+S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa+x.slot).join());
   return `<div class="palco foto"><img src="/tecnico/cena/${h}.jpg?k=${k}" onerror="this.parentNode.style.display='none'"></div>`}
 function rSala(){
-  // não redesenhar enquanto o técnico escreve (a tela se atualiza a cada 3 s e apagava o texto)
-  const _ae=document.activeElement;if([...document.querySelectorAll('#sala textarea')].some(t=>t.value.trim()||t===_ae))return;
   const G=S.gestao||{};const cs=G.coletivas||[];const c=cs.find(x=>x.status=='aberta')||cs[0];
   const logos=S.contratos.filter(x=>x.status=='ativo'||x.status=='assinado').map(x=>x.empresa);
   const bd=logos.length?Array.from({length:24},(_,i)=>`<img src="/logo/${encodeURIComponent(logos[(i+Math.floor(i/4))%logos.length])}">`).join(''):Array.from({length:24},()=>`<div class="vazio">${esc((S.clube||'').toUpperCase())}</div>`).join('');
@@ -1538,9 +1520,8 @@ function rSala(){
   const tom=TOM||( {goleada:'feliz',vitoria:'feliz',empate:'neutro',derrota:'irritado',vexame:'irritado'}[c.tipo]);
   $('sala').innerHTML=`<div class="sala"><div class="conteudo">${palcoFoto(tom,c.id)||`<div class="palco"><div class="backdrop">${bd}</div><div class="rosto">${rosto(tom,c.id)}</div></div>`}<div>
     <h3 style="color:#fff;margin-bottom:12px">${esc(c.titulo)}</h3>
-    ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}${q.escolha===-1?`<button class="esc" disabled>“${esc(q.livre||'')}”</button>`:''}${q.escolha===null&&aberta?`<div class="livre"><textarea id="livre_${qi}" rows="2" placeholder="Ou responda com as suas palavras…"></textarea><button class="ghost" onclick="responderLivre('${c.id}',${qi})">Responder</button></div>`:''}${q.reacao?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome||'?'};return `<div class="reac ${q.reacao.bom?'ok':'off'}">${jnAv(j)}<span><b>${esc(j.nome)}:</b> “${esc(q.reacao.texto)}”</span></div>`})():''}</div>`).join('')}
+    ${c.perguntas.map((q,qi)=>`<div class="perg">${q.reporter_nome?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome};return `<div class="rep">${jnAv(j)}<b>${esc(q.reporter_nome)}</b><small>${esc(q.reporter_veiculo||'')}</small></div>`})():''}<p>${q.intro?esc(q.intro)+' ':''}${esc(q.texto)}</p>${q.respostas.map((r,ri)=>`<button class="${q.escolha===ri?'esc':''}" ${q.escolha!==null||!aberta?'disabled':''} onclick="responderCol('${c.id}',${qi},${ri})">${esc(r)}</button>`).join('')}${q.escolha===-1&&q.livre?`<button class="esc" disabled>“${esc(q.livre)}”</button>`:''}${q.reacao?(()=>{const j=(S.jornalistas||[]).find(x=>x.id==q.reporter)||{cor:'#555',nome:q.reporter_nome||'?'};return `<div class="reac ${q.reacao.bom?'ok':'off'}">${jnAv(j)}<span><b>${esc(j.nome)}:</b> “${esc(q.reacao.texto)}”</span></div>`})():''}</div>`).join('')}
     ${aberta?'<p style="color:#8a93a3;font-size:12px">As respostas mexem com a torcida, a diretoria, o vestiário e a sua relação com a imprensa.</p>':''}</div></div></div>`+rFotosTec()}
-async function responderLivre(id,q){const el=$('livre_'+q),t=el.value.trim();if(!t)return;el.value='';el.blur();toast('O jornalista está ouvindo…');try{const j=await api('/api/coletiva/livre',{id,pergunta:q,texto:t});TOM=j.tom;{const a=j.avaliacao||{};if(a.fonte=='ia')toast('Resposta avaliada pela IA.');else if(a.motivo&&!/desligada/.test(a.motivo))toast('IA não respondeu ('+a.motivo+') · usei as regras prontas.',true)}await load();setTimeout(()=>TOM=null,8000)}catch(e){}}
 async function responderCol(id,q,a){const j=await api('/api/coletiva/responder',{id,pergunta:q,resposta:a});TOM=j.tom;await load();setTimeout(()=>TOM=null,8000)}
 const NCAT={goleada:'jogo',vitoria:'jogo',empate:'jogo',derrota:'jogo',vexame:'jogo',seq_vitorias:'jogo',seq_derrotas:'jogo',invicto:'jogo',
  lider:'tabela',lider_segue:'tabela',g4:'tabela',z4:'tabela',sobe:'tabela',cai:'tabela',outro_lider:'tabela',
@@ -1991,41 +1972,6 @@ JOGO_R.pre=()=>{const M=S.matchday||{},P=M.proximo,C=M.clima;
    <p style="font-size:12px;color:var(--mut)">O app manda para o módulo de torcida do patch a tabela real do Brasileirão (posição, pontos e forma), as rivalidades do clube e a torcida única nos clássicos paulistas. ${simNao(M.torcida_no_jogo,'Configuração gravada.','Módulo de torcida não encontrado.')}</p></div>`};
 
 
-// ---- Estatísticas da partida pelo print da tela (intervalo e fim), lidas pela IA com visão ----
-let ESTP=null,ESTP_T=null,ESTP_OCUP=false;
-async function estpAtual(){try{ESTP=await api('/api/estatisticas')}catch(e){}
-  if(JTAB=='est'&&!ESTP_OCUP)rJogo()}
-function estpFoto(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
-  r.onload=async()=>{ESTP_OCUP=true;toast('Lendo a foto com a IA… pode levar até 1 minuto.');
-    try{const j=await api('/api/estatisticas/foto',{imagem:r.result});toast('Foto lida: '+(j.dados.tela=='fim'?'fim de jogo':j.dados.tela)+'.')}
-    catch(e){toast(e.message||'Não deu para ler.',true)}ESTP_OCUP=false;estpAtual()};r.readAsDataURL(f)}
-async function estpPrint(){ESTP_OCUP=true;toast('Tirando print e lendo… deixe a tela de estatísticas aberta no jogo.');
-  try{const j=await api('/api/estatisticas/print_agora',{});toast('Print lido.')}catch(e){toast(e.message||'Não deu para ler.',true)}
-  ESTP_OCUP=false;estpAtual()}
-async function estpLigar(v){await api('/api/estatisticas/ligar',{ligado:v});estpAtual()}
-function estpTabela(j){const E=ESTP,meu=E.meu,cols=['intervalo','fim'].filter(k=>j[k]);
-  if(!cols.length&&j.pausa)cols.push('pausa');
-  const nomeCol={intervalo:'Intervalo',fim:'Fim',pausa:'Pausa'};
-  const linha=c=>`<tr><td style="text-align:left">${esc(E.rotulos[c])}</td>${cols.map(k=>{const a=j[k].casa[c],b=j[k].fora[c];
-     const mel=c=='faltas'||c=='impedimentos'?(a<b?'casa':b<a?'fora':''):(a>b?'casa':b>a?'fora':'');
-     return `<td style="${mel=='casa'?'color:var(--lime,#8CFF2E);font-weight:700':''}">${a}</td><td style="${mel=='fora'?'color:var(--lime,#8CFF2E);font-weight:700':''}">${b}</td>`}).join('')}</tr>`;
-  const fl=j.fim||j.intervalo||j.pausa,pl=fl&&fl.placar?`${fl.placar[0]} x ${fl.placar[1]}`:'x';
-  return `<div class="box"><h3>${esc(j.casa_nome)} ${pl} ${esc(j.fora_nome)} <small>${j.data?dt(j.data):''}</small></h3>
-   <table class="tb"><tr><th></th>${cols.map(k=>`<th colspan="2">${nomeCol[k]} <small style="color:var(--mut)">(${j[k].fonte})</small></th>`).join('')}</tr>
-   <tr><th></th>${cols.map(()=>`<th>Casa</th><th>Fora</th>`).join('')}</tr>${E.campos.map(linha).join('')}</table></div>`}
-JOGO_R.est=()=>{if(!ESTP_T){ESTP_T=setInterval(()=>{if(JTAB=='est'&&document.querySelector('#jogoBox'))estpAtual()},5000);estpAtual()}
-  const E=ESTP;if(!E)return '<div class="box"><div class="empty">Carregando…</div></div>';
-  const semIA=E.ia_modo!='ollama'&&E.ia_modo!='nuvem';
-  return `<div class="box"><h3>Estatísticas da partida <small>pelo print da tela</small></h3>
-   <p>No <b>intervalo</b> e no <b>fim de jogo</b>, o app tira prints da tela sozinho e a IA (${esc(E.modelo||'modelo do Ollama')}) lê posse, chutes, passes, desarmes e o resto. Você só joga.</p>
-   ${semIA?'<p class="mdalerta">⚠️ A IA está desligada. Em <b>Sistema > Inteligência artificial</b>, escolha "Ollama no meu PC" com um modelo que entende imagem (gemma4:12b).</p>':''}
-   ${E.windows?'':'<p class="mdalerta">O print automático só funciona no PC com Windows; aqui dá para mandar foto.</p>'}
-   <p>Automático: <b>${E.ligado?'ligado':'desligado'}</b> · <a href="#" style="color:var(--lime,#8CFF2E)" onclick="estpLigar(${!E.ligado});return false">${E.ligado?'desligar':'ligar'}</a></p>
-   <p style="font-size:13px;color:var(--mut)">Situação${E.status.quando?' ('+E.status.quando+')':''}: ${esc(E.status.texto)}</p>
-   <p><button class="btn" onclick="estpPrint()">Ler a tela agora</button>
-      <button class="btn" onclick="$('estpArq').click()">Enviar foto da tela</button><input id="estpArq" type="file" accept="image/*" style="display:none" onchange="estpFoto(this)"></p>
-   <p style="font-size:12px;color:var(--mut)">"Ler a tela agora" serve para quando a tela de estatísticas estiver aberta (até no menu de pausa). A foto pode ser do celular, como as que você tira. Se o print sair preto, coloque o PES em "janela sem bordas".</p></div>
-  ${E.jogos.length?E.jogos.map(estpTabela).join(''):'<div class="box"><div class="empty">Nenhuma partida lida ainda.</div></div>'}`};
 const ftMini=(id)=>`<img class="stft" src="/foto/${id}.png" loading="lazy" onerror="this.style.visibility='hidden'">`;
 JOGO_R.dos=()=>{const D=S.dossie;if(!D)return '<div class="box"><div class="empty">O dossiê aparece quando houver próximo jogo e o adversário tiver partidas no save.</div></div>';
   const ar=(k)=>`<tr><td style="text-align:left">${k=='altura'?'Altura média':k=='cabeceio'?'Cabeceio':'Impulsão'}</td><td>${D.aereo_deles[k]??'—'}</td><td>${D.aereo_nosso[k]??'—'}</td></tr>`;

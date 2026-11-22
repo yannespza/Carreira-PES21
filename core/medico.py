@@ -11,6 +11,7 @@ O jogo não sabe das lesões do app: você não escala quem está no DM e volta 
 import random, datetime as dt
 from .sim import d2s, s2d, _seed, fmt_eur
 from . import estrutura
+from .gestao import novo_id as _novo_id
 
 # lesões em jogo: (nome, como aconteceu, dias mín, dias máx, peso)
 LESOES_JOGO = [
@@ -62,7 +63,7 @@ def lesao_em_jogo(gestao, partida, elenco, mundo, engine=None):
     nome, como, dmin, dmax, _ = r.choices(LESOES_JOGO, [x[4] for x in LESOES_JOGO])[0]
     dias = max(2, int(round(r.randint(dmin, dmax) * estrutura.duracao_lesao(st))))
     volta = dia + dt.timedelta(days=dias)
-    ev = {'id': f"ev{len(g['eventos']) + 1}", 'data': partida['data'], 'jogador_id': j['id'], 'jogador': j['nome'],
+    ev = {'id': _novo_id(g['eventos'], 'ev'), 'data': partida['data'], 'jogador_id': j['id'], 'jogador': j['nome'],
           'tipo': 'lesao', 'origem': 'jogo', 'partida': partida['chave'], 'titulo': nome,
           'texto': f"{j['nome']} {como}. Volta prevista: {volta.strftime('%d/%m/%Y')}.",
           'volta': d2s(volta), 'dias': dias}
@@ -183,7 +184,7 @@ def tratar(state, eid, hoje):
     e['volta'] = d2s(hoje + dt.timedelta(days=novo))
     e['tratado'] = True
     e.setdefault('historico', []).append({'data': d2s(hoje), 'texto': f'Tratamento intensivo: volta antecipada em {falta - novo} dia(s)'})
-    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+    state.setdefault('debitos', []).append({'id': _novo_id(state.get('debitos', []), 'deb'), 'data': d2s(hoje),
                                             'valor': c, 'status': 'pendente',
                                             'motivo': f"Tratamento intensivo: {e['jogador']}"})
     return e
@@ -230,7 +231,7 @@ RECUPERACAO = [
 
 
 def _deb(state, hoje, valor, motivo):
-    state.setdefault('debitos', []).append({'id': f"deb{len(state.get('debitos', [])) + 1}", 'data': d2s(hoje),
+    state.setdefault('debitos', []).append({'id': _novo_id(state.get('debitos', []), 'deb'), 'data': d2s(hoje),
                                             'valor': int(valor), 'status': 'pendente', 'motivo': motivo})
 
 

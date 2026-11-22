@@ -76,7 +76,6 @@ def recortar(img: Image.Image) -> Image.Image:
             jan = v[a:b]
             jan = jan[jan >= 0]
             arr[y] = int(np.median(jan)) if len(jan) else v[y]
-        arr[ys] = np.maximum.accumulate(arr[ys]) if False else arr[ys]
     cheio = np.zeros_like(pessoa)
     for y in ys:
         cheio[y, esq[y]:dirx[y] + 1] = True

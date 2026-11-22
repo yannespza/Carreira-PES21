@@ -7,7 +7,7 @@ De onde vem cada escudo, nesta ordem:
 Fica guardado em data\\escudos\\<id>.png; sem escudo, grava <id>.sem e tenta de novo em 3 dias."""
 import os, io, re, time
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 CAIXA = (1030, 1030, 1275, 1295)        # região do peito esquerdo na textura 2048 (onde o escudo fica)
 CENTRO = (125, 135)                      # centro esperado do escudo dentro da região

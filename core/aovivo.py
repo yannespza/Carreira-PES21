@@ -296,7 +296,7 @@ function m.init(ctx)
     TMP = base .. "live_match_data.tmp"
     PASTA_SONDA = base .. "GOGOSZ\\AppCarreira\\sondas\\"
     BRIEF = base .. "GOGOSZ\\AppCarreira\\briefing.txt"
-    m.sondar_gols = true      -- grava uma sonda em cada gol (serve de referência conhecida)
+    m.sondar_gols = false     -- (pesquisa encerrada) não grava mais sondas nos gols
     ctx.register("set_teams", m.set_teams)
     ctx.register("display_frame", m.display_frame)
     ctx.register("overlay_on", m.overlay_on)
